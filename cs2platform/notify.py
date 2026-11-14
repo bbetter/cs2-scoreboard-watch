@@ -35,7 +35,8 @@ def build_notification_command(
 def send_notification(title: str, msg: str) -> None:
     """Best-effort notification; never raises."""
     try:
-        spec = build_notification_command(title, msg)
+        # Resolve platform/which/environ at call time: the defaults above are bound at import.
+        spec = build_notification_command(title, msg, sys.platform, shutil.which, os.environ)
         if spec is not None:
             argv, kwargs = spec
             subprocess.run(argv, **kwargs)
