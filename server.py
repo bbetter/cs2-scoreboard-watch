@@ -31,6 +31,8 @@ from console_parser import (
 from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
 from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
+from events import EventBus
+from pipeline import ScanPipeline
 from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
 from sources import REGISTRY, SourceContext
 from config_schema import describe_schema
@@ -103,6 +105,9 @@ def _adapt_legacy_scan(scan: dict) -> None:
         steam = player.get("steam") if isinstance(player, dict) else None
         if isinstance(steam, dict) and "sources" not in steam:
             steam["sources"] = REGISTRY.sources_view(steam)
+    for idx, player in enumerate(scan.get("players") or []):
+        if isinstance(player, dict) and not player.get("player_uid"):
+            player["player_uid"] = f"{scan.get('id')}-{idx}"  # legacy record: assign once, persisted on next save
 
 
 def _load_history() -> None:
@@ -186,149 +191,89 @@ def _build_matches_locked() -> list[dict]:
     return matches
 
 
-def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
-    ai_enabled = bool(load_config().get("ai_enabled"))
-    total = len(players)
-    done_count = 0
-    progress_lock = threading.Lock()
+class _ServerRepo:
+    """ScanRepo over this module's globals. Names are resolved at call time so tests can patch them."""
 
-    def _on_player(rep) -> None:
-        nonlocal done_count
-        pdict = asdict(rep)
-        pdict["loading"] = False
-        pdict["loading_stage"] = "ai" if ai_enabled else "done"
-        with progress_lock:
-            done_count += 1
-            cur_done = done_count
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if not scan_rec:
-                return
-            for i, existing in enumerate(scan_rec.get("players", [])):
-                if existing.get("nick") == pdict.get("nick"):
-                    scan_rec["players"][i] = pdict
-                    break
-            scan_rec["progress"] = {"done": cur_done, "total": total}
-            scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-        _broadcast_event(
-            "scan_update",
-            {
-                "scan_id": scan_id,
-                "player": pdict,
-                "progress": {"done": cur_done, "total": total},
-                "scan_status": "loading_steam",
-            },
-        )
+    @property
+    def lock(self):
+        return _STATE_LOCK
 
-    reports = enrich_players(players, fetch_steam=True, on_player_ready=_on_player)
-    player_dicts = []
-    for r in reports:
-        d = asdict(r)
-        d["loading"] = False
-        d["loading_stage"] = "ai" if ai_enabled else "done"
-        player_dicts.append(d)
+    @property
+    def scans(self) -> list:
+        return _SCANS
 
-    if ai_enabled and player_dicts:
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if scan_rec:
-                scan_rec["players"] = player_dicts
-                scan_rec["scan_status"] = "loading_ai"
-                scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-                snapshot = dict(scan_rec)
-            else:
-                snapshot = None
-        if snapshot:
-            _broadcast_event("scan", snapshot)
-        player_dicts, ai_error = analyze_players_with_ai(player_dicts)
-    else:
-        ai_error = None
+    @property
+    def max_history(self) -> int:
+        return _MAX_HISTORY
 
-    for d in player_dicts:
-        d["loading"] = False
-        d["loading_stage"] = "done"
-
-    with _STATE_LOCK:
-        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-        if not scan_rec:
-            return
-        scan_rec["players"] = player_dicts
-        scan_rec["player_count"] = len(player_dicts)
-        scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-        scan_rec["ai_error"] = ai_error
-        scan_rec["scan_status"] = "done"
-        scan_rec["progress"] = {"done": total, "total": total}
+    def save_locked(self) -> None:
         _save_history_locked()
-        final_snapshot = dict(scan_rec)
+
+
+def _ocr_image(image_path: Path) -> tuple[list, object]:
+    console_status = parse_latest_status()
+    players = scan_scoreboard(str(image_path))
+    if console_status and console_status.nicks:
+        for p in players:
+            p.nick = correct_nick_from_console(p.nick, console_status.nicks)
+    return players, console_status
+
+
+def _screenshot_url(image_path: Path) -> Optional[str]:
+    if image_path.parent.resolve() == get_screenshot_dir().resolve():
+        return f"/screenshots/{image_path.name}"
+    return None
+
+
+EVENTS = EventBus()
+_WIRE_EVENT = {
+    "scan.created": "scan",
+    "scan.updated": "scan",
+    "scan.finished": "scan",
+    "player.enriched": "scan_update",
+}
+
+
+def _sink_player_db(topic: str, payload: dict) -> None:
     try:
-        player_db.record_scan_sightings(final_snapshot)
+        player_db.record_scan_sightings(payload)
     except Exception as exc:
-        print(f"[player-db error] sightings not saved for scan {scan_id}: {exc}")
-    _broadcast_event("scan", final_snapshot)
+        print(f"[player-db error] sightings not saved for scan {payload.get('id')}: {exc}")
+
+
+def _sink_sse(topic: str, payload: dict) -> None:
+    # Resolved at call time: tests patch server._broadcast_event.
+    _broadcast_event(_WIRE_EVENT[topic], payload)
+
+
+EVENTS.subscribe("scan.finished", _sink_player_db)  # before SSE, as before the refactor
+for _topic in _WIRE_EVENT:
+    EVENTS.subscribe(_topic, _sink_sse)
+
+PIPELINE = ScanPipeline(
+    _ServerRepo(),
+    EVENTS,
+    ocr=lambda path: _ocr_image(path),
+    enrich=lambda *a, **k: enrich_players(*a, **k),
+    analyze_ai=lambda dicts: analyze_players_with_ai(dicts),
+    ai_enabled=lambda: bool(load_config().get("ai_enabled")),
+    match_meta=lambda now, status: _resolve_match_meta(now, status),
+    screenshot_url=lambda path: _screenshot_url(path),
+)
+
+
+def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
+    PIPELINE.enrich_scan(scan_id, players, started)
 
 
 def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dict:
-    started = time.time()
     if image_path is None:
         image_path = capture_screenshot()
     else:
         image_path = Path(image_path).resolve()
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-
-    console_status = parse_latest_status()
-    players = scan_scoreboard(str(image_path))
-    if console_status and console_status.nicks:
-        for p in players:
-            p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-
-    initial_reports = enrich_players(players, fetch_steam=False)
-    initial_dicts = []
-    for r in initial_reports:
-        d = asdict(r)
-        if fetch_steam:
-            d["loading"] = True
-            d["loading_stage"] = "steam"
-        else:
-            d["loading"] = False
-            d["loading_stage"] = "done"
-        initial_dicts.append(d)
-
-    duration_ms = round((time.time() - started) * 1000)
-    now_dt = datetime.now()
-    match_id, map_name = _resolve_match_meta(now_dt, console_status)
-    scan_id = uuid.uuid4().hex[:10]
-    will_stream = bool(fetch_steam and players)
-
-    scan_record = {
-        "id": scan_id,
-        "created_at": now_dt.isoformat(timespec="seconds"),
-        "date": now_dt.strftime("%Y-%m-%d"),
-        "match_id": match_id,
-        "map_name": map_name,
-        "image_name": image_path.name,
-        "image_url": f"/screenshots/{image_path.name}" if image_path.parent.resolve() == get_screenshot_dir().resolve() else None,
-        "duration_ms": duration_ms,
-        "player_count": len(initial_dicts),
-        "players": initial_dicts,
-        "ai_error": None,
-        "scan_status": "loading_steam" if will_stream else "done",
-        "progress": {"done": 0 if will_stream else len(initial_dicts), "total": len(initial_dicts)},
-    }
-
-    with _STATE_LOCK:
-        _SCANS.insert(0, scan_record)
-        del _SCANS[_MAX_HISTORY:]
-        _save_history_locked()
-
-    _broadcast_event("scan", scan_record)
-    if will_stream:
-        threading.Thread(
-            target=_enrich_scan_async,
-            args=(scan_id, players, started),
-            daemon=True,
-        ).start()
-    return scan_record
+    return PIPELINE.run_new(image_path, fetch_steam=fetch_steam)
 
 
 def _send_notification(title: str, msg: str) -> None:
@@ -389,7 +334,16 @@ def _refresh_source_entry(steam: dict, src) -> None:
     steam["sources"] = view
 
 
-def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optional[str]) -> tuple[int, dict]:
+def _player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
+    """Match a stored player by its stable player_uid when the caller sent one, else by nick (legacy API)."""
+    if uid:
+        return p.get("player_uid") == uid
+    return p.get("nick") == nick
+
+
+def recheck_source_for_player(
+    scan_id: Optional[str], nick: str, source: Optional[str], player_uid: Optional[str] = None
+) -> tuple[int, dict]:
     """Re-fetch ONE recheckable external source for one player of a scan.
 
     Other sources and the scoring are left untouched. Returns (http_status, body):
@@ -399,14 +353,14 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
     src = REGISTRY.get(source) if isinstance(source, str) else None
     if src is None or not src.recheckable:
         return 400, {"error": f"source має бути {_source_choices_text(REGISTRY.recheckable_ids())}"}
-    if not scan_id or not nick:
+    if not scan_id or not (nick or player_uid):
         return 400, {"error": "scan_id і nick є обов'язковими"}
 
     with _STATE_LOCK:
         scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
         if not scan_rec:
             return 404, {"error": "Scan not found"}
-        player = next((p for p in scan_rec.get("players", []) if p.get("nick") == nick), None)
+        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None)
         if player is None:
             return 404, {"error": "Player not found in scan"}
         steamid64 = (player.get("steam") or {}).get("steamid64")
@@ -420,7 +374,7 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
 
     with _STATE_LOCK:
         scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-        player = next((p for p in scan_rec.get("players", []) if p.get("nick") == nick), None) if scan_rec else None
+        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None) if scan_rec else None
         if scan_rec is None or player is None:
             return 404, {"error": "Scan or player was removed while refreshing"}
         steam = dict(player.get("steam") or {})
@@ -623,40 +577,7 @@ def _post_rescan(h: CsWatchHandler) -> None:
             h._send_json({"error": "Screenshot file not found"}, status=404)
             return
 
-        started = time.time()
-        console_status = parse_latest_status()
-        players = scan_scoreboard(str(img_path))
-        if console_status and console_status.nicks:
-            for p in players:
-                p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-
-        initial_reports = enrich_players(players, fetch_steam=False)
-        initial_dicts = []
-        for r in initial_reports:
-            d = asdict(r)
-            d["loading"] = bool(players)
-            d["loading_stage"] = "steam" if players else "done"
-            initial_dicts.append(d)
-        duration_ms = round((time.time() - started) * 1000)
-
-        with _STATE_LOCK:
-            scan_rec["players"] = initial_dicts
-            scan_rec["player_count"] = len(initial_dicts)
-            scan_rec["duration_ms"] = duration_ms
-            scan_rec["ai_error"] = None
-            scan_rec["scan_status"] = "loading_steam" if players else "done"
-            scan_rec["progress"] = {"done": 0, "total": len(initial_dicts)}
-            _save_history_locked()
-            snapshot = dict(scan_rec)
-            target_scan_id = scan_rec["id"]
-
-        _broadcast_event("scan", snapshot)
-        if players:
-            threading.Thread(
-                target=_enrich_scan_async,
-                args=(target_scan_id, players, started),
-                daemon=True,
-            ).start()
+        snapshot = PIPELINE.rescan(scan_rec, img_path)
         h._send_json(snapshot)
     except Exception as exc:
         h._send_json({"error": str(exc)}, status=500)
@@ -676,8 +597,9 @@ def _post_recheck(h: CsWatchHandler) -> None:
         payload = read_json_body(h)
         scan_id = payload.get("scan_id")
         old_nick = payload.get("old_nick")
+        player_uid = payload.get("player_uid") or None
         query = (payload.get("query") or "").strip()
-        if not scan_id or not old_nick or not query:
+        if not scan_id or not (old_nick or player_uid) or not query:
             h._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
             return
 
@@ -686,7 +608,7 @@ def _post_recheck(h: CsWatchHandler) -> None:
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
-            idx = next((i for i, p in enumerate(scan_rec["players"]) if p["nick"] == old_nick), None)
+            idx = next((i for i, p in enumerate(scan_rec["players"]) if _player_matches(p, player_uid, old_nick)), None)
             if idx is None:
                 h._send_json({"error": "Player not found in scan"}, status=404)
                 return
@@ -723,7 +645,10 @@ def _post_feedback(h: CsWatchHandler) -> None:
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
-            player = next((dict(p) for p in scan_rec["players"] if p.get("nick") == clean["nick"]), None)
+            player = next(
+                (dict(p) for p in scan_rec["players"] if _player_matches(p, payload.get("player_uid") or None, clean["nick"])),
+                None,
+            )
         if player is None:
             h._send_json({"error": "Player not found in scan"}, status=404)
             return
@@ -749,6 +674,7 @@ def _post_recheck_source(h: CsWatchHandler) -> None:
             payload.get("scan_id"),
             str(payload.get("nick") or "").strip(),
             payload.get("source"),
+            player_uid=payload.get("player_uid") or None,
         )
         h._send_json(body, status=status)
     except Exception as exc:
@@ -761,6 +687,7 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
         payload = read_json_body(h)
         scan_id = payload.get("scan_id")
         target_nick = (payload.get("nick") or "").strip()
+        target_uid = payload.get("player_uid") or None
         with _STATE_LOCK:
             scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
             if not scan_rec:
@@ -768,8 +695,8 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
                 return
             players_copy = [dict(p) for p in scan_rec.get("players", [])]
 
-        if target_nick:
-            subset = [p for p in players_copy if p.get("nick") == target_nick]
+        if target_nick or target_uid:
+            subset = [p for p in players_copy if _player_matches(p, target_uid, target_nick)]
             if not subset:
                 h._send_json({"error": "Player not found in scan"}, status=404)
                 return
@@ -777,8 +704,9 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
             if ai_error:
                 h._send_json({"error": ai_error}, status=500)
                 return
-            updated_map = {p["nick"]: p for p in analyzed}
-            new_players = [updated_map.get(p["nick"], p) for p in players_copy]
+            key = (lambda p: p.get("player_uid")) if target_uid else (lambda p: p["nick"])
+            updated_map = {key(p): p for p in analyzed}
+            new_players = [updated_map.get(key(p), p) for p in players_copy]
         else:
             new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
             if ai_error:

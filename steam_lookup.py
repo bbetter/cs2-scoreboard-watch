@@ -282,6 +282,8 @@ class PlayerReport:
     effective_weights: dict = field(default_factory=dict)
     # Every scoring rule hit: [{component, rule, points, reason}] (see scoring/engine.py).
     score_breakdown: list = field(default_factory=list)
+    # Stable per-scan player id (see scoreboard_scan.Player.player_uid); "" for rows that predate it.
+    player_uid: str = ""
 
 
 def _http_get_status(
@@ -1371,6 +1373,7 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
         uncertainty=uncertainty,
         effective_weights=eff_weights,
         score_breakdown=scored.breakdown,
+        player_uid=p.player_uid,
     )
 
 
@@ -1547,5 +1550,6 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             uncertainty=uncertainty,
             effective_weights=eff_weights,
             score_breakdown=scored.breakdown,
+            player_uid=player_dict.get("player_uid") or "",
         )
     )

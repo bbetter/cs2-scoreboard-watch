@@ -62,6 +62,8 @@ class Player:
     score: float = 0.0
     avatar_thumb: Any = field(default=None, repr=False)
     avatar_data_url: Optional[str] = field(default=None, repr=False)
+    # Stable id of this row inside one scan; assigned by the scan pipeline, survives renames/rechecks.
+    player_uid: str = ""
 
 
 def _num(text: str):
