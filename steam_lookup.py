@@ -23,6 +23,7 @@ from typing import Any, Optional
 from atomic_io import atomic_write_text
 from nick_match import best_match_index
 from scoreboard_scan import Player
+from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
 from sources import REGISTRY
 from config_store import DEFAULT_AI_WEIGHTS
 
@@ -279,6 +280,8 @@ class PlayerReport:
     smurf_risk_level: str = "low"
     uncertainty: float = 50.0
     effective_weights: dict = field(default_factory=dict)
+    # Every scoring rule hit: [{component, rule, points, reason}] (see scoring/engine.py).
+    score_breakdown: list = field(default_factory=list)
 
 
 def _http_get_status(
@@ -1306,13 +1309,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
 
 
 def _risk_level(prob: float) -> str:
-    if prob >= 75:
-        return "critical"
-    if prob >= 55:
-        return "high"
-    if prob >= 30:
-        return "medium"
-    return "low"
+    return risk_level(prob)
 
 
 def _load_base_weights() -> dict[str, float]:
@@ -1333,390 +1330,29 @@ def _load_base_weights() -> dict[str, float]:
 
 
 def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[str, float]]:
-    base = _load_base_weights()
-
-    if steam.steamid64:
-        has_steam = 1.0 if steam.privacy_state == "public" else 0.45
-    else:
-        has_steam = 0.0
-
-    has_faceit = bool(steam.faceit and steam.faceit.get("found"))
-    has_leetify = bool(steam.leetify)
-    has_cs2_stats = bool(steam.cs2_stats)
-    has_extra = bool(((steam.extra_stats or {}).get("cstracker") or {}).get("status") == "ok")
-
-    if has_leetify or has_faceit or has_extra:
-        has_leetify_or_faceit = 1.0
-    elif has_cs2_stats:
-        has_leetify_or_faceit = 0.5
-    else:
-        has_leetify_or_faceit = 0.0
-
-    raw_sb = base["scoreboard"] * 1.0
-    raw_steam = base["steam_account"] * has_steam
-    raw_ext = base["leetify"] * has_leetify_or_faceit
-    total = raw_sb + raw_steam + raw_ext
-
-    if (has_steam == 0.0 and has_leetify_or_faceit == 0.0) or total <= 0.0:
-        effective_weights = {"scoreboard": 1.0, "leetify": 0.0, "steam_account": 0.0}
-    else:
-        effective_weights = {
-            "scoreboard": round(raw_sb / total, 3),
-            "leetify": round(raw_ext / total, 3),
-            "steam_account": round(raw_steam / total, 3),
-        }
-
-    uncertainty = 100.0
-    uncertainty -= 35.0 * has_steam
-    if has_leetify:
-        uncertainty -= 35.0
-    if has_faceit:
-        uncertainty -= 15.0
-    if has_cs2_stats:
-        uncertainty -= 15.0
-    if has_extra:
-        uncertainty -= 20.0
-    uncertainty = round(max(0.0, min(100.0, uncertainty)), 1)
-
-    return uncertainty, effective_weights
+    return compute_uncertainty_and_weights(steam, _load_base_weights())
 
 
-# Евристичні пороги для недавнього вікна (Leetify stats ~останні матчі, cstracker aim_reactions).
-# ЕВРИСТИКИ: не калібровані на розміченій вибірці. Перевіряти через feedback.json (POST /api/feedback).
-# Значення cstracker/Leetify вважаються у відсотках (0..100), як і в web/app.js.
-AIM_COUNTER_STRAFE_STRONG = 95.0      # % добрих counter-strafe
-AIM_COUNTER_STRAFE_WEAK = 90.0
-AIM_COUNTER_STRAFE_POINTS = (12.0, 6.0)
-AIM_ACCURACY_HEAD_STRONG = 50.0       # % попадань у голову
-AIM_ACCURACY_HEAD_WEAK = 40.0
-AIM_ACCURACY_HEAD_POINTS = (15.0, 7.0)
-AIM_SPRAY_STRONG = 55.0               # % попадань при спреї
-AIM_SPRAY_WEAK = 45.0
-AIM_SPRAY_POINTS = (10.0, 5.0)
-AIM_SPOT_TO_KILL_MS_STRONG = 250.0    # cstracker "Spot to kill"; лише коли немає Leetify reaction_time_ms
-AIM_SPOT_TO_KILL_MS_WEAK = 320.0
-AIM_SPOT_TO_KILL_POINTS = (20.0, 10.0)
-# Сумарні бали з недавнього вікна, з яких вважаємо, що аім "елітний" для смурф-бонусу.
-AIM_ELITE_RECENT_POINTS = 20.0
-AIM_ELITE_SMURF_BONUS = 8.0
+# Thresholds and rules live in scoring/ (thresholds.py, rules.py, engine.py).
+from scoring import thresholds as _T  # noqa: E402
+from scoring.rules import _pick_recent_metric  # noqa: E402,F401
 
-
-def _pick_recent_metric(
-    lf: Optional[dict], cst_sections: dict, leetify_key: str, cst_key: Optional[str] = None
-) -> tuple[Optional[float], str]:
-    """Return (value, source) for one metric: Leetify first, cstracker as fallback.
-
-    Using one source per metric avoids double-counting the same aim metric.
-    """
-    if lf:
-        # Flat keys (accuracy_head, preaim, reaction_time_ms) and raw stats (counter-strafe, spray).
-        raw = lf.get(leetify_key)
-        if raw is None:
-            raw = (lf.get("stats") or {}).get(leetify_key)
-        val = _num(raw, 1)
-        if val is not None:
-            return float(val), "Leetify"
-    if cst_key:
-        val = (cst_sections.get("aim_reactions") or {}).get(cst_key)
-        if isinstance(val, (int, float)) and not isinstance(val, bool):
-            return float(val), "cstracker"
-    return None, ""
-
-
-def _recent_aim_signals(
-    lf: Optional[dict], extra_stats: dict, high_elo: bool
-) -> tuple[float, bool, list[str]]:
-    """Score recent-window aim metrics from Leetify and cstracker.
-
-    Returns (points added to the external component, elite_recent flag, reasons).
-    Only adds points, never subtracts: missing data contributes nothing. Players with
-    high_elo are skipped for the aim metrics, matching the existing reaction/aim rules.
-    Reasons name the source (Leetify or cstracker) and the window; lifetime Steam
-    cs2_stats are not used here.
-    """
-    cst = (extra_stats or {}).get("cstracker") or {}
-    cst_sections = (cst.get("sections") or {}) if cst.get("status") == "ok" else {}
-    points = 0.0
-    reasons: list[str] = []
-    if high_elo:
-        return 0.0, False, reasons
-
-    cs_val, cs_src = _pick_recent_metric(lf, cst_sections, "counter_strafing_good_shots_ratio", "Counter-strafing")
-    if cs_val is not None:
-        if cs_val >= AIM_COUNTER_STRAFE_STRONG:
-            points += AIM_COUNTER_STRAFE_POINTS[0]
-            reasons.append(f"Counter-strafing {cs_val:.0f}% ({cs_src}, недавні матчі)")
-        elif cs_val >= AIM_COUNTER_STRAFE_WEAK:
-            points += AIM_COUNTER_STRAFE_POINTS[1]
-            reasons.append(f"Високий counter-strafing {cs_val:.0f}% ({cs_src}, недавні матчі)")
-
-    head_val, head_src = _pick_recent_metric(lf, cst_sections, "accuracy_head")
-    if head_val is not None:
-        if head_val >= AIM_ACCURACY_HEAD_STRONG:
-            points += AIM_ACCURACY_HEAD_POINTS[0]
-            reasons.append(f"Точність у голову {head_val:.0f}% ({head_src}, недавні матчі)")
-        elif head_val >= AIM_ACCURACY_HEAD_WEAK:
-            points += AIM_ACCURACY_HEAD_POINTS[1]
-            reasons.append(f"Висока точність у голову {head_val:.0f}% ({head_src}, недавні матчі)")
-
-    spray_val, spray_src = _pick_recent_metric(lf, cst_sections, "spray_accuracy", "Spray accuracy")
-    if spray_val is not None:
-        if spray_val >= AIM_SPRAY_STRONG:
-            points += AIM_SPRAY_POINTS[0]
-            reasons.append(f"Точність спрею {spray_val:.0f}% ({spray_src}, недавні матчі)")
-        elif spray_val >= AIM_SPRAY_WEAK:
-            points += AIM_SPRAY_POINTS[1]
-            reasons.append(f"Висока точність спрею {spray_val:.0f}% ({spray_src}, недавні матчі)")
-
-    # Spot-to-kill is a fallback for reaction time only when Leetify reaction_time_ms is absent.
-    if not (lf and lf.get("reaction_time_ms") is not None):
-        stk = (cst_sections.get("aim_reactions") or {}).get("Spot to kill")
-        if isinstance(stk, (int, float)) and not isinstance(stk, bool) and stk > 0:
-            if stk < AIM_SPOT_TO_KILL_MS_STRONG:
-                points += AIM_SPOT_TO_KILL_POINTS[0]
-                reasons.append(f"Spot-to-kill {stk:.0f} мс (cstracker, недавні матчі)")
-            elif stk < AIM_SPOT_TO_KILL_MS_WEAK:
-                points += AIM_SPOT_TO_KILL_POINTS[1]
-                reasons.append(f"Швидкий spot-to-kill {stk:.0f} мс (cstracker, недавні матчі)")
-
-    return points, points >= AIM_ELITE_RECENT_POINTS, reasons
+AIM_ELITE_RECENT_POINTS = _T.AIM_ELITE_RECENT_POINTS
+AIM_ELITE_SMURF_BONUS = _T.AIM_ELITE_SMURF_BONUS
+_recent_aim_signals = recent_aim_signals
 
 
 def _compute_scores(
     player: Player, steam: SteamProfile
 ) -> tuple[float, str, float, str, float, dict[str, float], list[str]]:
-    reasons: list[str] = []
-    uncertainty, effective_weights = _compute_uncertainty_and_weights(steam)
-
-    # 1. Scoreboard component (0..100)
-    has_lobby_score = not math.isnan(player.score)
-    if has_lobby_score:
-        lobby_raw = float(player.score)
-    else:
-        lobby_raw = min(100.0, 15.0 + max(0.0, (player.kd - 1.0) * 12.0) + max(0.0, (player.hs - 45.0) * 0.7))
-
-    sb_score = lobby_raw * 0.85
-    if lobby_raw >= 70.0:
-        reasons.append(f"Високі цифри в цьому лобі ({lobby_raw:.0f}%)")
-    if 0 <= player.level <= 3 and (player.kd >= 1.8 or player.hs >= 65):
-        sb_score += 18.0
-        reasons.append(f"Низький рівень у грі (lvl {player.level})")
-    sb_score = max(0.0, min(100.0, sb_score))
-
-    # 2. Steam account component (0..100)
-    steam_score = 10.0
-    if steam.vac_banned:
-        steam_score += 75.0
-        reasons.append("VAC-бан у Steam")
-    if steam.trade_ban:
-        steam_score += 12.0
-        reasons.append(f"Трейд-бан у Steam ({steam.trade_ban})")
-    if steam.is_limited:
-        steam_score += 22.0
-        reasons.append("Обмежений акаунт Steam")
-    if steam.account_age_years is not None:
-        if steam.account_age_years < 1.0:
-            steam_score += 24.0
-            reasons.append(f"Новий акаунт ({steam.account_age_years} р.)")
-        elif steam.account_age_years < 2.0:
-            steam_score += 12.0
-            reasons.append(f"Молодий акаунт ({steam.account_age_years} р.)")
-        elif steam.account_age_years >= 6.0:
-            steam_score -= 10.0
-    if steam.cs2_hours is not None:
-        if steam.cs2_hours < 100:
-            steam_score += 28.0
-            reasons.append(f"Мало годин у CS2 ({steam.cs2_hours:.0f} год)")
-        elif steam.cs2_hours < 300:
-            steam_score += 14.0
-            reasons.append(f"Небагато годин у CS2 ({steam.cs2_hours:.0f} год)")
-        elif steam.cs2_hours >= 1500:
-            steam_score -= 12.0
-    if steam.privacy_state and steam.privacy_state != "public":
-        steam_score += 16.0
-        reasons.append(f"Закритий профіль ({steam.privacy_state})")
-    elif steam.lookup_source == "not_found":
-        steam_score += 12.0
-        reasons.append("Steam-профіль не знайдено")
-    steam_score = max(0.0, min(100.0, steam_score))
-
-    # 3. External stats component: Leetify + FACEIT + Steam CS2 stats (0..100)
-    ext_score = 10.0
-    lf = steam.leetify
-    faceit = steam.faceit or {}
-    cs2 = steam.cs2_stats or {}
-
-    faceit_lvl = faceit.get("skill_level") or (lf.get("faceit") if lf else None) or 0
-    faceit_elo = faceit.get("faceit_elo") or (lf.get("faceit_elo") if lf else None) or 0
-    premier = (lf.get("premier") if lf else None) or 0
-    high_elo = faceit_lvl >= 8 or faceit_elo >= 1800 or premier >= 20000
-
-    lf_bans = (lf.get("bans") or []) if lf else []
-    if lf:
-        if lf_bans:
-            ext_score += 80.0
-            reasons.append(f"Бани на Leetify/платформах ({len(lf_bans)})")
-
-        matches = lf.get("total_matches") or 0
-        winrate = lf.get("winrate")
-        aim = lf.get("aim")
-        rt = lf.get("reaction_time_ms")
-        preaim = lf.get("preaim")
-
-        if rt is not None:
-            if rt < 320:
-                ext_score += 45.0
-                reasons.append(f"Надлюдська реакція Leetify ({rt} мс)")
-            elif rt < 380:
-                ext_score += 25.0
-                reasons.append(f"Дуже швидка реакція ({rt} мс)")
-            elif rt < 420 and not high_elo:
-                ext_score += 12.0
-                reasons.append(f"Швидка реакція ({rt} мс)")
-
-        if aim is not None:
-            if aim >= 95 and matches < 150:
-                ext_score += 30.0
-                reasons.append(f"Aim {aim} при {matches} матчах")
-            elif aim >= 92 and not high_elo:
-                ext_score += 18.0
-                reasons.append(f"Дуже високий Aim ({aim})")
-
-        if winrate is not None and matches >= 5:
-            if winrate >= 72 and matches < 120:
-                ext_score += 32.0
-                reasons.append(f"Вінрейт {winrate}% за {matches} матчів")
-            elif winrate >= 64 and matches < 100:
-                ext_score += 20.0
-                reasons.append(f"Високий вінрейт {winrate}% ({matches} матчів)")
-
-        if preaim is not None and preaim < 5.0 and matches < 100 and not high_elo:
-            ext_score += 15.0
-            reasons.append(f"Низький preaim ({preaim}°) на новому акаунті")
-
-        if matches >= 400 and (winrate is None or winrate <= 57) and not lf_bans:
-            ext_score -= 15.0
-
-    recent_pts, recent_elite, recent_reasons = _recent_aim_signals(lf, steam.extra_stats, high_elo)
-    ext_score += recent_pts
-    reasons.extend(recent_reasons)
-
-    if faceit.get("found"):
-        f_matches = faceit.get("matches") or 0
-        f_kd = faceit.get("kd")
-        f_hs = faceit.get("hs_pct")
-        if f_matches >= 300 and (f_kd is None or f_kd <= 1.45) and (f_hs is None or f_hs <= 62.0):
-            ext_score -= 10.0
-
-    if cs2:
-        c_matches = cs2.get("total_matches_played") or 0
-        c_kd = cs2.get("kd")
-        c_hs = cs2.get("hs_pct")
-        if c_kd is not None and c_kd >= 2.3 and c_matches < 150:
-            ext_score += 22.0
-            reasons.append(f"Високий загальний K/D у CS2 ({c_kd})")
-        if c_hs is not None and c_hs >= 72.0:
-            ext_score += 18.0
-            reasons.append(f"Високий загальний HS% у CS2 ({c_hs}%)")
-        if c_matches >= 300 and (c_kd is None or c_kd <= 1.35):
-            ext_score -= 10.0
-
-    ext_score = max(0.0, min(100.0, ext_score))
-
-    # Weighted cheat probability
-    cheat_prob = (
-        effective_weights["scoreboard"] * sb_score
-        + effective_weights["steam_account"] * steam_score
-        + effective_weights["leetify"] * ext_score
-    )
-
-    has_ban = bool(steam.vac_banned or lf_bans)
-    has_extreme_rage = player.kd >= 3.0 and player.hs >= 75.0
-    if has_ban:
-        cheat_prob = max(cheat_prob, 78.0)
-    elif not has_extreme_rage and uncertainty >= 70.0:
-        damp = 1.0 - 0.25 * ((uncertainty - 70.0) / 30.0)
-        cheat_prob *= damp
-        if uncertainty >= 85.0:
-            cheat_prob = min(cheat_prob, 68.0)
-
-    cheat_prob = max(1.0, min(99.0, round(cheat_prob, 1)))
-    cheat_risk = _risk_level(cheat_prob)
-
-    # 4. Smurf probability (0..100)
-    smurf_prob = 5.0
-    young_strong = steam.account_age_years is not None and steam.account_age_years < 1.5
-    young_mod = steam.account_age_years is not None and 1.5 <= steam.account_age_years < 3.0
-    low_hrs_strong = steam.cs2_hours is not None and steam.cs2_hours < 150
-    low_hrs_mod = steam.cs2_hours is not None and 150 <= steam.cs2_hours < 350
-    low_lvl = 0 <= player.level <= 5
-
-    account_smurf_signal = young_strong or young_mod or low_hrs_strong or low_hrs_mod or low_lvl or steam.is_limited
-
-    high_lobby_perf = (player.kd >= 1.35 and player.kills >= 15) or player.kd >= 1.8
-    high_leetify_perf = bool(lf and ((lf.get("aim") or 0) >= 75 or (lf.get("winrate") or 0) > 58))
-    high_faceit_perf = bool(faceit_lvl >= 7 or faceit_elo >= 1500)
-    high_cs2_perf = bool(cs2 and (cs2.get("kd") or 0) >= 1.35)
-    strong_perf = high_lobby_perf or high_leetify_perf or high_faceit_perf or high_cs2_perf
-
-    rage_hs = player.hs > 75.0 and 0 <= player.level <= 3
-
-    if has_ban:
-        smurf_prob = 10.0
-    elif rage_hs:
-        smurf_prob = 18.0
-    elif account_smurf_signal and strong_perf:
-        if young_strong:
-            smurf_prob += 26.0
-        elif young_mod:
-            smurf_prob += 15.0
-        if low_hrs_strong:
-            smurf_prob += 26.0
-        elif low_hrs_mod:
-            smurf_prob += 15.0
-        if low_lvl:
-            smurf_prob += 14.0
-        if steam.is_limited:
-            smurf_prob += 8.0
-
-        if high_lobby_perf:
-            smurf_prob += 20.0
-        if high_leetify_perf:
-            smurf_prob += 15.0
-        if high_faceit_perf:
-            smurf_prob += 18.0
-        if high_cs2_perf:
-            smurf_prob += 10.0
-
-        # Clean-ban bonus for smurf classification
-        smurf_prob += 8.0
-
-        if recent_elite:
-            smurf_prob += AIM_ELITE_SMURF_BONUS
-            reasons.append("Смурф-сигнал: елітний аім у недавніх матчах (Leetify/cstracker)")
-
-        if young_strong or young_mod:
-            reasons.append("Смурф-сигнал: молодий акаунт + високий K/D")
-        if low_hrs_strong or low_hrs_mod:
-            reasons.append("Смурф-сигнал: мало годин у CS2 + сильна гра")
-        if high_faceit_perf and (young_strong or young_mod or low_hrs_strong or low_hrs_mod):
-            reasons.append(f"Смурф-сигнал: високий FACEIT (lvl {faceit_lvl}) на новому акаунті")
-    elif strong_perf:
-        smurf_prob = 22.0 if uncertainty >= 60.0 else 15.0
-
-    smurf_prob = max(0.0, min(99.0, round(smurf_prob, 1)))
-    smurf_risk = _risk_level(smurf_prob)
-
-    if not reasons:
-        reasons.append("Зовнішні та лобі-показники в нормі")
-
-    return cheat_prob, cheat_risk, smurf_prob, smurf_risk, uncertainty, effective_weights, reasons
+    return compute_scores(player, steam, _load_base_weights()).as_tuple()
 
 
 def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
     # Only the sources view here; coverage is set by the lookup/recheck paths that build the profile.
     _refresh_sources_view(steam)
-    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
+    scored = compute_scores(p, steam, _load_base_weights())
+    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = scored.as_tuple()
     anomaly = None if math.isnan(p.score) else round(p.score, 1)
     return PlayerReport(
         nick=p.nick,
@@ -1734,6 +1370,7 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
         smurf_risk_level=smurf_risk,
         uncertainty=uncertainty,
         effective_weights=eff_weights,
+        score_breakdown=scored.breakdown,
     )
 
 
@@ -1890,7 +1527,8 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
         level=int(player_dict.get("level", -1)),
         score=float(anomaly) if anomaly is not None else float("nan"),
     )
-    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
+    scored = compute_scores(p, steam, _load_base_weights())
+    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = scored.as_tuple()
     return asdict(
         PlayerReport(
             nick=p.nick,
@@ -1908,5 +1546,6 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             smurf_risk_level=smurf_risk,
             uncertainty=uncertainty,
             effective_weights=eff_weights,
+            score_breakdown=scored.breakdown,
         )
     )

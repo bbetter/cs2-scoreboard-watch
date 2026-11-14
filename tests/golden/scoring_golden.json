@@ -28,6 +28,20 @@
         "Steam-профіль не знайдено"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Steam-профіль не знайдено",
+          "rule": "profile_visibility"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "uncertainty_damping"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -90,6 +104,20 @@
         "Закритий профіль (private)"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 16.0,
+          "reason": "Закритий профіль (private)",
+          "rule": "profile_visibility"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "uncertainty_damping"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -152,6 +180,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -214,6 +256,26 @@
         "VAC-бан у Steam"
       ],
       "risk_level": "critical",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 75.0,
+          "reason": "VAC-бан у Steam",
+          "rule": "vac_ban"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "ban_floor"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "banned"
+        }
+      ],
       "smurf_probability": 10.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -276,6 +338,14 @@
         "Трейд-бан у Steam (banned)"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Трейд-бан у Steam (banned)",
+          "rule": "trade_ban"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -339,6 +409,20 @@
         "Мало годин у CS2 (90 год)"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 22.0,
+          "reason": "Обмежений акаунт Steam",
+          "rule": "limited_account"
+        },
+        {
+          "component": "steam_account",
+          "points": 28.0,
+          "reason": "Мало годин у CS2 (90 год)",
+          "rule": "cs2_hours"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -401,6 +485,32 @@
         "Бани на Leetify/платформах (1)"
       ],
       "risk_level": "critical",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "external",
+          "points": 80.0,
+          "reason": "Бани на Leetify/платформах (1)",
+          "rule": "platform_bans"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "ban_floor"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "banned"
+        }
+      ],
       "smurf_probability": 10.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -512,6 +622,68 @@
         "Смурф-сигнал: мало годин у CS2 + сильна гра"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "scoreboard",
+          "points": 18.0,
+          "reason": "Низький рівень у грі (lvl 2)",
+          "rule": "low_level_strong_stats"
+        },
+        {
+          "component": "steam_account",
+          "points": 24.0,
+          "reason": "Новий акаунт (0.6 р.)",
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": 28.0,
+          "reason": "Мало годин у CS2 (80 год)",
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "smurf",
+          "points": 26.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 26.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 14.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 20.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: молодий акаунт + високий K/D",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: мало годин у CS2 + сильна гра",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 99.0,
       "smurf_risk_level": "critical",
       "steam": {
@@ -578,6 +750,74 @@
         "Смурф-сигнал: високий FACEIT (lvl 9) на новому акаунті"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Молодий акаунт (1.2 р.)",
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": 14.0,
+          "reason": "Небагато годин у CS2 (200 год)",
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "smurf",
+          "points": 26.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 20.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 18.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: молодий акаунт + високий K/D",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: мало годин у CS2 + сильна гра",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: високий FACEIT (lvl 9) на новому акаунті",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 99.0,
       "smurf_risk_level": "critical",
       "steam": {
@@ -695,6 +935,26 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -792,6 +1052,32 @@
         "Дуже високий Aim (93.0)"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "external",
+          "points": 18.0,
+          "reason": "Дуже високий Aim (93.0)",
+          "rule": "leetify_aim"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -865,6 +1151,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -931,6 +1231,68 @@
         "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "external",
+          "points": 45.0,
+          "reason": "Надлюдська реакція Leetify (290 мс)",
+          "rule": "leetify_reaction_time"
+        },
+        {
+          "component": "external",
+          "points": 30.0,
+          "reason": "Aim 96.0 при 90 матчах",
+          "rule": "leetify_aim"
+        },
+        {
+          "component": "external",
+          "points": 32.0,
+          "reason": "Вінрейт 74.0% за 90 матчів",
+          "rule": "leetify_winrate"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 20.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 18.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: молодий акаунт + високий K/D",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 81.0,
       "smurf_risk_level": "critical",
       "steam": {
@@ -1028,6 +1390,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1157,6 +1533,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1268,6 +1658,14 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1343,6 +1741,7 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1418,6 +1817,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "external",
+          "points": -10.0,
+          "reason": null,
+          "rule": "faceit_veteran_clean"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1501,6 +1914,26 @@
         "Високий загальний HS% у CS2 (74.0%)"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "external",
+          "points": 22.0,
+          "reason": "Високий загальний K/D у CS2 (2.45)",
+          "rule": "steam_cs2_stats"
+        },
+        {
+          "component": "external",
+          "points": 18.0,
+          "reason": "Високий загальний HS% у CS2 (74.0%)",
+          "rule": "steam_cs2_stats"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1579,6 +2012,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -1652,6 +2099,86 @@
         "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Молодий акаунт (1.8 р.)",
+          "rule": "account_age"
+        },
+        {
+          "component": "external",
+          "points": 12.0,
+          "reason": "Counter-strafing 97% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "external",
+          "points": 15.0,
+          "reason": "Точність у голову 56% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "external",
+          "points": 10.0,
+          "reason": "Точність спрею 61% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "external",
+          "points": 20.0,
+          "reason": "Spot-to-kill 200 мс (cstracker, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 20.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 18.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": "Смурф-сигнал: елітний аім у недавніх матчах (Leetify/cstracker)",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: молодий акаунт + високий K/D",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 89.0,
       "smurf_risk_level": "critical",
       "steam": {
@@ -1778,6 +2305,38 @@
         "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "smurf",
+          "points": 15.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 18.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: мало годин у CS2 + сильна гра",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 46.0,
       "smurf_risk_level": "medium",
       "steam": {
@@ -1894,6 +2453,50 @@
         "Точність спрею 66% (Leetify, недавні матчі)"
       ],
       "risk_level": "high",
+      "score_breakdown": [
+        {
+          "component": "scoreboard",
+          "points": 0.0,
+          "reason": "Високі цифри в цьому лобі (96%)",
+          "rule": "high_lobby_numbers"
+        },
+        {
+          "component": "external",
+          "points": 45.0,
+          "reason": "Надлюдська реакція Leetify (300 мс)",
+          "rule": "leetify_reaction_time"
+        },
+        {
+          "component": "external",
+          "points": 30.0,
+          "reason": "Aim 96.0 при 120 матчах",
+          "rule": "leetify_aim"
+        },
+        {
+          "component": "external",
+          "points": 12.0,
+          "reason": "Counter-strafing 98% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "external",
+          "points": 15.0,
+          "reason": "Точність у голову 62% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "external",
+          "points": 10.0,
+          "reason": "Точність спрею 66% (Leetify, недавні матчі)",
+          "rule": "recent_aim_window"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2024,6 +2627,86 @@
         "Смурф-сигнал: високий FACEIT (lvl 8) на новому акаунті"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "scoreboard",
+          "points": 18.0,
+          "reason": "Низький рівень у грі (lvl 1)",
+          "rule": "low_level_strong_stats"
+        },
+        {
+          "component": "steam_account",
+          "points": 24.0,
+          "reason": "Новий акаунт (0.8 р.)",
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": 28.0,
+          "reason": "Мало годин у CS2 (90 год)",
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "smurf",
+          "points": 26.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 26.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 14.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 20.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 18.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 10.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 8.0,
+          "reason": null,
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: молодий акаунт + високий K/D",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: мало годин у CS2 + сильна гра",
+          "rule": "signal"
+        },
+        {
+          "component": "smurf",
+          "points": 0.0,
+          "reason": "Смурф-сигнал: високий FACEIT (lvl 8) на новому акаунті",
+          "rule": "signal"
+        }
+      ],
       "smurf_probability": 99.0,
       "smurf_risk_level": "critical",
       "steam": {
@@ -2123,6 +2806,38 @@
         "Steam-профіль не знайдено"
       ],
       "risk_level": "critical",
+      "score_breakdown": [
+        {
+          "component": "scoreboard",
+          "points": 18.0,
+          "reason": "Низький рівень у грі (lvl 2)",
+          "rule": "low_level_strong_stats"
+        },
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Steam-профіль не знайдено",
+          "rule": "profile_visibility"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "rage_hs_low_level"
+        }
+      ],
       "smurf_probability": 18.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2185,6 +2900,20 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": -10.0,
+          "reason": null,
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": -12.0,
+          "reason": null,
+          "rule": "cs2_hours"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2250,6 +2979,38 @@
         "Закритий профіль (private)"
       ],
       "risk_level": "medium",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 22.0,
+          "reason": "Обмежений акаунт Steam",
+          "rule": "limited_account"
+        },
+        {
+          "component": "steam_account",
+          "points": 24.0,
+          "reason": "Новий акаунт (0.9 р.)",
+          "rule": "account_age"
+        },
+        {
+          "component": "steam_account",
+          "points": 28.0,
+          "reason": "Мало годин у CS2 (30 год)",
+          "rule": "cs2_hours"
+        },
+        {
+          "component": "steam_account",
+          "points": 16.0,
+          "reason": "Закритий профіль (private)",
+          "rule": "profile_visibility"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "uncertainty_damping"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2314,6 +3075,14 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "external",
+          "points": -10.0,
+          "reason": null,
+          "rule": "steam_cs2_stats"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2481,6 +3250,32 @@
         "Трейд-бан у Steam (banned)"
       ],
       "risk_level": "critical",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 75.0,
+          "reason": "VAC-бан у Steam",
+          "rule": "vac_ban"
+        },
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Трейд-бан у Steam (banned)",
+          "rule": "trade_ban"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "ban_floor"
+        },
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "banned"
+        }
+      ],
       "smurf_probability": 10.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2562,6 +3357,14 @@
         "Зовнішні та лобі-показники в нормі"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "smurf",
+          "points": null,
+          "reason": null,
+          "rule": "strong_performance_only"
+        }
+      ],
       "smurf_probability": 15.0,
       "smurf_risk_level": "low",
       "steam": {
@@ -2684,6 +3487,20 @@
         "Steam-профіль не знайдено"
       ],
       "risk_level": "low",
+      "score_breakdown": [
+        {
+          "component": "steam_account",
+          "points": 12.0,
+          "reason": "Steam-профіль не знайдено",
+          "rule": "profile_visibility"
+        },
+        {
+          "component": "cheat",
+          "points": null,
+          "reason": null,
+          "rule": "uncertainty_damping"
+        }
+      ],
       "smurf_probability": 5.0,
       "smurf_risk_level": "low",
       "steam": {
