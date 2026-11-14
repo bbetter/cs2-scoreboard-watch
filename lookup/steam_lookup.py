@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from storage.atomic_io import atomic_write_text
+from storage.profile_cache import ProfileCache
 from lookup.nick_match import best_match_index
 from lookup.http_client import USER_AGENT, http_get as _http_get, http_get_status as _http_get_status  # noqa: F401
 from vision.scoreboard_scan import Player
@@ -51,9 +51,8 @@ def _setup_pton_log() -> None:
 STEAMID64_BASE = 76561197960265728
 CACHE_TTL_SEC = 86400
 PROFILE_CACHE_FILE = DATA_DIR / "profile_cache.json"
-_CACHE_LOCK = threading.Lock()
-_PROFILE_CACHE: dict[str, tuple[float, dict]] = {}
 # Leetify data lives only in memory, keyed by SteamID64, for leetify_cache_ttl_sec (0 = not reused).
+_LEETIFY_LOCK = threading.Lock()
 _LEETIFY_MEM: dict[str, tuple[float, dict]] = {}
 _SEARCH_LOCK = threading.Lock()
 _LAST_SEARCH_TS = 0.0
@@ -82,6 +81,9 @@ def _strip_leetify(data: dict) -> dict:
     return out
 
 
+PROFILE_CACHE = ProfileCache(PROFILE_CACHE_FILE, strip=_strip_leetify, ttl_sec=CACHE_TTL_SEC)
+
+
 def _leetify_cache_ttl_sec() -> int:
     try:
         from storage.config_store import load_config
@@ -94,7 +96,7 @@ def _leetify_cache_ttl_sec() -> int:
 def _leetify_mem_get(steamid64: Optional[str], ttl: int) -> Optional[dict]:
     if not steamid64 or ttl <= 0:
         return None
-    with _CACHE_LOCK:
+    with _LEETIFY_LOCK:
         item = _LEETIFY_MEM.get(steamid64)
     if item and (time.time() - item[0]) < ttl:
         return dict(item[1])
@@ -104,7 +106,7 @@ def _leetify_mem_get(steamid64: Optional[str], ttl: int) -> Optional[dict]:
 def _leetify_mem_put(steamid64: Optional[str], data: Optional[dict], ttl: int) -> None:
     if not steamid64 or ttl <= 0 or not data:
         return
-    with _CACHE_LOCK:
+    with _LEETIFY_LOCK:
         _LEETIFY_MEM[steamid64] = (time.time(), dict(data))
 
 
@@ -116,36 +118,6 @@ def _leetify_cached_or_fetch(steamid64: Optional[str], ttl: int) -> Optional[dic
         data = _fetch_leetify(steamid64)
         _leetify_mem_put(steamid64, data, ttl)
     return data
-
-
-def _load_profile_cache() -> None:
-    if not PROFILE_CACHE_FILE.is_file():
-        return
-    try:
-        raw = json.loads(PROFILE_CACHE_FILE.read_text(encoding="utf-8"))
-        now = time.time()
-        if isinstance(raw, dict):
-            for k, item in raw.items():
-                if isinstance(item, list) and len(item) == 2 and (now - float(item[0])) < CACHE_TTL_SEC:
-                    if isinstance(item[1], dict):
-                        _PROFILE_CACHE[k] = (float(item[0]), _strip_leetify(item[1]))
-    except Exception:
-        pass
-
-
-def _save_profile_cache_locked() -> None:
-    try:
-        persisted = {
-            k: [ts, _strip_leetify(data)]
-            for k, (ts, data) in _PROFILE_CACHE.items()
-            if data.get("lookup_source") not in {"not_found", "rate_limited"}
-        }
-        atomic_write_text(PROFILE_CACHE_FILE, json.dumps(persisted, ensure_ascii=False))
-    except Exception:
-        pass
-
-
-_load_profile_cache()
 
 
 def reset_steam_api_key_cache() -> None:
@@ -1162,8 +1134,8 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
 
     hit: Optional[dict] = None
     stale: Optional[dict] = None  # within TTL but due a refresh; used if the refresh is rate limited
-    with _CACHE_LOCK:
-        cached = _PROFILE_CACHE.get(cache_key)
+    with PROFILE_CACHE.lock:
+        cached = PROFILE_CACHE.get(cache_key)
         if cached:
             ttl = CACHE_TTL_SEC if cached[1].get("lookup_source") != "not_found" else 30
             if (now - cached[0]) < ttl:
@@ -1248,10 +1220,10 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     _finalize_source_views(profile)
     if profile.lookup_source != "rate_limited":
         _leetify_mem_put(profile.steamid64, profile.leetify, lf_ttl)
-        with _CACHE_LOCK:
-            _PROFILE_CACHE[cache_key] = (now, _strip_leetify(asdict(profile)))
+        with PROFILE_CACHE.lock:
+            PROFILE_CACHE.put_locked(cache_key, now, asdict(profile))
             if profile.lookup_source != "not_found":
-                _save_profile_cache_locked()
+                PROFILE_CACHE.save_locked()
 
     return profile
 
