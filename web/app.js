@@ -175,9 +175,13 @@ function renderScan(scan) {
 
   if (scan.image_url) {
     els.previewDetails.hidden = false;
-    els.screenshotPreview.src = `${scan.image_url}?t=${Date.now()}`;
+    if (els.screenshotPreview.dataset.scanImage !== scan.image_url) {
+      els.screenshotPreview.dataset.scanImage = scan.image_url;
+      els.screenshotPreview.src = `${scan.image_url}?t=${Date.now()}`;
+    }
   } else {
     els.previewDetails.hidden = true;
+    els.screenshotPreview.dataset.scanImage = "";
   }
 
   if (!players.length) {
@@ -725,11 +729,24 @@ els.playersBody.addEventListener("click", async (e) => {
   if (!btn) {
     if (!e.target.closest("a, button, input, form")) {
       const row = e.target.closest("tr.player-row");
-      if (row && row.dataset.nick) {
+      if (row && row.dataset.nick && state.currentScan) {
         const nick = row.dataset.nick;
-        if (state.expandedNicks.has(nick)) state.expandedNicks.delete(nick);
-        else state.expandedNicks.add(nick);
-        renderTable();
+        const nextRow = row.nextElementSibling;
+        const hasDetailsRow = nextRow && nextRow.classList.contains("player-details-row");
+        if (state.expandedNicks.has(nick)) {
+          state.expandedNicks.delete(nick);
+          row.classList.remove("expanded");
+          if (hasDetailsRow) nextRow.remove();
+        } else {
+          state.expandedNicks.add(nick);
+          row.classList.add("expanded");
+          if (!hasDetailsRow) {
+            const player = (state.currentScan.players || []).find((p) => p.nick === nick);
+            if (player) {
+              row.insertAdjacentHTML("afterend", renderPlayerDetailsRow(player));
+            }
+          }
+        }
       }
     }
     return;
