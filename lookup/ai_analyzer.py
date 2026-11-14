@@ -199,16 +199,27 @@ def _run_claude_cli(prompt: str, model: str, timeout: int = 90) -> dict[str, Any
     raise RuntimeError("Не вдалося розпарсити structured results від Claude CLI.")
 
 
+ANTHROPIC_MODEL_ALIASES: dict[str, str] = {
+    "opus": "claude-opus-5-5",
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-5-5",
+}
+DEFAULT_ANTHROPIC_MODEL = ANTHROPIC_MODEL_ALIASES["sonnet"]
+
+
+def resolve_anthropic_model(model: Optional[str]) -> str:
+    """Alias (any case, surrounding spaces) -> full id; a full id passes through; empty -> default."""
+    value = (model or "").strip()
+    if not value:
+        return DEFAULT_ANTHROPIC_MODEL
+    return ANTHROPIC_MODEL_ALIASES.get(value.lower(), value)
+
+
 def _run_anthropic_api(prompt: str, model: str, api_key: str, timeout: int = 60) -> dict[str, Any]:
     if not api_key:
         raise RuntimeError("Не задано Anthropic API Key (в налаштуваннях або ANTHROPIC_API_KEY).")
 
-    model_map = {
-        "sonnet": "claude-sonnet-4-20250514",
-        "haiku": "claude-3-5-haiku-latest",
-        "opus": "claude-opus-4-20250514",
-    }
-    resolved_model = model_map.get(model.strip().lower(), model.strip() or "claude-sonnet-4-20250514")
+    resolved_model = resolve_anthropic_model(model)
 
     body = json.dumps({
         "model": resolved_model,
