@@ -8,6 +8,8 @@ const state = {
   dateFilter: "",
   matchFilter: "",
   riskFilter: "all",
+  onlyWithData: false,
+  onlyHighRisk: false,
   expandedNicks: new Set(),
 };
 
@@ -22,6 +24,10 @@ const els = {
   dateFilter: document.getElementById("dateFilter"),
   matchSelect: document.getElementById("matchSelect"),
   riskFilter: document.getElementById("riskFilter"),
+  lobbyRisk: document.getElementById("lobbyRisk"),
+  lobbySources: document.getElementById("lobbySources"),
+  onlyWithDataFilter: document.getElementById("onlyWithDataFilter"),
+  onlyHighRiskFilter: document.getElementById("onlyHighRiskFilter"),
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
   setupCs2Btn: document.getElementById("setupCs2Btn"),
   aiAnalyzeScanBtn: document.getElementById("aiAnalyzeScanBtn"),
@@ -115,10 +121,105 @@ function formatDuration(sec) {
   return s ? `${m} хв ${s} с` : `${m} хв`;
 }
 
+const LOBBY_PREFS_KEY = "cswatcher.lobbyFilters.v1";
+const RISK_FILTER_VALUES = ["all", "suspicious", "smurf", "critical", "banned"];
+
+function hasDataObject(value) {
+  return !!value && typeof value === "object" && Object.keys(value).length > 0;
+}
+
+// Which data sources a player record actually carries (see steam_lookup.py / web/index.html).
+function playerDataSources(p) {
+  const steam = p.steam || {};
+  return {
+    leetify: hasDataObject(steam.leetify),
+    cstracker: steam.extra_stats?.cstracker?.status === "ok",
+    cs2: hasDataObject(steam.cs2_stats),
+  };
+}
+
+function playerHasAnyData(p) {
+  const s = playerDataSources(p);
+  return s.leetify || s.cstracker || s.cs2;
+}
+
+function playerIsHighRisk(p) {
+  return p.risk_level === "high" || p.risk_level === "critical";
+}
+
+function renderLobbySummary(players) {
+  if (!els.lobbyRisk || !els.lobbySources) return;
+  if (!players.length) {
+    els.lobbyRisk.textContent = "Немає гравців у скані";
+    els.lobbySources.textContent = "";
+    return;
+  }
+  const risk = { low: 0, medium: 0, high: 0, critical: 0 };
+  const src = { leetify: 0, cstracker: 0, cs2: 0, none: 0 };
+  for (const p of players) {
+    const level = p.risk_level || "low";
+    if (Object.prototype.hasOwnProperty.call(risk, level)) risk[level] += 1;
+    const s = playerDataSources(p);
+    if (s.leetify) src.leetify += 1;
+    if (s.cstracker) src.cstracker += 1;
+    if (s.cs2) src.cs2 += 1;
+    if (!playerHasAnyData(p)) src.none += 1;
+  }
+  const total = players.length;
+  els.lobbyRisk.innerHTML =
+    `<span class="lobby-src">Ризик:</span>` +
+    Object.keys(RISK_LABELS)
+      .map((k) => `<span class="risk-pill risk-${k}">${RISK_LABELS[k]}: ${risk[k]}</span>`)
+      .join("");
+  els.lobbySources.innerHTML =
+    `<span class="lobby-src">Дані:</span>` +
+    [
+      ["Leetify", src.leetify],
+      ["CSTracker", src.cstracker],
+      ["Steam CS2", src.cs2],
+    ]
+      .map(([label, n]) => `<span class="lobby-src">${label}: <strong>${n}/${total}</strong></span>`)
+      .join("") +
+    `<span class="lobby-src">Без даних: <strong>${src.none}/${total}</strong></span>`;
+}
+
+function loadLobbyPrefs() {
+  try {
+    const raw = localStorage.getItem(LOBBY_PREFS_KEY);
+    if (!raw) return;
+    const prefs = JSON.parse(raw);
+    if (RISK_FILTER_VALUES.includes(prefs.riskFilter)) state.riskFilter = prefs.riskFilter;
+    state.onlyWithData = prefs.onlyWithData === true;
+    state.onlyHighRisk = prefs.onlyHighRisk === true;
+  } catch (_err) {
+    // Пошкоджені налаштування ігноруємо — лишаються значення за замовчуванням.
+  }
+  els.riskFilter.value = state.riskFilter;
+  els.onlyWithDataFilter.checked = state.onlyWithData;
+  els.onlyHighRiskFilter.checked = state.onlyHighRisk;
+}
+
+function saveLobbyPrefs() {
+  try {
+    localStorage.setItem(
+      LOBBY_PREFS_KEY,
+      JSON.stringify({
+        riskFilter: state.riskFilter,
+        onlyWithData: state.onlyWithData,
+        onlyHighRisk: state.onlyHighRisk,
+      }),
+    );
+  } catch (_err) {
+    // localStorage недоступний (приватний режим тощо) — фільтри працюють без збереження.
+  }
+}
+
 function applyPlayerFilters(players) {
   const q = state.searchQuery.trim().toLowerCase();
   return players.filter((p) => {
     const steam = p.steam || {};
+    if (state.onlyWithData && !playerHasAnyData(p)) return false;
+    if (state.onlyHighRisk && !playerIsHighRisk(p)) return false;
     if (state.riskFilter === "suspicious" && p.cheat_probability < 55) return false;
     if (state.riskFilter === "smurf" && (p.smurf_probability || 0) < 55) return false;
     if (state.riskFilter === "critical" && p.cheat_probability < 75) return false;
@@ -165,6 +266,7 @@ function renderScan(scan) {
   }
 
   const players = scan.players || [];
+  renderLobbySummary(players);
   const suspects = players.filter((p) => p.cheat_probability >= 55);
   const top = [...players].sort((a, b) => b.cheat_probability - a.cheat_probability)[0];
 
@@ -983,6 +1085,19 @@ els.searchInput.addEventListener("input", (e) => {
 
 els.riskFilter.addEventListener("change", (e) => {
   state.riskFilter = e.target.value;
+  saveLobbyPrefs();
+  if (state.currentScan) renderScan(state.currentScan);
+});
+
+els.onlyWithDataFilter.addEventListener("change", (e) => {
+  state.onlyWithData = e.target.checked;
+  saveLobbyPrefs();
+  if (state.currentScan) renderScan(state.currentScan);
+});
+
+els.onlyHighRiskFilter.addEventListener("change", (e) => {
+  state.onlyHighRisk = e.target.checked;
+  saveLobbyPrefs();
   if (state.currentScan) renderScan(state.currentScan);
 });
 
@@ -1012,9 +1127,14 @@ els.clearFiltersBtn.addEventListener("click", async () => {
   state.dateFilter = "";
   state.matchFilter = "";
   state.riskFilter = "all";
+  state.onlyWithData = false;
+  state.onlyHighRisk = false;
   els.searchInput.value = "";
   els.dateFilter.value = "";
   els.riskFilter.value = "all";
+  els.onlyWithDataFilter.checked = false;
+  els.onlyHighRiskFilter.checked = false;
+  saveLobbyPrefs();
   updateMatchAndHistorySelects();
   if (state.history.length) {
     const res = await fetch(`/api/scan/${encodeURIComponent(state.history[0].id)}`);
@@ -1251,5 +1371,6 @@ els.helpBtn?.addEventListener("click", () => {
 els.closeHelpBtn?.addEventListener("click", () => els.helpDialog.close());
 els.closeHelpXBtn?.addEventListener("click", () => els.helpDialog.close());
 
+loadLobbyPrefs();
 fetchLatest();
 connectSSE();

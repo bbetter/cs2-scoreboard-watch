@@ -128,6 +128,16 @@
 
     <main class="main-panel" id="dropZone">
       <div id="tabPanelTable" class="tab-panel">
+      <section class="lobby-summary" aria-label="Підсумок лобі">
+        <div class="lobby-summary-row">
+          <div class="lobby-risk" id="lobbyRisk" aria-label="Розподіл за ризиком"></div>
+          <div class="lobby-sources" id="lobbySources" aria-label="Джерела даних"></div>
+        </div>
+        <div class="lobby-checks">
+          <label class="lobby-check"><input type="checkbox" id="onlyWithDataFilter" /> Лише з даними</label>
+          <label class="lobby-check"><input type="checkbox" id="onlyHighRiskFilter" /> Лише високий/критичний ризик</label>
+        </div>
+      </section>
       <div tabindex="0" role="region" aria-labelledby="players-caption" class="table-wrapper">
         <table id="playersTable">
           <caption id="players-caption">Таблиця гравців останнього скану</caption>
