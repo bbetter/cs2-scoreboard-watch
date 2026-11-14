@@ -43,9 +43,8 @@ class SchemaCoverageTests(unittest.TestCase):
         self.assertEqual(secrets["steam_api_key"].clear_flag, "clear_steam_api_key")
         self.assertEqual(secrets["faceit_api_key"].clear_flag, "clear_faceit_api_key")
         self.assertEqual(secrets["anthropic_api_key"].clear_flag, "clear_anthropic_api_key")
-        # Leetify has never had a clear flag: an empty value clears it, and the raw key stays in config.
-        self.assertIsNone(secrets["leetify_api_key"].clear_flag)
-        self.assertFalse(secrets["leetify_api_key"].masked)
+        self.assertEqual(secrets["leetify_api_key"].clear_flag, "clear_leetify_api_key")
+        self.assertTrue(secrets["leetify_api_key"].masked)
 
     def test_env_fallbacks_are_declared(self):
         secrets = {f.name: f for f in config_schema.SECRETS}
@@ -101,16 +100,42 @@ class GenericRuleTests(unittest.TestCase):
         self.assertEqual(kept["steam_api_key"], "old")
         cleared = config_schema.apply_updates(cur, {"clear_steam_api_key": True})
         self.assertEqual(cleared["steam_api_key"], "")
-        lf_cleared = config_schema.apply_updates(cur, {"leetify_api_key": ""})
-        self.assertEqual(lf_cleared["leetify_api_key"], "")
+        lf_kept = config_schema.apply_updates(cur, {"leetify_api_key": ""})
+        self.assertEqual(lf_kept["leetify_api_key"], "lf")
 
-    def test_public_view_masks_and_never_leaks_raw_secret_except_leetify(self):
+    def test_public_view_masks_and_never_leaks_raw_secret(self):
         cfg = config_store.DEFAULT_CONFIG | {"steam_api_key": FAKE_KEY, "leetify_api_key": "lf-TESTKEY-LEETIFY1"}
         view = config_schema.public_view(cfg, {}, resolved={}, platform="linux")
         self.assertNotIn("steam_api_key", view["config"])
+        self.assertNotIn("leetify_api_key", view["config"])
         self.assertEqual(view["steam_api_key_masked"], "*" * (len(FAKE_KEY) - 4) + FAKE_KEY[-4:])
-        self.assertEqual(view["config"]["leetify_api_key"], "lf-TESTKEY-LEETIFY1")  # frozen legacy behaviour
         self.assertNotIn(FAKE_KEY, json.dumps(view))
+        self.assertNotIn("lf-TESTKEY-LEETIFY1", json.dumps(view))
+
+
+class LeetifyKeyMaskingTests(unittest.TestCase):
+    def test_public_view_hides_leetify_key_and_reports_status(self):
+        cfg = config_store.DEFAULT_CONFIG | {"leetify_api_key": "abcdefTESTKEY1234"}
+        out = config_schema.public_view(cfg, {}, resolved={}, platform="linux")
+        self.assertNotIn("leetify_api_key", out["config"])
+        self.assertIs(out["has_leetify_api_key"], True)
+        self.assertEqual(out["leetify_api_key_source"], "config")
+        self.assertTrue(out["leetify_api_key_masked"].endswith("1234"))
+        self.assertNotIn("abcdef", out["leetify_api_key_masked"])
+        self.assertNotIn("abcdefTESTKEY1234", json.dumps(out))
+
+    def test_empty_input_keeps_stored_leetify_key(self):
+        merged = config_schema.apply_updates({"leetify_api_key": "OLDTESTKEY"}, {"leetify_api_key": ""})
+        self.assertEqual(merged["leetify_api_key"], "OLDTESTKEY")
+
+    def test_clear_flag_removes_leetify_key(self):
+        merged = config_schema.apply_updates({"leetify_api_key": "OLDTESTKEY"}, {"clear_leetify_api_key": True})
+        self.assertEqual(merged["leetify_api_key"], "")
+
+    def test_descriptor_exposes_leetify_clear_flag(self):
+        by = {d["name"]: d for d in config_schema.describe_schema()}
+        self.assertEqual(by["leetify_api_key"]["clear_flag"], "clear_leetify_api_key")
+        self.assertTrue(by["leetify_api_key"]["secret"])
 
 
 class SchemaRouteTests(unittest.TestCase):

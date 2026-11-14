@@ -15,12 +15,12 @@ class LeetifySource(LegacySlotSource):
     slot = ("leetify",)
     recheckable = True
     in_coverage = True
-    # Raw key in config (not masked by the public view); an empty value clears it, as it always has.
+    # Masked like the other API keys: the public view shows only source/has/masked. An empty value in
+    # POST /api/config keeps the stored key; `clear_leetify_api_key: true` removes it.
     settings = (
         Secret(
             name="leetify_api_key", type="text", default="", label="Leetify API key", group="api_keys",
             help="Optional Leetify key; Leetify data is fetched without it when not set.",
-            keep_on_empty=False, masked=False,
         ),
     )
 
