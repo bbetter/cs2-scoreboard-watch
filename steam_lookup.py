@@ -47,10 +47,55 @@ CACHE_TTL_SEC = 86400
 PROFILE_CACHE_FILE = Path(__file__).resolve().parent / "profile_cache.json"
 _CACHE_LOCK = threading.Lock()
 _PROFILE_CACHE: dict[str, tuple[float, dict]] = {}
+# Leetify data lives only in memory, keyed by SteamID64, for leetify_cache_ttl_sec (0 = not reused).
+_LEETIFY_MEM: dict[str, tuple[float, dict]] = {}
 _SEARCH_LOCK = threading.Lock()
 _LAST_SEARCH_TS = 0.0
 _STEAM_API_KEY_CACHE: Optional[str] = None
 _FACEIT_API_KEY_CACHE: Optional[str] = None
+
+
+def _strip_leetify(data: dict) -> dict:
+    """Copy of a profile dict without Leetify data (Leetify guidelines: do not store API data)."""
+    out = dict(data)
+    out["leetify"] = None
+    return out
+
+
+def _leetify_cache_ttl_sec() -> int:
+    try:
+        from config_store import load_config
+
+        return max(0, int(load_config().get("leetify_cache_ttl_sec") or 0))
+    except Exception:
+        return 0
+
+
+def _leetify_mem_get(steamid64: Optional[str], ttl: int) -> Optional[dict]:
+    if not steamid64 or ttl <= 0:
+        return None
+    with _CACHE_LOCK:
+        item = _LEETIFY_MEM.get(steamid64)
+    if item and (time.time() - item[0]) < ttl:
+        return dict(item[1])
+    return None
+
+
+def _leetify_mem_put(steamid64: Optional[str], data: Optional[dict], ttl: int) -> None:
+    if not steamid64 or ttl <= 0 or not data:
+        return
+    with _CACHE_LOCK:
+        _LEETIFY_MEM[steamid64] = (time.time(), dict(data))
+
+
+def _leetify_cached_or_fetch(steamid64: Optional[str], ttl: int) -> Optional[dict]:
+    if not steamid64:
+        return None
+    data = _leetify_mem_get(steamid64, ttl)
+    if data is None:
+        data = _fetch_leetify(steamid64)
+        _leetify_mem_put(steamid64, data, ttl)
+    return data
 
 
 def _load_profile_cache() -> None:
@@ -62,7 +107,8 @@ def _load_profile_cache() -> None:
         if isinstance(raw, dict):
             for k, item in raw.items():
                 if isinstance(item, list) and len(item) == 2 and (now - float(item[0])) < CACHE_TTL_SEC:
-                    _PROFILE_CACHE[k] = (float(item[0]), item[1])
+                    if isinstance(item[1], dict):
+                        _PROFILE_CACHE[k] = (float(item[0]), _strip_leetify(item[1]))
     except Exception:
         pass
 
@@ -70,7 +116,7 @@ def _load_profile_cache() -> None:
 def _save_profile_cache_locked() -> None:
     try:
         persisted = {
-            k: [ts, data]
+            k: [ts, _strip_leetify(data)]
             for k, (ts, data) in _PROFILE_CACHE.items()
             if data.get("lookup_source") not in {"not_found", "rate_limited"}
         }
@@ -176,6 +222,18 @@ class SteamProfile:
     extra_stats: dict = field(default_factory=dict)
     search_log: list[str] = field(default_factory=list)
     candidates: list[dict] = field(default_factory=list)
+    # Per-source flags: which sources returned data for this player (steam, leetify, faceit, cstracker).
+    coverage: dict = field(default_factory=dict)
+
+
+def _source_coverage(profile: "SteamProfile") -> dict:
+    ct = (profile.extra_stats or {}).get("cstracker")
+    return {
+        "steam": bool(profile.steamid64),
+        "leetify": bool(profile.leetify),
+        "faceit": bool((profile.faceit or {}).get("found")),
+        "cstracker": bool(isinstance(ct, dict) and ct.get("status") == "ok"),
+    }
 
 
 @dataclass
@@ -1056,26 +1114,30 @@ def _cache_entry_current(data: dict) -> bool:
     ct = (data.get("extra_stats") or {}).get("cstracker")
     if data.get("steamid64") and (not isinstance(ct, dict) or ct.get("status") == "error"):
         return False  # cstracker data missing or failed; 'blocked'/'not_found' stay cached
-    lf = data.get("leetify")
-    if not isinstance(lf, dict):
-        return not data.get("steamid64")
-    return "fetch" in lf
+    # Profile cache entries never hold Leetify data; it is re-read via _leetify_cached_or_fetch.
+    return True
 
 
 def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: Optional[str] = None) -> SteamProfile:
     clean_nick = nick.strip()
     cache_key = clean_nick.lower()
     now = time.time()
+    lf_ttl = _leetify_cache_ttl_sec()
 
+    hit: Optional[dict] = None
     with _CACHE_LOCK:
         cached = _PROFILE_CACHE.get(cache_key)
         if cached:
             ttl = CACHE_TTL_SEC if cached[1].get("lookup_source") != "not_found" else 30
             if (now - cached[0]) < ttl and _cache_entry_current(cached[1]):
-                data = dict(cached[1])
-                if screenshot_avatar:
-                    data["screenshot_avatar"] = screenshot_avatar
-                return SteamProfile(**data)
+                hit = dict(cached[1])
+    if hit is not None:
+        if screenshot_avatar:
+            hit["screenshot_avatar"] = screenshot_avatar
+        hit["leetify"] = _leetify_cached_or_fetch(hit.get("steamid64"), lf_ttl)
+        profile = SteamProfile(**hit)
+        profile.coverage = _source_coverage(profile)
+        return profile
 
     data: Optional[dict] = None
     search_log: list[str] = []
@@ -1144,9 +1206,11 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             candidates=candidates,
         )
 
+    profile.coverage = _source_coverage(profile)
     if profile.lookup_source != "rate_limited":
+        _leetify_mem_put(profile.steamid64, profile.leetify, lf_ttl)
         with _CACHE_LOCK:
-            _PROFILE_CACHE[cache_key] = (now, asdict(profile))
+            _PROFILE_CACHE[cache_key] = (now, _strip_leetify(asdict(profile)))
             if profile.lookup_source != "not_found":
                 _save_profile_cache_locked()
 
@@ -1576,6 +1640,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
         )
     else:
         steam = lookup_steam_profile(q)
+    steam.coverage = _source_coverage(steam)
 
     anomaly = player_dict.get("anomaly_score")
     p = Player(
