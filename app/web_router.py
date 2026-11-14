@@ -14,9 +14,11 @@ order; the first match wins. Fallbacks (used for static files) run only when no 
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import re
 import urllib.parse
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -153,3 +155,62 @@ def resolve_static_file(root: Path, url_path: str) -> Optional[Path]:
 
 def static_content_type(path: Path) -> str:
     return STATIC_CONTENT_TYPES[path.suffix.lower()]
+
+
+# ---------------------------------------------------------------- request guard
+
+_UPLOAD_CONTENT_TYPES = frozenset({"image/png", "image/jpeg", "application/octet-stream"})
+_JSON_CONTENT_TYPES = frozenset({"application/json"})
+
+
+def _bare_host(host: str) -> str:
+    """'name:port', '[v6]:port' or 'v6' -> the lowercased host name without port or brackets."""
+    if host.startswith("["):
+        end = host.find("]")
+        name = host[1:end] if end != -1 else host[1:]
+    elif host.count(":") == 1:
+        name = host.split(":", 1)[0]
+    else:
+        name = host
+    return name.lower()
+
+
+def _is_allowed_host(host: str) -> bool:
+    name = _bare_host(host)
+    if name == "localhost":
+        return True
+    try:
+        ipaddress.ip_address(name)
+    except ValueError:
+        return False
+    return True
+
+
+def check_request(method: str, path: str, headers: Mapping[str, str], body_length: int) -> Optional[tuple[int, str]]:
+    """None if the request may proceed, else (http_status, error_message).
+
+    Defends the local server against DNS rebinding (Host), cross-site form/fetch POSTs (Origin,
+    Sec-Fetch-Site) and "simple" cross-origin requests that smuggle JSON as text/plain (Content-Type).
+    """
+    method = method.upper()
+    host = headers.get("Host")
+    if not host or not _is_allowed_host(host):
+        return (403, "Host not allowed")
+    if method != "POST":
+        return None
+    origin = headers.get("Origin")
+    if origin is not None:
+        if origin == "null":
+            return (403, "Origin not allowed")
+        parsed = urllib.parse.urlparse(origin)
+        if parsed.scheme != "http" or parsed.netloc.lower() != host.lower():
+            return (403, "Origin not allowed")
+    sec_fetch_site = headers.get("Sec-Fetch-Site")
+    if sec_fetch_site is not None and sec_fetch_site.strip().lower() not in ("same-origin", "none"):
+        return (403, "Cross-site request blocked")
+    if body_length > 0:
+        media = (headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        allowed = _UPLOAD_CONTENT_TYPES if path == "/api/upload" else _JSON_CONTENT_TYPES
+        if media not in allowed:
+            return (415, "Unsupported Content-Type")
+    return None
