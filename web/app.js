@@ -9,6 +9,7 @@ const state = {
   matchFilter: "",
   riskFilter: "all",
   expandedNicks: new Set(),
+  playerTabs: new Map(),
 };
 
 const els = {
@@ -450,27 +451,121 @@ function players_ready_for_ai(p) {
   return Boolean(p && p.loading_stage !== "steam" && !p.loading);
 }
 
-function renderPlayerDetailsRow(p) {
+const PLAYER_TABS = [
+  { key: "overview", label: "Огляд" },
+  { key: "leetify", label: "Leetify" },
+  { key: "cstracker", label: "CSTracker" },
+  { key: "steam", label: "Steam" },
+  { key: "ai", label: "AI" },
+];
+
+function getPlayerTab(nick) {
+  const key = state.playerTabs.get(nick);
+  return PLAYER_TABS.some((t) => t.key === key) ? key : "overview";
+}
+
+function emptyTabText(text) {
+  return `<p class="player-tab-empty">${escapeHtml(text)}</p>`;
+}
+
+function wrapTabCard(inner) {
+  return `<div class="detail-card">${inner || emptyTabText("Даних для цього розділу немає.")}</div>`;
+}
+
+function selectPlayerTab(btn, focus = false) {
+  const key = btn.dataset.tabKey;
+  state.playerTabs.set(btn.dataset.nick, key);
+  const row = btn.closest(".player-details-row");
+  if (!row) return;
+  row.querySelectorAll('[role="tab"]').forEach((t) => {
+    const sel = t === btn;
+    t.setAttribute("aria-selected", String(sel));
+    t.tabIndex = sel ? 0 : -1;
+  });
+  row.querySelectorAll('[role="tabpanel"]').forEach((panel) => {
+    panel.hidden = panel.dataset.tabKey !== key;
+  });
+  if (focus) btn.focus();
+}
+
+function renderPlayerTabs(p, panels) {
+  const uid = `pt-${String(p.nick || "").replace(/[^\w-]/g, "_")}`;
+  const active = getPlayerTab(p.nick);
+  const tabs = PLAYER_TABS.map((t) => {
+    const sel = t.key === active;
+    return `<button type="button" role="tab" class="player-tab" id="${uid}-tab-${t.key}" aria-controls="${uid}-panel-${t.key}" aria-selected="${sel}" tabindex="${sel ? 0 : -1}" data-nick="${escapeHtml(p.nick)}" data-tab-key="${t.key}">${escapeHtml(t.label)}</button>`;
+  }).join("");
+  const body = PLAYER_TABS.map((t) => {
+    const sel = t.key === active;
+    return `<div role="tabpanel" class="player-tab-panel" id="${uid}-panel-${t.key}" aria-labelledby="${uid}-tab-${t.key}" data-tab-key="${t.key}"${sel ? "" : " hidden"}>${panels[t.key] || ""}</div>`;
+  }).join("");
+  return `<div class="player-tabs" role="tablist" aria-label="Розділи аналізу гравця">${tabs}</div>${body}`;
+}
+
+function renderOverviewPanel(p) {
   const steam = p.steam || {};
   const lf = steam.leetify || {};
-  const fc = steam.faceit || {};
   const cs2 = steam.cs2_stats || {};
+  const fc = steam.faceit || {};
+  const ct = (steam.extra_stats || {}).cstracker || {};
+  const rk = lf.ranks || {};
   const ew = p.effective_weights || {};
-  const ai = p.ai_analysis || null;
-  const allReasons = (p.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
-  const extraMeta = steam.extra_stats || {};
-
   const weightsText =
     ew.scoreboard != null || ew.leetify != null || ew.steam_account != null
       ? `Рахунок: ${Math.round((ew.scoreboard ?? 0) * 100)}%, Leetify/FACEIT: ${Math.round((ew.leetify ?? 0) * 100)}%, Steam: ${Math.round((ew.steam_account ?? 0) * 100)}%`
       : "—";
+  const reasons = (p.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+  return [
+    detailSection("Оцінка", [
+      detailKv("Ймовірність чітера / смурфа", `${Math.round(p.cheat_probability ?? 0)}% / ${Math.round(p.smurf_probability ?? 0)}%`),
+      detailKv("Невизначеність", `${Math.round(p.uncertainty ?? 50)}%`),
+      detailKv("Ваги джерел", weightsText),
+    ]),
+    detailSection("Ключові цифри", [
+      detailKv("Рейтинг Leetify", fmtNum(rk.leetify ?? lf.leetify_rating, 2)),
+      detailKv("CS2 K/D / HS%", cs2.kd != null ? `${Number(cs2.kd).toFixed(2)} / ${fmtNum(cs2.hs_pct, 1, "%")}` : null),
+      detailKv("Годин у CS2", steam.cs2_hours != null ? `${steam.cs2_hours} год` : null),
+      detailKv("FACEIT ELO", fc.faceit_elo),
+      detailKv("CSTracker trust", ct.trust != null ? `${Number(ct.trust).toFixed(1)}%` : null),
+    ]),
+    `<div class="detail-section"><h5>Причини</h5>${
+      reasons ? `<ul class="detail-reasons">${reasons}</ul>` : emptyTabText("Причин для підозри не зафіксовано.")
+    }</div>`,
+  ].join("");
+}
 
+function renderSteamPanel(p) {
+  const steam = p.steam || {};
+  if (!Object.keys(steam).length) return emptyTabText("Дані Steam ще не отримано для цього гравця.");
+  const fc = steam.faceit || {};
+  const cs2 = steam.cs2_stats || {};
+  return (
+    detailSection("Steam", [
+      detailKv("SteamID64", steam.steamid64),
+      detailKv("Вік акаунта", steam.account_age_years != null ? `${steam.account_age_years} р.` : null),
+      detailKv("Годин у CS2", steam.cs2_hours != null ? `${steam.cs2_hours} год` : null),
+      detailKv("Рівень Steam", steam.steam_level),
+      detailKv("VAC / Game бани", `${steam.number_of_vac_bans || 0} VAC / ${steam.game_bans || 0} Game`),
+      detailKv("CS2 K/D / HS%", cs2.kd != null ? `${Number(cs2.kd).toFixed(2)} / ${fmtNum(cs2.hs_pct, 1, "%")}` : null),
+      detailKv("CS2 вбивства / матчі", cs2.total_kills != null ? `${cs2.total_kills} / ${cs2.total_matches_played ?? "—"}` : null),
+      detailKv("Метод пошуку", steam.lookup_method),
+    ]) +
+    (fc.found || fc.skill_level != null
+      ? detailSection("FACEIT", [
+          detailKv("Рівень / ELO", `${fc.skill_level ?? "—"} / ${fc.faceit_elo ?? "—"}`),
+          detailKv("K/D / WR / Матчі", `${fc.kd != null ? Number(fc.kd).toFixed(2) : "—"} / ${fmtNum(fc.winrate, 1, "%") ?? "—"} / ${fc.matches ?? "—"}`),
+        ])
+      : "")
+  );
+}
+
+function renderAiPanel(p) {
+  const ai = p.ai_analysis || null;
   const aiProbsNote =
     ai && (ai.cheat_probability != null || ai.smurf_probability != null)
       ? `<div class="ai-meta-note">Чітер: ${escapeHtml(ai.cheat_probability ?? "—")}% · Смурф: ${escapeHtml(ai.smurf_probability ?? "—")}%</div>`
       : "";
-
-  const aiCardBody = ai
+  return ai
     ? `
       <div class="detail-card-head">
         <h4>AI-аналіз</h4>
@@ -499,41 +594,22 @@ function renderPlayerDetailsRow(p) {
       <div>
         <button type="button" class="btn btn-primary btn-sm run-ai-player-btn" data-nick="${escapeHtml(p.nick)}">Запустити AI-аналіз (Claude)</button>
       </div>`;
+}
 
+function renderPlayerDetailsRow(p) {
+  const steam = p.steam || {};
+  const panels = {
+    overview: wrapTabCard(renderOverviewPanel(p)),
+    leetify: wrapTabCard(detailSection("Leetify", leetifyRows(steam.leetify || {}))),
+    cstracker: wrapTabCard(renderCstrackerSection((steam.extra_stats || {}).cstracker)),
+    steam: wrapTabCard(renderSteamPanel(p)),
+    ai: wrapTabCard(renderAiPanel(p)),
+  };
   return `
     <tr class="player-details-row">
       <td colspan="8">
         <div class="player-details-box">
-          <div class="player-details-grid">
-            <div class="detail-card">
-              <div class="detail-card-head"><h4>Детальний аналіз</h4></div>
-              ${detailSection("Оцінка", [
-                detailKv("Ймовірність чітера / смурфа", `${Math.round(p.cheat_probability ?? 0)}% / ${Math.round(p.smurf_probability ?? 0)}%`),
-                detailKv("Невизначеність", `${Math.round(p.uncertainty ?? 50)}%`),
-                detailKv("Ваги джерел", weightsText),
-              ])}
-              ${detailSection("Steam", [
-                detailKv("SteamID64", steam.steamid64),
-                detailKv("Вік акаунта", steam.account_age_years != null ? `${steam.account_age_years} р.` : null),
-                detailKv("Годин у CS2", steam.cs2_hours != null ? `${steam.cs2_hours} год` : null),
-                detailKv("Рівень Steam", steam.steam_level),
-                detailKv("VAC / Game бани", `${steam.number_of_vac_bans || 0} VAC / ${steam.game_bans || 0} Game`),
-                detailKv("CS2 K/D / HS%", cs2.kd != null ? `${Number(cs2.kd).toFixed(2)} / ${fmtNum(cs2.hs_pct, 1, "%")}` : null),
-                detailKv("CS2 вбивства / матчі", cs2.total_kills != null ? `${cs2.total_kills} / ${cs2.total_matches_played ?? "—"}` : null),
-                detailKv("Метод пошуку", steam.lookup_method),
-              ])}
-              ${detailSection("Leetify", leetifyRows(lf))}
-              ${detailSection("FACEIT", (fc.found || fc.skill_level != null) ? [
-                detailKv("Рівень / ELO", `${fc.skill_level ?? "—"} / ${fc.faceit_elo ?? "—"}`),
-                detailKv("K/D / WR / Матчі", `${fc.kd != null ? Number(fc.kd).toFixed(2) : "—"} / ${fmtNum(fc.winrate, 1, "%") ?? "—"} / ${fc.matches ?? "—"}`),
-              ] : [])}
-              ${renderCstrackerSection(extraMeta.cstracker)}
-              ${allReasons ? `<ul class="detail-reasons">${allReasons}</ul>` : ""}
-            </div>
-            <div class="detail-card">
-              ${aiCardBody}
-            </div>
-          </div>
+          ${renderPlayerTabs(p, panels)}
         </div>
       </td>
     </tr>`;
@@ -785,7 +861,27 @@ els.dropZone.addEventListener("drop", (e) => {
   if (file) uploadFile(file);
 });
 
+els.playersBody.addEventListener("keydown", (e) => {
+  const tab = e.target.closest?.('[role="tab"]');
+  if (!tab) return;
+  const tabs = [...tab.parentElement.querySelectorAll('[role="tab"]')];
+  const idx = tabs.indexOf(tab);
+  let next = null;
+  if (e.key === "ArrowRight") next = (idx + 1) % tabs.length;
+  else if (e.key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+  else if (e.key === "Home") next = 0;
+  else if (e.key === "End") next = tabs.length - 1;
+  if (next == null) return;
+  e.preventDefault();
+  selectPlayerTab(tabs[next], true);
+});
+
 els.playersBody.addEventListener("click", async (e) => {
+  const tabBtn = e.target.closest(".player-tab");
+  if (tabBtn) {
+    selectPlayerTab(tabBtn);
+    return;
+  }
   const aiBtn = e.target.closest(".run-ai-player-btn");
   if (aiBtn && state.currentScan) {
     const nick = aiBtn.dataset.nick;
