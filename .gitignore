@@ -12,3 +12,8 @@ server.log
 magic-legal.py
 profile.json
 pton.logs
+
+# Local SQLite player history (player_db.py)
+players.db
+players.db-wal
+players.db-shm
