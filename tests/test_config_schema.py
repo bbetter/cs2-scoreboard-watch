@@ -151,5 +151,35 @@ class SchemaRouteTests(unittest.TestCase):
         self.assertEqual(steam["env"], ["STEAM_API_KEY"])
 
 
+class NonFiniteNumbersTests(unittest.TestCase):
+    """A bad number falls back to the default of that field only; other keys keep their values."""
+
+    def test_non_finite_float_falls_back_to_field_default(self):
+        for bad in (float("inf"), float("-inf"), float("nan"), "inf", "nan"):
+            with self.subTest(value=bad):
+                out = config_schema.normalize({"tab_delay_sec": bad})
+                self.assertEqual(out["tab_delay_sec"], 0.5)
+
+    def test_non_finite_int_falls_back_to_field_default_and_keeps_other_keys(self):
+        out = config_schema.normalize({"leetify_cache_ttl_sec": float("inf"), "tab_cooldown_sec": 7.0})
+        self.assertEqual(out["leetify_cache_ttl_sec"], config_schema.FIELDS["leetify_cache_ttl_sec"].default)
+        self.assertEqual(out["tab_cooldown_sec"], 7.0)
+        out = config_schema.normalize({"leetify_cache_ttl_sec": float("-inf")})
+        self.assertEqual(out["leetify_cache_ttl_sec"], config_schema.FIELDS["leetify_cache_ttl_sec"].default)
+
+    def test_non_finite_weight_falls_back_to_weight_default(self):
+        out = config_schema.normalize({"ai_weights": {"scoreboard": float("nan"), "leetify": 0.5}})
+        self.assertEqual(out["ai_weights"]["scoreboard"], config_schema.DEFAULT_AI_WEIGHTS["scoreboard"])
+        self.assertEqual(out["ai_weights"]["leetify"], 0.5)
+
+    def test_save_config_with_infinity_does_not_raise(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        cfg_path = Path(tmp.name) / "config.json"
+        with mock.patch.object(config_store, "CONFIG_FILE", cfg_path):
+            saved = config_store.save_config({"leetify_cache_ttl_sec": float("inf")})
+        self.assertEqual(saved["leetify_cache_ttl_sec"], config_schema.FIELDS["leetify_cache_ttl_sec"].default)
+
+
 if __name__ == "__main__":
     unittest.main()
