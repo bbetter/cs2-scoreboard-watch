@@ -27,6 +27,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | Module | Role |
 |---|---|
 | `app/server.py` | HTTP server: router table, route functions, the scan store `STORE`, the SSE hub `SSE`, wiring of the pipeline |
+| `app/tab_watcher.py` | `TabWatcher`: state of the TAB watcher (cooldown, delay, CS2-only flag, notification switch) and the delayed scan + notification. Dependencies are passed to the constructor; `app.server` holds the instance as `TAB` |
 | `app/sse.py` | `SseHub`: subscriber queues for `/api/events`, max 8 open streams (`subscribe()` returns `None` when full), overflowing queues dropped on broadcast |
 | `app/watch_cs2.py` | Entry point for the TAB watcher: registers the Hyprland bind or a pynput listener, then serves `app.server.CsWatchHandler` |
 | `app/web_router.py` | Stdlib router (`Router.route` / `fallback`), JSON body helper, static-file resolution |
