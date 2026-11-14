@@ -46,7 +46,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `storage/player_db.py` | SQLite player history (`data/players.db`, tables `players` and `sightings`) |
 | `storage/feedback_store.py` | Labelled feedback records (`data/feedback.json`) and their feature block |
 | `storage/profile_cache.py` | `ProfileCache`: Steam profile cache (`data/profile_cache.json`), read on first use, not at import |
-| `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then `.env` and shell rc files. `lookup/steam_lookup.py` re-exports it |
+| `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then the root `.env`. Shell rc files are not read. `lookup/steam_lookup.py` re-exports it |
 
 ### `vision/` (OCR)
 
@@ -109,7 +109,7 @@ Each source module holds its own fetcher and does not import `lookup.steam_looku
 | `scripts/cs_scan.sh` | Starts `app.server` if needed, takes a screenshot, posts it to `/api/scan` |
 | `tests/` | `unittest` suite and golden files (see "Testing") |
 | `docs/` | This document |
-| `.env` | Optional secrets (API keys), read by `storage/api_keys.py`; kept at the root and gitignored |
+| `.env` | Optional secrets (API keys), read by `storage/api_keys.py`; kept at the root and gitignored. Steam key: config → `STEAM_API_KEY` → root `.env`; shell rc files are not read |
 
 ## Request flow
 
