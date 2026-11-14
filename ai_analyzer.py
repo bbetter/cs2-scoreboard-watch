@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 from config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
 
-ALLOWED_DECISIONS = ("LEGIT", "UNCERTAIN", "SUSPICIOUS", "BLATANT")
+ALLOWED_DECISIONS = ("LEGIT", "UNCERTAIN", "SMURF", "SUSPICIOUS", "BLATANT")
 
 _OUTPUT_SCHEMA = {
     "type": "object",
@@ -26,11 +26,21 @@ _OUTPUT_SCHEMA = {
                 "properties": {
                     "nick": {"type": "string"},
                     "decision": {"type": "string", "enum": list(ALLOWED_DECISIONS)},
-                    "confidence": {"type": "number"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+                    "cheat_probability": {"type": "number", "minimum": 0, "maximum": 100},
+                    "smurf_probability": {"type": "number", "minimum": 0, "maximum": 100},
                     "analysis_steps": {"type": "string"},
                     "summary": {"type": "string"},
                 },
-                "required": ["nick", "decision", "confidence", "analysis_steps", "summary"],
+                "required": [
+                    "nick",
+                    "decision",
+                    "confidence",
+                    "cheat_probability",
+                    "smurf_probability",
+                    "analysis_steps",
+                    "summary",
+                ],
                 "additionalProperties": False,
             },
         }
@@ -43,7 +53,7 @@ _OUTPUT_SCHEMA = {
 def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
     steam = p.get("steam") or {}
     leetify = steam.get("leetify") or {}
-    return {
+    data: dict[str, Any] = {
         "nick": p.get("nick"),
         "scoreboard": {
             "kills": p.get("kills"),
@@ -51,8 +61,12 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
             "kd": p.get("kd"),
             "hs_percent": p.get("hs"),
             "level": p.get("level"),
-            "heuristic_probability": p.get("cheat_probability"),
+            "heuristic_cheat_probability": p.get("cheat_probability"),
+            "heuristic_smurf_probability": p.get("smurf_probability"),
             "heuristic_risk": p.get("risk_level"),
+            "smurf_risk": p.get("smurf_risk_level"),
+            "uncertainty": p.get("uncertainty"),
+            "effective_weights": p.get("effective_weights"),
             "heuristic_reasons": p.get("reasons") or [],
         },
         "steam": {
@@ -69,6 +83,7 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
             "is_private": steam.get("is_private"),
             "is_limited": steam.get("is_limited"),
             "in_cs2": steam.get("in_cs2"),
+            "cs2_stats": steam.get("cs2_stats"),
         },
         "leetify": {
             "found": bool(leetify.get("found")),
@@ -80,24 +95,32 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
             "bans": leetify.get("bans") or [],
         },
     }
+    faceit = steam.get("faceit")
+    if faceit:
+        data["faceit"] = faceit
+    return data
 
 
 def _build_prompt(players: list[dict[str, Any]], cfg: dict[str, Any]) -> str:
     user_prompt = str(cfg.get("ai_prompt") or DEFAULT_AI_PROMPT).strip()
     weights = cfg.get("ai_weights") or DEFAULT_AI_WEIGHTS
     payload = {
-        "weights": {
+        "base_weights": {
             "scoreboard": weights.get("scoreboard", 0.30),
             "leetify": weights.get("leetify", 0.40),
             "steam_account": weights.get("steam_account", 0.30),
         },
         "players": [_compact_player_for_ai(p) for p in players],
     }
+    decisions_str = "|".join(ALLOWED_DECISIONS)
     return (
         f"{user_prompt}\n\n"
+        "Для кожного гравця враховуй індивідуальні `effective_weights` та `uncertainty` "
+        "(перерозподілені ваги залежно від доступності Leetify/Steam/FACEIT; при високій `uncertainty` знижуй `confidence`).\n"
         "Поверни ВИКЛЮЧНО валідний JSON за схемою:\n"
-        '{"results": [{"nick": "<точний нік з входу>", "decision": "LEGIT|UNCERTAIN|SUSPICIOUS|BLATANT", '
-        '"confidence": <0..100>, "analysis_steps": "<покроковий аналіз>", "summary": "<короткий висновок>"}]}\n\n'
+        f'{{"results": [{{"nick": "<точний нік з входу>", "decision": "{decisions_str}", '
+        '"confidence": <0..100>, "cheat_probability": <0..100>, "smurf_probability": <0..100>, '
+        '"analysis_steps": "<покроковий аналіз>", "summary": "<короткий висновок>"}}]}}\n\n'
         f"Вхідні дані:\n{json.dumps(payload, ensure_ascii=False)}"
     )
 
@@ -222,6 +245,13 @@ def _run_anthropic_api(prompt: str, model: str, api_key: str, timeout: int = 60)
     return parsed
 
 
+def _clamp_pct(val: Any, default: int = 50) -> int:
+    try:
+        return round(max(0.0, min(100.0, float(val))))
+    except (TypeError, ValueError):
+        return default
+
+
 def analyze_players_with_ai(
     players: list[dict[str, Any]],
     force: bool = False,
@@ -256,15 +286,16 @@ def analyze_players_with_ai(
         decision = str(item.get("decision") or "UNCERTAIN").strip().upper()
         if decision not in ALLOWED_DECISIONS:
             decision = "UNCERTAIN"
-        try:
-            conf = round(max(0.0, min(100.0, float(item.get("confidence", 50)))))
-        except (TypeError, ValueError):
-            conf = 50
+        conf = _clamp_pct(item.get("confidence"), 50)
+        cheat_prob = _clamp_pct(item.get("cheat_probability"), 0)
+        smurf_prob = _clamp_pct(item.get("smurf_probability"), 0)
         by_nick[nick] = {
             "provider": provider,
             "model": model,
             "decision": decision,
             "confidence": conf,
+            "cheat_probability": cheat_prob,
+            "smurf_probability": smurf_prob,
             "chain_of_thought": str(item.get("analysis_steps") or item.get("chain_of_thought") or "").strip(),
             "summary": str(item.get("summary") or "").strip(),
             "analyzed_at": now_iso,

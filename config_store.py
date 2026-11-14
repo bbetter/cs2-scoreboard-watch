@@ -16,13 +16,13 @@ ALLOWED_SCREENSHOT_TOOLS = ("auto", "grim", "imagemagick", "mss", "screencapture
 ALLOWED_AI_PROVIDERS = ("claude_cli", "anthropic_api")
 
 DEFAULT_AI_PROMPT = (
-    "Ти аналітик античіт-телеметрії CS2. Оціни кожного гравця на основі: "
-    "1) поточного рахунку в матчі (K/D, HS%, рівень); "
-    "2) статистики Leetify (aim, reaction_time_ms, winrate, ранги, бани); "
-    "3) даних Steam API (вік акаунта, години в CS2, VAC/Game бани, приватність/ліміти). "
-    "Враховуй задані ваги факторів. Поясни покроковий аналіз (analysis_steps) українською мовою, "
-    "зроби короткий висновок (summary) і вистав рішення decision: "
-    "LEGIT, UNCERTAIN, SUSPICIOUS або BLATANT."
+    "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: "
+    "1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани); "
+    "2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). "
+    "Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли Leetify, Steam або FACEIT закриті чи відсутні, "
+    "спирайся на доступні джерела за effective_weights і знижуй confidence при високій uncertainty. "
+    "Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) "
+    "і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT."
 )
 
 DEFAULT_AI_WEIGHTS: dict[str, float] = {
