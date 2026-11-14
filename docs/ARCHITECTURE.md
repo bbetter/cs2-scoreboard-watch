@@ -193,6 +193,9 @@ Newest first, at most `app.server._MAX_HISTORY` (100) records. Written only thro
   ban floor, the damping and the smurf branch markers.
 - `loading`, `loading_stage` (`steam` / `ai` / `done`): UI progress flags.
 - `steam`: the per-player external data (below).
+- `edited_at` (float, Unix seconds): set only on rows that a hand-edit route wrote (`POST /api/recheck`,
+  `/api/recheck-source`, `/api/ai-analyze`, via `app.server._mark_edited`). Absent on every other row. An enrichment run
+  keeps a row whose `edited_at` is at or after the run's start (`ScanPipeline._keep_user_row`).
 
 ### `steam` dict
 
@@ -391,9 +394,10 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
   source needs a frontend change.
 - **Legacy storage slots are canonical** for Leetify, FACEIT, CSTracker and Steam CS2 stats. `steam.sources` is a
   derived view. Moving to native storage would need a data migration and changes to scoring and the frontend.
-- **The final enrichment write can overwrite concurrent rechecks.** `app.pipeline.enrich_scan` replaces the whole
-  `players` list at the end. A `/api/recheck` or `/api/ai-analyze` result written while enrichment is still running
-  is lost. Read from the code; not yet covered by a test.
+- **Enrichment keeps user edits only for rows matched by `player_uid`, and not during the AI stage.** A row edited
+  by a hand-edit route after the run started is kept by the enrichment writes (`ScanPipeline._merge_rows`). The AI
+  stage analyzes a snapshot, so a row edited while the AI stage runs keeps the user's version and gets no AI fields
+  for that run. Covered by `tests/test_enrichment_merge.py`.
 - **`/api/recheck` writes back by index.** The row index is found under one lock and used under another, so a
   concurrent change can put the result in the wrong row. Reproduced by `tests/test_player_uid.py` (`expectedFailure`).
 - **`/api/ai-analyze` with only a nick and duplicate nicks** replaces the first duplicate row with the second

@@ -331,6 +331,13 @@ def _player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
     return p.get("nick") == nick
 
 
+def _mark_edited(player: dict) -> dict:
+    """Stamp a row that a route just wrote by hand. A run whose enrichment started before this moment keeps the row
+    (see ScanPipeline._merge_rows)."""
+    player["edited_at"] = time.time()
+    return player
+
+
 def recheck_source_for_player(
     scan_id: Optional[str], nick: str, source: Optional[str], player_uid: Optional[str] = None
 ) -> tuple[int, dict]:
@@ -371,6 +378,7 @@ def recheck_source_for_player(
         src.write_raw(steam, fresh)  # copies the containers along the slot path; siblings are kept
         _refresh_source_entry(steam, src)
         player["steam"] = steam
+        _mark_edited(player)
         _save_history_locked()
         snapshot = dict(scan_rec)
 
@@ -632,7 +640,7 @@ def _post_recheck(h: CsWatchHandler) -> None:
 
         updated_player = recheck_player_report(player_copy, query)
         analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
-        updated_player = analyzed_list[0]
+        updated_player = _mark_edited(analyzed_list[0])
 
         with STORE.lock:
             scan_rec["players"][idx] = updated_player
@@ -721,13 +729,14 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
                 h._send_json({"error": ai_error}, status=500)
                 return
             key = (lambda p: p.get("player_uid")) if target_uid else (lambda p: p["nick"])
-            updated_map = {key(p): p for p in analyzed}
+            updated_map = {key(p): _mark_edited(p) for p in analyzed}
             new_players = [updated_map.get(key(p), p) for p in players_copy]
         else:
             new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
             if ai_error:
                 h._send_json({"error": ai_error}, status=500)
                 return
+            new_players = [_mark_edited(p) for p in new_players]
 
         with STORE.lock:
             scan_rec["players"] = new_players

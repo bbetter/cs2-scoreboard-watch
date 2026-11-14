@@ -155,6 +155,27 @@ class ScanPipeline:
             return None          # a newer run owns this record now
         return rec
 
+    @staticmethod
+    def _keep_user_row(existing: dict, started: float) -> bool:
+        """True if the user edited this row after the run started, so enrichment must not replace it."""
+        return float(existing.get("edited_at") or 0) >= started
+
+    def _merge_rows(self, current: list, incoming: list, started: float) -> list:
+        """The rows for a write, in `incoming` order.
+
+        A row matched by player_uid that the user edited after the run started is taken from `current`;
+        every other row is taken from `incoming` (rows without player_uid are always replaced).
+        Trade-off: the AI stage analyzes a snapshot, so a row the user edits during the AI stage keeps the
+        user's version and gets no AI fields.
+        """
+        by_uid = {r.get("player_uid"): r for r in current if r.get("player_uid")}
+        out = []
+        for d in incoming:
+            uid = d.get("player_uid")
+            kept = by_uid.get(uid) if uid else None
+            out.append(kept if kept is not None and self._keep_user_row(kept, started) else d)
+        return out
+
     def enrich_scan(self, scan_id: str, players: list, started: float, run_id: Optional[str] = None) -> None:
         ai_enabled = bool(self._ai_enabled())
         total = len(players)
@@ -174,12 +195,16 @@ class ScanPipeline:
                 if not scan_rec:
                     return
                 uid = pdict.get("player_uid")
+                event_row = pdict
                 for i, existing in enumerate(scan_rec.get("players", [])):
                     same = (existing.get("player_uid") == uid) if uid and existing.get("player_uid") else (
                         existing.get("nick") == pdict.get("nick")
                     )
                     if same:
-                        scan_rec["players"][i] = pdict
+                        if uid and existing.get("player_uid") and self._keep_user_row(existing, started):
+                            event_row = dict(existing)   # the user's edit wins over this enrichment result
+                        else:
+                            scan_rec["players"][i] = pdict
                         break
                 scan_rec["progress"] = {"done": cur_done, "total": total}
                 scan_rec["duration_ms"] = round((time.time() - started) * 1000)
@@ -187,7 +212,7 @@ class ScanPipeline:
                 "player.enriched",
                 {
                     "scan_id": scan_id,
-                    "player": pdict,
+                    "player": event_row,
                     "progress": {"done": cur_done, "total": total},
                     "scan_status": "loading_steam",
                 },
@@ -227,7 +252,7 @@ class ScanPipeline:
             with self.repo.lock:
                 scan_rec = self._find_run(scan_id, run_id)
                 if scan_rec:
-                    scan_rec["players"] = player_dicts
+                    scan_rec["players"] = self._merge_rows(scan_rec.get("players", []), player_dicts, started)
                     scan_rec["scan_status"] = "loading_ai"
                     scan_rec["duration_ms"] = round((time.time() - started) * 1000)
                     snapshot = dict(scan_rec)
@@ -249,7 +274,7 @@ class ScanPipeline:
             scan_rec = self._find_run(scan_id, run_id)
             if not scan_rec:
                 return
-            scan_rec["players"] = player_dicts
+            scan_rec["players"] = self._merge_rows(scan_rec.get("players", []), player_dicts, started)
             scan_rec["player_count"] = len(player_dicts)
             scan_rec["duration_ms"] = round((time.time() - started) * 1000)
             scan_rec["ai_error"] = ai_error
