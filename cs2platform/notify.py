@@ -24,9 +24,15 @@ def build_notification_command(
         return None
     if platform_name == "darwin":
         if which("osascript"):
-            safe_msg = msg.replace("\\", "\\\\").replace('"', '\\"')
-            safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
-            return ["osascript", "-e", f'display notification "{safe_msg}" with title "{safe_title}"'], {"check": False}
+            # Text goes in as argv items, never inside the AppleScript source.
+            return [
+                "osascript",
+                "-e", "on run argv",
+                "-e", "display notification (item 1 of argv) with title (item 2 of argv)",
+                "-e", "end run",
+                msg,
+                title,
+            ], {"check": False}
         return None
     # Windows: safe no-op
     return None
