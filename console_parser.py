@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import difflib
 import os
 import re
 import sys
@@ -12,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from config_store import load_config
+from nick_match import pick_best
 
 DEFAULT_CONSOLE_LOG = Path(
     "/media/andrii/Entertainment/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log"
@@ -193,5 +193,6 @@ def correct_nick_from_console(ocr_nick: str, console_nicks: list[str]) -> str:
     for cn in console_nicks:
         if cn.lower() == ocr_nick.lower():
             return cn
-    matches = difflib.get_close_matches(ocr_nick, console_nicks, n=1, cutoff=0.72)
-    return matches[0] if matches else ocr_nick
+    # Fuzzy fallback: only an unambiguous match replaces the OCR nick.
+    best = pick_best(ocr_nick, console_nicks)
+    return best if best is not None else ocr_nick

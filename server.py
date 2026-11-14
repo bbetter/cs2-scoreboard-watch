@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 import argparse
-import ctypes
 import json
-import os
 import queue
 import shutil
-import subprocess
-import sys
 import threading
 import time
 import uuid
@@ -19,9 +15,11 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
+import player_db
 from ai_analyzer import analyze_players_with_ai
+from atomic_io import atomic_write_text
 from config_store import get_public_config, load_config, save_config
 from console_parser import (
     correct_nick_from_console,
@@ -30,11 +28,21 @@ from console_parser import (
     parse_latest_status,
     setup_autoexec,
 )
+from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
+from cs2platform.focus import is_cs2_active as _is_cs2_active
+from cs2platform.notify import send_notification
+from events import EventBus
+from pipeline import ScanPipeline
+from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
+from sources import REGISTRY, SourceContext
+from config_schema import describe_schema
+from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
     _get_faceit_api_key,
     _get_steam_api_key,
     enrich_players,
+    get_steam_search_status,
     recheck_player_report,
     reset_faceit_api_key_cache,
     reset_steam_api_key_cache,
@@ -42,8 +50,6 @@ from steam_lookup import (
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_DIR = BASE_DIR / "web"
-SCREENSHOT_DIR = BASE_DIR / "screenshots"
-SCREENSHOT_DIR.mkdir(exist_ok=True)
 HISTORY_FILE = BASE_DIR / "scans_history.json"
 
 _STATE_LOCK = threading.Lock()
@@ -58,16 +64,6 @@ _TAB_DELAY_SEC = 0.5
 _NOTIFY_ENABLED = True
 
 
-def get_screenshot_dir() -> Path:
-    custom = str(load_config().get("screenshots_dir") or "").strip()
-    if custom:
-        p = Path(custom).expanduser()
-        p.mkdir(parents=True, exist_ok=True)
-        return p
-    SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
-    return SCREENSHOT_DIR
-
-
 def _apply_runtime_config() -> dict:
     global _TAB_DELAY_SEC, _TAB_COOLDOWN_SEC, _CS2_ONLY, _NOTIFY_ENABLED
     cfg = load_config()
@@ -78,7 +74,9 @@ def _apply_runtime_config() -> dict:
     return cfg
 
 
-_apply_runtime_config()
+def init() -> None:
+    """Load runtime settings from config.json. Called explicitly by main() and watch_cs2.main()."""
+    _apply_runtime_config()
 
 
 def configure_tab_watcher(delay_sec: float = 0.5, cooldown_sec: float = 4.0, cs2_only: bool = True) -> None:
@@ -101,200 +99,15 @@ def _broadcast_event(event: str, payload: dict) -> None:
             _SUBSCRIBERS.remove(q)
 
 
-def _is_cs2_client(c: dict) -> bool:
-    cls = (c.get("class") or "").strip().lower()
-    init_cls = (c.get("initialClass") or "").strip().lower()
-    return cls in {"cs2", "steam_app_730"} or init_cls in {"cs2", "steam_app_730"}
-
-
-def _get_cs2_monitor_name() -> Optional[str]:
-    if not shutil.which("hyprctl"):
-        return None
-    try:
-        mon_res = subprocess.run(["hyprctl", "monitors", "-j"], capture_output=True, text=True, timeout=1.5)
-        if mon_res.returncode != 0 or not mon_res.stdout.strip():
-            return None
-        monitors = json.loads(mon_res.stdout)
-        id_to_name = {m["id"]: m["name"] for m in monitors if "id" in m and "name" in m}
-
-        cli_res = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True, timeout=1.5)
-        if cli_res.returncode == 0 and cli_res.stdout.strip():
-            clients = json.loads(cli_res.stdout)
-            for c in clients:
-                if _is_cs2_client(c):
-                    mon_id = c.get("monitor")
-                    if mon_id in id_to_name:
-                        return id_to_name[mon_id]
-
-        # Fallback: currently focused monitor
-        for m in monitors:
-            if m.get("focused") and "name" in m:
-                return m["name"]
-    except Exception:
-        return None
-    return None
-
-
-def _win32_enable_dpi_awareness() -> None:
-    try:
-        ctypes.windll.user32.SetProcessDPIAware()  # type: ignore[attr-defined]
-    except Exception:
-        pass
-
-
-def _win32_get_window_title(hwnd: int) -> str:
-    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
-    length = user32.GetWindowTextLengthW(hwnd)
-    if length <= 0:
-        return ""
-    buf = ctypes.create_unicode_buffer(length + 1)
-    user32.GetWindowTextW(hwnd, buf, length + 1)
-    return buf.value
-
-
-def _win32_get_process_name(hwnd: int) -> str:
-    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
-    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-    pid = ctypes.c_ulong(0)
-    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    if not pid.value:
-        return ""
-    handle = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
-    if not handle:
-        return ""
-    try:
-        size = ctypes.c_ulong(512)
-        buf = ctypes.create_unicode_buffer(size.value)
-        if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
-            return os.path.basename(buf.value).lower()
-        return ""
-    finally:
-        kernel32.CloseHandle(handle)
-
-
-def _win32_is_cs2_hwnd(hwnd: int) -> bool:
-    if not hwnd:
-        return False
-    title = _win32_get_window_title(hwnd).strip().lower()
-    if "counter-strike 2" in title or title == "cs2":
-        return True
-    return _win32_get_process_name(hwnd) == "cs2.exe"
-
-
-def _win32_find_cs2_hwnd() -> int:
-    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
-    fg = user32.GetForegroundWindow()
-    if _win32_is_cs2_hwnd(fg):
-        return fg
-    return int(user32.FindWindowW(None, "Counter-Strike 2") or 0)
-
-
-def _win32_get_window_center(hwnd: int) -> Optional[tuple[int, int]]:
-    if not hwnd:
-        return None
-    from ctypes import wintypes
-
-    rect = wintypes.RECT()
-    if not ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):  # type: ignore[attr-defined]
-        return None
-    return (rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2
-
-
-def _capture_with_mss_or_pil(out_path: Path, center: Optional[tuple[int, int]] = None) -> None:
-    try:
-        import mss
-        import mss.tools
-
-        with mss.mss() as sct:
-            monitors = sct.monitors
-            target = monitors[1] if len(monitors) > 1 else monitors[0]
-            if center is not None:
-                cx, cy = center
-                for mon in monitors[1:]:
-                    if mon["left"] <= cx < mon["left"] + mon["width"] and mon["top"] <= cy < mon["top"] + mon["height"]:
-                        target = mon
-                        break
-            img = sct.grab(target)
-            mss.tools.to_png(img.rgb, img.size, output=str(out_path))
-            return
-    except ImportError:
-        pass
-
-    from PIL import ImageGrab
-
-    ImageGrab.grab().save(out_path)
-
-
-def capture_screenshot() -> Path:
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-    out_path = get_screenshot_dir() / f"cs2_{ts}.png"
-    tool = str(load_config().get("screenshot_tool") or "auto").strip().lower()
-
-    if tool == "mss":
-        _capture_with_mss_or_pil(out_path)
-        if not out_path.exists():
-            raise RuntimeError("Screenshot failed using mss.")
-        return out_path
-    if tool == "pil":
-        from PIL import ImageGrab
-
-        ImageGrab.grab().save(out_path)
-        if not out_path.exists():
-            raise RuntimeError("Screenshot failed using PIL ImageGrab.")
-        return out_path
-    if tool == "screencapture":
-        cmd = ["screencapture", "-x", str(out_path)]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if res.returncode != 0 or not out_path.exists():
-            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
-        return out_path
-    if tool == "grim":
-        monitor_name = _get_cs2_monitor_name()
-        cmd = ["grim", "-o", monitor_name, str(out_path)] if monitor_name else ["grim", str(out_path)]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if res.returncode != 0 or not out_path.exists():
-            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
-        return out_path
-    if tool == "imagemagick":
-        cmd = ["import", "-window", "root", str(out_path)]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if res.returncode != 0 or not out_path.exists():
-            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
-        return out_path
-
-    if sys.platform == "win32":
-        _win32_enable_dpi_awareness()
-        hwnd = _win32_find_cs2_hwnd()
-        center = _win32_get_window_center(hwnd) if hwnd else None
-        _capture_with_mss_or_pil(out_path, center=center)
-        if not out_path.exists():
-            raise RuntimeError("Screenshot failed on Windows.")
-        return out_path
-
-    if sys.platform == "darwin":
-        if shutil.which("screencapture"):
-            cmd = ["screencapture", "-x", str(out_path)]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-            if res.returncode != 0 or not out_path.exists():
-                raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
-            return out_path
-        _capture_with_mss_or_pil(out_path)
-        if not out_path.exists():
-            raise RuntimeError("Screenshot failed on macOS.")
-        return out_path
-
-    if os.environ.get("WAYLAND_DISPLAY") and shutil.which("grim"):
-        monitor_name = _get_cs2_monitor_name()
-        cmd = ["grim", "-o", monitor_name, str(out_path)] if monitor_name else ["grim", str(out_path)]
-    elif shutil.which("import"):
-        cmd = ["import", "-window", "root", str(out_path)]
-    else:
-        raise RuntimeError("No screenshot tool found (need 'grim' on Wayland or ImageMagick 'import').")
-
-    res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-    if res.returncode != 0 or not out_path.exists():
-        raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
-    return out_path
+def _adapt_legacy_scan(scan: dict) -> None:
+    """In memory only: give player records written before `steam.sources` existed their uniform view."""
+    for player in scan.get("players") or []:
+        steam = player.get("steam") if isinstance(player, dict) else None
+        if isinstance(steam, dict) and "sources" not in steam:
+            steam["sources"] = REGISTRY.sources_view(steam)
+    for idx, player in enumerate(scan.get("players") or []):
+        if isinstance(player, dict) and not player.get("player_uid"):
+            player["player_uid"] = f"{scan.get('id')}-{idx}"  # legacy record: assign once, persisted on next save
 
 
 def _load_history() -> None:
@@ -303,15 +116,19 @@ def _load_history() -> None:
     try:
         data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
         if isinstance(data, list):
+            scans = data[:_MAX_HISTORY]
+            for scan in scans:
+                if isinstance(scan, dict):
+                    _adapt_legacy_scan(scan)
             with _STATE_LOCK:
-                _SCANS[:] = data[:_MAX_HISTORY]
+                _SCANS[:] = scans
     except Exception:
         pass
 
 
 def _save_history_locked() -> None:
     try:
-        HISTORY_FILE.write_text(json.dumps(_SCANS, ensure_ascii=False), encoding="utf-8")
+        atomic_write_text(HISTORY_FILE, json.dumps(_SCANS, ensure_ascii=False))
     except Exception:
         pass
 
@@ -374,207 +191,95 @@ def _build_matches_locked() -> list[dict]:
     return matches
 
 
-def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
-    ai_enabled = bool(load_config().get("ai_enabled"))
-    total = len(players)
-    done_count = 0
-    progress_lock = threading.Lock()
+class _ServerRepo:
+    """ScanRepo over this module's globals. Names are resolved at call time so tests can patch them."""
 
-    def _on_player(rep) -> None:
-        nonlocal done_count
-        pdict = asdict(rep)
-        pdict["loading"] = False
-        pdict["loading_stage"] = "ai" if ai_enabled else "done"
-        with progress_lock:
-            done_count += 1
-            cur_done = done_count
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if not scan_rec:
-                return
-            for i, existing in enumerate(scan_rec.get("players", [])):
-                if existing.get("nick") == pdict.get("nick"):
-                    scan_rec["players"][i] = pdict
-                    break
-            scan_rec["progress"] = {"done": cur_done, "total": total}
-            scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-        _broadcast_event(
-            "scan_update",
-            {
-                "scan_id": scan_id,
-                "player": pdict,
-                "progress": {"done": cur_done, "total": total},
-                "scan_status": "loading_steam",
-            },
-        )
+    @property
+    def lock(self):
+        return _STATE_LOCK
 
-    reports = enrich_players(players, fetch_steam=True, on_player_ready=_on_player)
-    player_dicts = []
-    for r in reports:
-        d = asdict(r)
-        d["loading"] = False
-        d["loading_stage"] = "ai" if ai_enabled else "done"
-        player_dicts.append(d)
+    @property
+    def scans(self) -> list:
+        return _SCANS
 
-    if ai_enabled and player_dicts:
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if scan_rec:
-                scan_rec["players"] = player_dicts
-                scan_rec["scan_status"] = "loading_ai"
-                scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-                snapshot = dict(scan_rec)
-            else:
-                snapshot = None
-        if snapshot:
-            _broadcast_event("scan", snapshot)
-        player_dicts, ai_error = analyze_players_with_ai(player_dicts)
-    else:
-        ai_error = None
+    @property
+    def max_history(self) -> int:
+        return _MAX_HISTORY
 
-    for d in player_dicts:
-        d["loading"] = False
-        d["loading_stage"] = "done"
-
-    with _STATE_LOCK:
-        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-        if not scan_rec:
-            return
-        scan_rec["players"] = player_dicts
-        scan_rec["player_count"] = len(player_dicts)
-        scan_rec["duration_ms"] = round((time.time() - started) * 1000)
-        scan_rec["ai_error"] = ai_error
-        scan_rec["scan_status"] = "done"
-        scan_rec["progress"] = {"done": total, "total": total}
+    def save_locked(self) -> None:
         _save_history_locked()
-        final_snapshot = dict(scan_rec)
-    _broadcast_event("scan", final_snapshot)
+
+
+def _ocr_image(image_path: Path) -> tuple[list, object]:
+    console_status = parse_latest_status()
+    players = scan_scoreboard(str(image_path))
+    if console_status and console_status.nicks:
+        for p in players:
+            p.nick = correct_nick_from_console(p.nick, console_status.nicks)
+    return players, console_status
+
+
+def _screenshot_url(image_path: Path) -> Optional[str]:
+    if image_path.parent.resolve() == get_screenshot_dir().resolve():
+        return f"/screenshots/{image_path.name}"
+    return None
+
+
+EVENTS = EventBus()
+_WIRE_EVENT = {
+    "scan.created": "scan",
+    "scan.updated": "scan",
+    "scan.finished": "scan",
+    "player.enriched": "scan_update",
+}
+
+
+def _sink_player_db(topic: str, payload: dict) -> None:
+    try:
+        player_db.record_scan_sightings(payload)
+    except Exception as exc:
+        print(f"[player-db error] sightings not saved for scan {payload.get('id')}: {exc}")
+
+
+def _sink_sse(topic: str, payload: dict) -> None:
+    # Resolved at call time: tests patch server._broadcast_event.
+    _broadcast_event(_WIRE_EVENT[topic], payload)
+
+
+EVENTS.subscribe("scan.finished", _sink_player_db)  # before SSE, as before the refactor
+for _topic in _WIRE_EVENT:
+    EVENTS.subscribe(_topic, _sink_sse)
+
+PIPELINE = ScanPipeline(
+    _ServerRepo(),
+    EVENTS,
+    ocr=lambda path: _ocr_image(path),
+    enrich=lambda *a, **k: enrich_players(*a, **k),
+    analyze_ai=lambda dicts: analyze_players_with_ai(dicts),
+    ai_enabled=lambda: bool(load_config().get("ai_enabled")),
+    match_meta=lambda now, status: _resolve_match_meta(now, status),
+    screenshot_url=lambda path: _screenshot_url(path),
+)
+
+
+def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
+    PIPELINE.enrich_scan(scan_id, players, started)
 
 
 def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dict:
-    started = time.time()
     if image_path is None:
         image_path = capture_screenshot()
     else:
         image_path = Path(image_path).resolve()
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-
-    console_status = parse_latest_status()
-    players = scan_scoreboard(str(image_path))
-    if console_status and console_status.nicks:
-        for p in players:
-            p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-
-    initial_reports = enrich_players(players, fetch_steam=False)
-    initial_dicts = []
-    for r in initial_reports:
-        d = asdict(r)
-        if fetch_steam:
-            d["loading"] = True
-            d["loading_stage"] = "steam"
-        else:
-            d["loading"] = False
-            d["loading_stage"] = "done"
-        initial_dicts.append(d)
-
-    duration_ms = round((time.time() - started) * 1000)
-    now_dt = datetime.now()
-    match_id, map_name = _resolve_match_meta(now_dt, console_status)
-    scan_id = uuid.uuid4().hex[:10]
-    will_stream = bool(fetch_steam and players)
-
-    scan_record = {
-        "id": scan_id,
-        "created_at": now_dt.isoformat(timespec="seconds"),
-        "date": now_dt.strftime("%Y-%m-%d"),
-        "match_id": match_id,
-        "map_name": map_name,
-        "image_name": image_path.name,
-        "image_url": f"/screenshots/{image_path.name}" if image_path.parent.resolve() == get_screenshot_dir().resolve() else None,
-        "duration_ms": duration_ms,
-        "player_count": len(initial_dicts),
-        "players": initial_dicts,
-        "ai_error": None,
-        "scan_status": "loading_steam" if will_stream else "done",
-        "progress": {"done": 0 if will_stream else len(initial_dicts), "total": len(initial_dicts)},
-    }
-
-    with _STATE_LOCK:
-        _SCANS.insert(0, scan_record)
-        del _SCANS[_MAX_HISTORY:]
-        _save_history_locked()
-
-    _broadcast_event("scan", scan_record)
-    if will_stream:
-        threading.Thread(
-            target=_enrich_scan_async,
-            args=(scan_id, players, started),
-            daemon=True,
-        ).start()
-    return scan_record
-
-
-def _is_cs2_active() -> bool:
-    if sys.platform == "win32":
-        try:
-            hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined]
-            return _win32_is_cs2_hwnd(hwnd)
-        except Exception:
-            return True
-
-    if sys.platform == "darwin":
-        if not shutil.which("osascript"):
-            return True
-        try:
-            res = subprocess.run(
-                [
-                    "osascript",
-                    "-e",
-                    'tell application "System Events" to get name of first application process whose frontmost is true',
-                ],
-                capture_output=True,
-                text=True,
-                timeout=1.5,
-            )
-            if res.returncode != 0 or not res.stdout.strip():
-                return True
-            app_name = res.stdout.strip().lower()
-            return "counter-strike" in app_name or "cs2" in app_name
-        except Exception:
-            return True
-
-    if not shutil.which("hyprctl"):
-        return True
-    try:
-        res = subprocess.run(["hyprctl", "activewindow", "-j"], capture_output=True, text=True, timeout=1.5)
-        if res.returncode != 0 or not res.stdout.strip():
-            return True
-        info = json.loads(res.stdout)
-        return _is_cs2_client(info)
-    except Exception:
-        return True
+    return PIPELINE.run_new(image_path, fetch_steam=fetch_steam)
 
 
 def _send_notification(title: str, msg: str) -> None:
     if not _NOTIFY_ENABLED:
         return
-    try:
-        if sys.platform.startswith("linux"):
-            if shutil.which("notify-send"):
-                clean_env = {k: v for k, v in os.environ.items() if k != "LD_LIBRARY_PATH"}
-                subprocess.run(["notify-send", title, msg], env=clean_env, check=False)
-        elif sys.platform == "darwin":
-            if shutil.which("osascript"):
-                safe_msg = msg.replace("\\", "\\\\").replace('"', '\\"')
-                safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
-                subprocess.run(
-                    ["osascript", "-e", f'display notification "{safe_msg}" with title "{safe_title}"'],
-                    check=False,
-                )
-        # Windows: safe no-op
-    except Exception:
-        pass
+    send_notification(title, msg)
 
 
 def schedule_tab_scan() -> dict:
@@ -605,6 +310,494 @@ def _delayed_tab_scan() -> None:
         _send_notification("CS2 Scoreboard Watch", msg)
     except Exception as exc:
         print(f"[tab-scan error] {exc}")
+
+
+def _source_choices_text(ids: list[str]) -> str:
+    """'a' або 'b' for two ids; 'a', 'b' або 'c' for more (matches the historical 400 text)."""
+    quoted = [f"'{i}'" for i in ids]
+    if len(quoted) <= 2:
+        return " або ".join(quoted)
+    return ", ".join(quoted[:-1]) + " або " + quoted[-1]
+
+
+def _refresh_source_entry(steam: dict, src) -> None:
+    """Update steam["sources"] for ONE source after its raw data was rewritten. Other entries and coverage stay as they are."""
+    if "sources" not in steam:
+        steam["sources"] = REGISTRY.sources_view(steam)
+        return
+    view = dict(steam.get("sources") or {})
+    res = src.result_from(steam)
+    if res is None:
+        view.pop(src.id, None)
+    else:
+        view[src.id] = res.to_dict()
+    steam["sources"] = view
+
+
+def _player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
+    """Match a stored player by its stable player_uid when the caller sent one, else by nick (legacy API)."""
+    if uid:
+        return p.get("player_uid") == uid
+    return p.get("nick") == nick
+
+
+def recheck_source_for_player(
+    scan_id: Optional[str], nick: str, source: Optional[str], player_uid: Optional[str] = None
+) -> tuple[int, dict]:
+    """Re-fetch ONE recheckable external source for one player of a scan.
+
+    Other sources and the scoring are left untouched. Returns (http_status, body):
+    the updated scan on success, {"error": ...} otherwise.
+    """
+    # `source` comes from JSON, so only strings can be registry keys.
+    src = REGISTRY.get(source) if isinstance(source, str) else None
+    if src is None or not src.recheckable:
+        return 400, {"error": f"source має бути {_source_choices_text(REGISTRY.recheckable_ids())}"}
+    if not scan_id or not (nick or player_uid):
+        return 400, {"error": "scan_id і nick є обов'язковими"}
+
+    with _STATE_LOCK:
+        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        if not scan_rec:
+            return 404, {"error": "Scan not found"}
+        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None)
+        if player is None:
+            return 404, {"error": "Player not found in scan"}
+        steamid64 = (player.get("steam") or {}).get("steamid64")
+    if not steamid64:
+        return 409, {"error": "У гравця немає SteamID64: спочатку виправте нік або вставте Steam URL"}
+
+    try:
+        fresh = src.fetch_raw(steamid64, SourceContext())
+    except Exception as exc:
+        return 502, {"error": f"Запит до {source} не вдався: {exc}"}
+
+    with _STATE_LOCK:
+        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None) if scan_rec else None
+        if scan_rec is None or player is None:
+            return 404, {"error": "Scan or player was removed while refreshing"}
+        steam = dict(player.get("steam") or {})
+        src.write_raw(steam, fresh)  # copies the containers along the slot path; siblings are kept
+        _refresh_source_entry(steam, src)
+        player["steam"] = steam
+        _save_history_locked()
+        snapshot = dict(scan_rec)
+
+    _broadcast_event("scan", snapshot)
+    return 200, snapshot
+
+
+# ---------------------------------------------------------------- HTTP routes
+# Each route receives the CsWatchHandler instance `h` and the captured path params.
+# Path params are the RAW (undecoded) URL segments, as the handler always received them.
+
+router = Router()
+
+
+@router.route("GET", "/api/steam-status")
+def _get_steam_status(h: CsWatchHandler) -> None:
+    h._send_json(get_steam_search_status())
+
+
+@router.route("GET", "/api/latest")
+def _get_latest(h: CsWatchHandler) -> None:
+    with _STATE_LOCK:
+        latest = _SCANS[0] if _SCANS else None
+        matches = _build_matches_locked()
+        history = [
+            {
+                "id": s["id"],
+                "created_at": s["created_at"],
+                "date": s.get("date") or s["created_at"][:10],
+                "match_id": s.get("match_id"),
+                "map_name": s.get("map_name"),
+                "player_count": s["player_count"],
+                "image_name": s["image_name"],
+            }
+            for s in _SCANS
+        ]
+    h._send_json({"latest": latest, "history": history, "matches": matches})
+
+
+@router.route("GET", "/api/config")
+def _get_config(h: CsWatchHandler) -> None:
+    cs2_dir = find_cs2_game_dir()
+    resolved = {
+        "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+        "console_log_path": str(get_console_log_path()),
+        "screenshots_dir": str(get_screenshot_dir()),
+        "claude_cli_available": bool(shutil.which("claude")),
+    }
+    h._send_json(
+        get_public_config(
+            resolved=resolved,
+            env_key_present=bool(_get_steam_api_key()),
+            env_faceit_key_present=bool(_get_faceit_api_key()),
+        )
+    )
+
+
+@router.route("GET", "/api/config/schema")
+def _get_config_schema(h: CsWatchHandler) -> None:
+    # Descriptors only (names, types, limits, defaults, env var names). Never any stored value.
+    h._send_json(describe_schema())
+
+
+@router.route("GET", "/api/matches")
+def _get_matches(h: CsWatchHandler) -> None:
+    with _STATE_LOCK:
+        matches = _build_matches_locked()
+    h._send_json({"matches": matches})
+
+
+@router.route("GET", "/api/scan/{scan_id:path}")
+def _get_scan(h: CsWatchHandler, scan_id: str) -> None:
+    scan_id = scan_id.strip("/")
+    with _STATE_LOCK:
+        match = next((s for s in _SCANS if s["id"] == scan_id), None)
+    if not match:
+        h._send_json({"error": "Scan not found"}, status=404)
+    else:
+        h._send_json(match)
+
+
+@router.route("GET", "/api/players/{steamid:path}")
+def _get_player(h: CsWatchHandler, steamid: str) -> None:
+    steamid = steamid.strip("/")
+    if not player_db.is_valid_steamid64(steamid):
+        h._send_json({"error": "Invalid steamid64"}, status=400)
+        return
+    try:
+        limit = min(max(int(parse_qs(urlparse(h.path).query).get("limit", ["50"])[0]), 1), 500)
+    except ValueError:
+        h._send_json({"error": "limit must be an integer"}, status=400)
+        return
+    try:
+        profile = player_db.get_db().get_player(steamid, sightings_limit=limit)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+        return
+    if profile is None:
+        h._send_json({"error": "Player not found"}, status=404)
+    else:
+        h._send_json(profile)
+
+
+@router.route("GET", "/screenshots/{name:path}")
+def _get_screenshot(h: CsWatchHandler, name: str) -> None:
+    filename = Path(name).name
+    sdir = get_screenshot_dir().resolve()
+    target = (sdir / filename).resolve()
+    if target.parent != sdir or not target.is_file():
+        target = (SCREENSHOT_DIR.resolve() / filename).resolve()
+        if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
+            h.send_error(HTTPStatus.NOT_FOUND)
+            return
+    ctype = "image/jpeg" if target.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+    h._send_file(target, ctype)
+
+
+@router.route("GET", "/api/events")
+def _get_events(h: CsWatchHandler) -> None:
+    # Long-lived SSE stream: writes straight to the socket, so it must not be wrapped.
+    h.send_response(HTTPStatus.OK)
+    h.send_header("Content-Type", "text/event-stream")
+    h.send_header("Cache-Control", "no-cache")
+    h.send_header("Connection", "keep-alive")
+    h.end_headers()
+
+    q: queue.Queue[str] = queue.Queue(maxsize=20)
+    with _STATE_LOCK:
+        _SUBSCRIBERS.append(q)
+    try:
+        h.wfile.write(b": connected\n\n")
+        h.wfile.flush()
+        while True:
+            try:
+                msg = q.get(timeout=20)
+                h.wfile.write(msg.encode("utf-8"))
+                h.wfile.flush()
+            except queue.Empty:
+                h.wfile.write(b": ping\n\n")
+                h.wfile.flush()
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    finally:
+        with _STATE_LOCK:
+            if q in _SUBSCRIBERS:
+                _SUBSCRIBERS.remove(q)
+
+
+@router.fallback("GET")
+def _get_static(h: CsWatchHandler, path: str) -> bool:
+    target = resolve_static_file(WEB_DIR, path)
+    if target is None:
+        return False
+    h._send_file(target, static_content_type(target))
+    return True
+
+
+@router.route("POST", "/api/tab-pressed")
+def _post_tab_pressed(h: CsWatchHandler) -> None:
+    h._send_json(schedule_tab_scan())
+
+
+@router.route("POST", "/api/scan")
+def _post_scan(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        img_path = payload.get("image_path")
+        fetch_steam = payload.get("fetch_steam", True)
+        result = run_scan(
+            image_path=Path(img_path) if img_path else None,
+            fetch_steam=bool(fetch_steam),
+        )
+        h._send_json(result)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/rescan")
+def _post_rescan(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+        img_name = scan_rec.get("image_name")
+        sdir = get_screenshot_dir().resolve()
+        img_path = (sdir / Path(img_name).name).resolve()
+        if not img_path.is_file():
+            img_path = (SCREENSHOT_DIR.resolve() / Path(img_name).name).resolve()
+        if not img_path.is_file():
+            h._send_json({"error": "Screenshot file not found"}, status=404)
+            return
+
+        snapshot = PIPELINE.rescan(scan_rec, img_path)
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/setup-cs2")
+def _post_setup_cs2(h: CsWatchHandler) -> None:
+    try:
+        h._send_json(setup_autoexec())
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/recheck")
+def _post_recheck(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        old_nick = payload.get("old_nick")
+        player_uid = payload.get("player_uid") or None
+        query = (payload.get("query") or "").strip()
+        if not scan_id or not (old_nick or player_uid) or not query:
+            h._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
+            return
+
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            idx = next((i for i, p in enumerate(scan_rec["players"]) if _player_matches(p, player_uid, old_nick)), None)
+            if idx is None:
+                h._send_json({"error": "Player not found in scan"}, status=404)
+                return
+            player_copy = dict(scan_rec["players"][idx])
+
+        updated_player = recheck_player_report(player_copy, query)
+        analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
+        updated_player = analyzed_list[0]
+
+        with _STATE_LOCK:
+            scan_rec["players"][idx] = updated_player
+            scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
+            _save_history_locked()
+            snapshot = dict(scan_rec)
+
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/feedback")
+def _post_feedback(h: CsWatchHandler) -> None:
+    try:
+        try:
+            payload = read_json_body(h, empty_json=lambda: None)
+        except JsonBodyError:
+            payload = None  # validate_feedback_payload reports the 400
+        clean, err = validate_feedback_payload(payload)
+        if err:
+            h._send_json({"error": err}, status=400)
+            return
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == clean["scan_id"]), None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            player = next(
+                (dict(p) for p in scan_rec["players"] if _player_matches(p, payload.get("player_uid") or None, clean["nick"])),
+                None,
+            )
+        if player is None:
+            h._send_json({"error": "Player not found in scan"}, status=404)
+            return
+        entry = build_feedback_entry(clean["scan_id"], clean["label"], player)
+        append_feedback(entry)
+        h._send_json({"ok": True, "entry": entry})
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/recheck-source")
+def _post_recheck_source(h: CsWatchHandler) -> None:
+    try:
+        try:
+            payload = read_json_body(h)
+        except JsonBodyError:
+            h._send_json({"error": "Тіло запиту має бути JSON"}, status=400)
+            return
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Тіло запиту має бути JSON-об'єктом"}, status=400)
+            return
+        status, body = recheck_source_for_player(
+            payload.get("scan_id"),
+            str(payload.get("nick") or "").strip(),
+            payload.get("source"),
+            player_uid=payload.get("player_uid") or None,
+        )
+        h._send_json(body, status=status)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/ai-analyze")
+def _post_ai_analyze(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        target_nick = (payload.get("nick") or "").strip()
+        target_uid = payload.get("player_uid") or None
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            players_copy = [dict(p) for p in scan_rec.get("players", [])]
+
+        if target_nick or target_uid:
+            subset = [p for p in players_copy if _player_matches(p, target_uid, target_nick)]
+            if not subset:
+                h._send_json({"error": "Player not found in scan"}, status=404)
+                return
+            analyzed, ai_error = analyze_players_with_ai(subset, force=True)
+            if ai_error:
+                h._send_json({"error": ai_error}, status=500)
+                return
+            key = (lambda p: p.get("player_uid")) if target_uid else (lambda p: p["nick"])
+            updated_map = {key(p): p for p in analyzed}
+            new_players = [updated_map.get(key(p), p) for p in players_copy]
+        else:
+            new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
+            if ai_error:
+                h._send_json({"error": ai_error}, status=500)
+                return
+
+        with _STATE_LOCK:
+            scan_rec["players"] = new_players
+            scan_rec["ai_error"] = None
+            _save_history_locked()
+            snapshot = dict(scan_rec)
+
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/config")
+def _post_config(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Invalid config payload"}, status=400)
+            return
+        save_config(payload)
+        _apply_runtime_config()
+        reset_steam_api_key_cache()
+        reset_faceit_api_key_cache()
+        cs2_dir = find_cs2_game_dir()
+        resolved = {
+            "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+            "console_log_path": str(get_console_log_path()),
+            "screenshots_dir": str(get_screenshot_dir()),
+            "claude_cli_available": bool(shutil.which("claude")),
+        }
+        h._send_json(
+            get_public_config(
+                resolved=resolved,
+                env_key_present=bool(_get_steam_api_key()),
+                env_faceit_key_present=bool(_get_faceit_api_key()),
+            )
+        )
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/upload")
+def _post_upload(h: CsWatchHandler) -> None:
+    try:
+        raw = h._read_body()
+        if not raw:
+            h._send_json({"error": "Empty upload"}, status=400)
+            return
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        out_path = get_screenshot_dir() / f"upload_{ts}.png"
+        out_path.write_bytes(raw)
+        result = run_scan(image_path=out_path, fetch_steam=True)
+        h._send_json(result)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/players/{steamid:path}")
+def _post_player(h: CsWatchHandler, steamid: str) -> None:
+    steamid = steamid.strip("/")
+    if not player_db.is_valid_steamid64(steamid):
+        h._send_json({"error": "Invalid steamid64"}, status=400)
+        return
+    try:
+        payload = read_json_body(h)
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Invalid player payload"}, status=400)
+            return
+        fields: dict[str, Optional[str]] = {}
+        for name, max_len in (("tag", player_db.TAG_MAX_LEN), ("notes", player_db.NOTES_MAX_LEN)):
+            if name in payload:
+                value = payload[name]
+                if value is not None and not isinstance(value, str):
+                    h._send_json({"error": f"{name} must be a string"}, status=400)
+                    return
+                if value and len(value) > max_len:
+                    h._send_json({"error": f"{name} is too long (max {max_len})"}, status=400)
+                    return
+                fields[name] = value or None
+        db = player_db.get_db()
+        if not db.set_player_meta(steamid, **fields):
+            h._send_json({"error": "Player not found"}, status=404)
+            return
+        h._send_json(db.get_player(steamid, sightings_limit=50))
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
 
 
 class CsWatchHandler(BaseHTTPRequestHandler):
@@ -643,326 +836,15 @@ class CsWatchHandler(BaseHTTPRequestHandler):
         return self.rfile.read(length)
 
     def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
-
-        if path == "/":
-            self._send_file(WEB_DIR / "index.html", "text/html; charset=utf-8")
-            return
-        if path == "/styles.css":
-            self._send_file(WEB_DIR / "styles.css", "text/css; charset=utf-8")
-            return
-        if path == "/app.js":
-            self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
-            return
-
-        if path == "/api/latest":
-            with _STATE_LOCK:
-                latest = _SCANS[0] if _SCANS else None
-                matches = _build_matches_locked()
-                history = [
-                    {
-                        "id": s["id"],
-                        "created_at": s["created_at"],
-                        "date": s.get("date") or s["created_at"][:10],
-                        "match_id": s.get("match_id"),
-                        "map_name": s.get("map_name"),
-                        "player_count": s["player_count"],
-                        "image_name": s["image_name"],
-                    }
-                    for s in _SCANS
-                ]
-            self._send_json({"latest": latest, "history": history, "matches": matches})
-            return
-
-        if path == "/api/config":
-            cs2_dir = find_cs2_game_dir()
-            resolved = {
-                "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
-                "console_log_path": str(get_console_log_path()),
-                "screenshots_dir": str(get_screenshot_dir()),
-                "claude_cli_available": bool(shutil.which("claude")),
-            }
-            self._send_json(
-                get_public_config(
-                    resolved=resolved,
-                    env_key_present=bool(_get_steam_api_key()),
-                    env_faceit_key_present=bool(_get_faceit_api_key()),
-                )
-            )
-            return
-
-        if path == "/api/matches":
-            with _STATE_LOCK:
-                matches = _build_matches_locked()
-            self._send_json({"matches": matches})
-            return
-
-        if path.startswith("/api/scan/"):
-            scan_id = path.split("/api/scan/", 1)[1].strip("/")
-            with _STATE_LOCK:
-                match = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if not match:
-                self._send_json({"error": "Scan not found"}, status=404)
-            else:
-                self._send_json(match)
-            return
-
-        if path.startswith("/screenshots/"):
-            filename = Path(path.split("/screenshots/", 1)[1]).name
-            sdir = get_screenshot_dir().resolve()
-            target = (sdir / filename).resolve()
-            if target.parent != sdir or not target.is_file():
-                target = (SCREENSHOT_DIR.resolve() / filename).resolve()
-                if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
-                    self.send_error(HTTPStatus.NOT_FOUND)
-                    return
-            ctype = "image/jpeg" if target.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
-            self._send_file(target, ctype)
-            return
-
-        if path == "/api/events":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
-            self.end_headers()
-
-            q: queue.Queue[str] = queue.Queue(maxsize=20)
-            with _STATE_LOCK:
-                _SUBSCRIBERS.append(q)
-            try:
-                self.wfile.write(b": connected\n\n")
-                self.wfile.flush()
-                while True:
-                    try:
-                        msg = q.get(timeout=20)
-                        self.wfile.write(msg.encode("utf-8"))
-                        self.wfile.flush()
-                    except queue.Empty:
-                        self.wfile.write(b": ping\n\n")
-                        self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-            finally:
-                with _STATE_LOCK:
-                    if q in _SUBSCRIBERS:
-                        _SUBSCRIBERS.remove(q)
-            return
-
-        self.send_error(HTTPStatus.NOT_FOUND)
+        path = urlparse(self.path).path
+        if not router.dispatch(self, "GET", path):
+            self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
+        path = urlparse(self.path).path
+        if not router.dispatch(self, "POST", path):
+            self.send_error(HTTPStatus.NOT_FOUND)
 
-        if path == "/api/tab-pressed":
-            self._send_json(schedule_tab_scan())
-            return
-
-        if path == "/api/scan":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                img_path = payload.get("image_path")
-                fetch_steam = payload.get("fetch_steam", True)
-                result = run_scan(
-                    image_path=Path(img_path) if img_path else None,
-                    fetch_steam=bool(fetch_steam),
-                )
-                self._send_json(result)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/rescan":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                img_name = scan_rec.get("image_name")
-                sdir = get_screenshot_dir().resolve()
-                img_path = (sdir / Path(img_name).name).resolve()
-                if not img_path.is_file():
-                    img_path = (SCREENSHOT_DIR.resolve() / Path(img_name).name).resolve()
-                if not img_path.is_file():
-                    self._send_json({"error": "Screenshot file not found"}, status=404)
-                    return
-
-                started = time.time()
-                console_status = parse_latest_status()
-                players = scan_scoreboard(str(img_path))
-                if console_status and console_status.nicks:
-                    for p in players:
-                        p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-
-                initial_reports = enrich_players(players, fetch_steam=False)
-                initial_dicts = []
-                for r in initial_reports:
-                    d = asdict(r)
-                    d["loading"] = bool(players)
-                    d["loading_stage"] = "steam" if players else "done"
-                    initial_dicts.append(d)
-                duration_ms = round((time.time() - started) * 1000)
-
-                with _STATE_LOCK:
-                    scan_rec["players"] = initial_dicts
-                    scan_rec["player_count"] = len(initial_dicts)
-                    scan_rec["duration_ms"] = duration_ms
-                    scan_rec["ai_error"] = None
-                    scan_rec["scan_status"] = "loading_steam" if players else "done"
-                    scan_rec["progress"] = {"done": 0, "total": len(initial_dicts)}
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-                    target_scan_id = scan_rec["id"]
-
-                _broadcast_event("scan", snapshot)
-                if players:
-                    threading.Thread(
-                        target=_enrich_scan_async,
-                        args=(target_scan_id, players, started),
-                        daemon=True,
-                    ).start()
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/setup-cs2":
-            try:
-                self._send_json(setup_autoexec())
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/recheck":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                old_nick = payload.get("old_nick")
-                query = (payload.get("query") or "").strip()
-                if not scan_id or not old_nick or not query:
-                    self._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
-                    return
-
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                    idx = next((i for i, p in enumerate(scan_rec["players"]) if p["nick"] == old_nick), None)
-                    if idx is None:
-                        self._send_json({"error": "Player not found in scan"}, status=404)
-                        return
-                    player_copy = dict(scan_rec["players"][idx])
-
-                updated_player = recheck_player_report(player_copy, query)
-                analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
-                updated_player = analyzed_list[0]
-
-                with _STATE_LOCK:
-                    scan_rec["players"][idx] = updated_player
-                    scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/ai-analyze":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                target_nick = (payload.get("nick") or "").strip()
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                    players_copy = [dict(p) for p in scan_rec.get("players", [])]
-
-                if target_nick:
-                    subset = [p for p in players_copy if p.get("nick") == target_nick]
-                    if not subset:
-                        self._send_json({"error": "Player not found in scan"}, status=404)
-                        return
-                    analyzed, ai_error = analyze_players_with_ai(subset, force=True)
-                    if ai_error:
-                        self._send_json({"error": ai_error}, status=500)
-                        return
-                    updated_map = {p["nick"]: p for p in analyzed}
-                    new_players = [updated_map.get(p["nick"], p) for p in players_copy]
-                else:
-                    new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
-                    if ai_error:
-                        self._send_json({"error": ai_error}, status=500)
-                        return
-
-                with _STATE_LOCK:
-                    scan_rec["players"] = new_players
-                    scan_rec["ai_error"] = None
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/config":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                if not isinstance(payload, dict):
-                    self._send_json({"error": "Invalid config payload"}, status=400)
-                    return
-                save_config(payload)
-                _apply_runtime_config()
-                reset_steam_api_key_cache()
-                reset_faceit_api_key_cache()
-                cs2_dir = find_cs2_game_dir()
-                resolved = {
-                    "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
-                    "console_log_path": str(get_console_log_path()),
-                    "screenshots_dir": str(get_screenshot_dir()),
-                    "claude_cli_available": bool(shutil.which("claude")),
-                }
-                self._send_json(
-                    get_public_config(
-                        resolved=resolved,
-                        env_key_present=bool(_get_steam_api_key()),
-                        env_faceit_key_present=bool(_get_faceit_api_key()),
-                    )
-                )
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/upload":
-            try:
-                raw = self._read_body()
-                if not raw:
-                    self._send_json({"error": "Empty upload"}, status=400)
-                    return
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                out_path = get_screenshot_dir() / f"upload_{ts}.png"
-                out_path.write_bytes(raw)
-                result = run_scan(image_path=out_path, fetch_steam=True)
-                self._send_json(result)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        self.send_error(HTTPStatus.NOT_FOUND)
 
 
 def main() -> None:
@@ -974,6 +856,7 @@ def main() -> None:
     parser.add_argument("--all-windows", action="store_true", help="Trigger TAB scan even when CS2 is not focused")
     args = parser.parse_args()
 
+    init()
     configure_tab_watcher(delay_sec=args.delay, cooldown_sec=args.cooldown, cs2_only=not args.all_windows)
     _load_history()
     httpd = ThreadingHTTPServer((args.host, args.port), CsWatchHandler)

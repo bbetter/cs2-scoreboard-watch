@@ -1,628 +1,11 @@
-const state = {
-  currentScan: null,
-  matches: [],
-  history: [],
-  sortKey: "cheat_probability",
-  sortDir: "descending",
-  searchQuery: "",
-  dateFilter: "",
-  matchFilter: "",
-  riskFilter: "all",
-  expandedNicks: new Set(),
-};
-
-const els = {
-  sseStatus: document.getElementById("sseStatus"),
-  sseLabel: document.getElementById("sseLabel"),
-  scanNowBtn: document.getElementById("scanNowBtn"),
-  rescanBtn: document.getElementById("rescanBtn"),
-  fileInput: document.getElementById("fileInput"),
-  dropZone: document.getElementById("dropZone"),
-  searchInput: document.getElementById("searchInput"),
-  dateFilter: document.getElementById("dateFilter"),
-  matchSelect: document.getElementById("matchSelect"),
-  riskFilter: document.getElementById("riskFilter"),
-  clearFiltersBtn: document.getElementById("clearFiltersBtn"),
-  setupCs2Btn: document.getElementById("setupCs2Btn"),
-  aiAnalyzeScanBtn: document.getElementById("aiAnalyzeScanBtn"),
-  toolsMenu: document.getElementById("toolsMenu"),
-  settingsBtn: document.getElementById("settingsBtn"),
-  helpBtn: document.getElementById("helpBtn"),
-  cs2SetupDialog: document.getElementById("cs2SetupDialog"),
-  settingsDialog: document.getElementById("settingsDialog"),
-  settingsForm: document.getElementById("settingsForm"),
-  closeSettingsXBtn: document.getElementById("closeSettingsXBtn"),
-  cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
-  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
-  settingsSaveMsg: document.getElementById("settingsSaveMsg"),
-  cfgTabDelay: document.getElementById("cfgTabDelay"),
-  cfgTabCooldown: document.getElementById("cfgTabCooldown"),
-  cfgCs2Only: document.getElementById("cfgCs2Only"),
-  cfgNotifyEnabled: document.getElementById("cfgNotifyEnabled"),
-  cfgCs2Dir: document.getElementById("cfgCs2Dir"),
-  cfgCs2DirHint: document.getElementById("cfgCs2DirHint"),
-  cfgConsoleLog: document.getElementById("cfgConsoleLog"),
-  cfgConsoleLogHint: document.getElementById("cfgConsoleLogHint"),
-  cfgScreenshotsDir: document.getElementById("cfgScreenshotsDir"),
-  cfgScreenshotsDirHint: document.getElementById("cfgScreenshotsDirHint"),
-  resetPathsBtn: document.getElementById("resetPathsBtn"),
-  cfgScreenshotTool: document.getElementById("cfgScreenshotTool"),
-  cfgSteamApiKey: document.getElementById("cfgSteamApiKey"),
-  cfgSteamKeyStatus: document.getElementById("cfgSteamKeyStatus"),
-  clearSteamKeyBtn: document.getElementById("clearSteamKeyBtn"),
-  cfgFaceitApiKey: document.getElementById("cfgFaceitApiKey"),
-  cfgFaceitKeyStatus: document.getElementById("cfgFaceitKeyStatus"),
-  clearFaceitKeyBtn: document.getElementById("clearFaceitKeyBtn"),
-  cfgAiEnabled: document.getElementById("cfgAiEnabled"),
-  cfgAiProvider: document.getElementById("cfgAiProvider"),
-  cfgAiModel: document.getElementById("cfgAiModel"),
-  cfgWeightScoreboard: document.getElementById("cfgWeightScoreboard"),
-  cfgWeightLeetify: document.getElementById("cfgWeightLeetify"),
-  cfgWeightSteam: document.getElementById("cfgWeightSteam"),
-  cfgAiPrompt: document.getElementById("cfgAiPrompt"),
-  cfgAnthropicApiKey: document.getElementById("cfgAnthropicApiKey"),
-  cfgAnthropicKeyStatus: document.getElementById("cfgAnthropicKeyStatus"),
-  clearAnthropicKeyBtn: document.getElementById("clearAnthropicKeyBtn"),
-  cfgClaudeCliStatus: document.getElementById("cfgClaudeCliStatus"),
-  helpDialog: document.getElementById("helpDialog"),
-  closeHelpBtn: document.getElementById("closeHelpBtn"),
-  closeHelpXBtn: document.getElementById("closeHelpXBtn"),
-  setupStatusText: document.getElementById("setupStatusText"),
-  launchOptionsCode: document.getElementById("launchOptionsCode"),
-  copyLaunchBtn: document.getElementById("copyLaunchBtn"),
-  closeSetupBtn: document.getElementById("closeSetupBtn"),
-  historySelect: document.getElementById("historySelect"),
-  statusMsg: document.getElementById("statusMsg"),
-  statPlayers: document.getElementById("statPlayers"),
-  statSuspects: document.getElementById("statSuspects"),
-  statTopSuspect: document.getElementById("statTopSuspect"),
-  statLastScan: document.getElementById("statLastScan"),
-  playersTable: document.getElementById("playersTable"),
-  playersBody: document.getElementById("playersBody"),
-  previewDetails: document.getElementById("previewDetails"),
-  screenshotPreview: document.getElementById("screenshotPreview"),
-  tabPanelTable: document.getElementById("tabPanelTable"),
-  tabPanelLogs: document.getElementById("tabPanelLogs"),
-  tabCountTable: document.getElementById("tabCountTable"),
-  tabCountLogs: document.getElementById("tabCountLogs"),
-  logsContainer: document.getElementById("logsContainer"),
-};
-
-const RISK_LABELS = {
-  low: "Низький",
-  medium: "Середній",
-  high: "Високий",
-  critical: "Критичний",
-};
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function setStatus(text, isError = false) {
-  els.statusMsg.textContent = text;
-  els.statusMsg.style.color = isError ? "var(--critical)" : "var(--accent)";
-}
-
-function formatDuration(sec) {
-  if (!sec || sec < 60) return `${sec || 0} с`;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return s ? `${m} хв ${s} с` : `${m} хв`;
-}
-
-function applyPlayerFilters(players) {
-  const q = state.searchQuery.trim().toLowerCase();
-  return players.filter((p) => {
-    const steam = p.steam || {};
-    if (state.riskFilter === "suspicious" && p.cheat_probability < 55) return false;
-    if (state.riskFilter === "smurf" && (p.smurf_probability || 0) < 55) return false;
-    if (state.riskFilter === "critical" && p.cheat_probability < 75) return false;
-    if (state.riskFilter === "banned") {
-      const hasBans = steam.vac_banned || (steam.leetify?.bans?.length > 0);
-      if (!hasBans) return false;
-    }
-    if (q) {
-      const hay = [
-        p.nick,
-        steam.profile_name,
-        steam.steamid64,
-        ...(p.reasons || []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-function sortPlayers(players) {
-  const { sortKey, sortDir } = state;
-  const mult = sortDir === "ascending" ? 1 : -1;
-  return [...players].sort((a, b) => {
-    const va = a[sortKey];
-    const vb = b[sortKey];
-    if (typeof va === "number" && typeof vb === "number") {
-      return (va - vb) * mult;
-    }
-    return String(va ?? "").localeCompare(String(vb ?? ""), "uk") * mult;
-  });
-}
-
-function renderScan(scan) {
-  state.currentScan = scan;
-  if (els.rescanBtn) {
-    els.rescanBtn.disabled = !scan;
-  }
-  if (!scan) {
-    return;
-  }
-
-  const players = scan.players || [];
-  const suspects = players.filter((p) => p.cheat_probability >= 55);
-  const top = [...players].sort((a, b) => b.cheat_probability - a.cheat_probability)[0];
-
-  els.statPlayers.textContent = String(players.length);
-  els.statSuspects.textContent = String(suspects.length);
-  els.statTopSuspect.textContent = top ? `${top.nick} (${top.cheat_probability}%)` : "—";
-  els.statLastScan.textContent = `${scan.created_at.replace("T", " ")} (${scan.duration_ms} мс)`;
-
-  if (scan.image_url) {
-    els.previewDetails.hidden = false;
-    if (els.screenshotPreview.dataset.scanImage !== scan.image_url) {
-      els.screenshotPreview.dataset.scanImage = scan.image_url;
-      els.screenshotPreview.src = `${scan.image_url}?t=${Date.now()}`;
-    }
-  } else {
-    els.previewDetails.hidden = true;
-    els.screenshotPreview.dataset.scanImage = "";
-  }
-
-  if (!players.length) {
-    if (els.tabCountTable) els.tabCountTable.textContent = "0";
-    if (els.tabCountLogs) els.tabCountLogs.textContent = "0";
-    els.playersBody.innerHTML = `
-      <tr class="empty-row">
-        <td colspan="8">Гравців не знайдено на скріншоті. Переконайтеся, що відкрита таблиця TAB.</td>
-      </tr>`;
-    renderLogs(scan);
-    return;
-  }
-
-  renderLogs(scan);
-
-  const sorted = sortPlayers(applyPlayerFilters(players));
-  if (els.tabCountTable) {
-    els.tabCountTable.textContent =
-      sorted.length === players.length ? String(players.length) : `${sorted.length}/${players.length}`;
-  }
-  if (els.tabCountLogs) {
-    els.tabCountLogs.textContent = String(players.length);
-  }
-  if (!sorted.length) {
-    els.playersBody.innerHTML = `
-      <tr class="empty-row">
-        <td colspan="8">За поточними фільтрами гравців не знайдено.</td>
-      </tr>`;
-    return;
-  }
-  els.playersBody.innerHTML = sorted
-    .map((p) => {
-      const steam = p.steam || {};
-      const avSrc = steam.avatar_url || steam.screenshot_avatar;
-      const avatarHtml = avSrc
-        ? `<img class="avatar" src="${escapeHtml(avSrc)}" alt="" loading="lazy" />`
-        : `<div class="avatar avatar-placeholder" aria-hidden="true">${escapeHtml(p.nick.slice(0, 1).toUpperCase())}</div>`;
-
-      const isLoading = Boolean(p.loading);
-      const profileName = isLoading
-        ? '<span class="loading-inline"><span class="spinner-dot" aria-hidden="true"></span><span>Завантаження Steam / Leetify...</span></span>'
-        : steam.profile_name
-          ? `Steam: ${escapeHtml(steam.profile_name)}`
-          : "Steam профіль не знайдено автоматично";
-
-      const tags = [];
-      if (steam.in_cs2) tags.push('<span class="tag tag-cs2">In CS2</span>');
-      else if (steam.online_state === "online") tags.push('<span class="tag tag-online">Online</span>');
-      if (steam.vac_banned) tags.push('<span class="tag tag-vac">VAC BAN</span>');
-      if (steam.is_limited) tags.push('<span class="tag tag-limited">Limited</span>');
-      if (steam.account_age_years != null) tags.push(`<span class="tag tag-meta">${steam.account_age_years}y</span>`);
-      if (steam.cs2_hours != null) tags.push(`<span class="tag tag-meta">${Math.round(steam.cs2_hours)}h</span>`);
-      if (steam.privacy_state && steam.privacy_state !== "public") {
-        tags.push(`<span class="tag tag-private">${escapeHtml(steam.privacy_state)}</span>`);
-      }
-      const extra = steam.extra_stats || {};
-      const ct = extra.cstracker || {};
-      if (ct.vaclive > 0) tags.push(`<span class="tag tag-vac">VACLive ${ct.vaclive}</span>`);
-      if (ct.trust != null) tags.push(`<span class="tag tag-meta">Trust ${Math.round(ct.trust)}%</span>`);
-      if (extra.has_veteran_coin) tags.push('<span class="tag tag-meta">Veteran</span>');
-
-      const lf = steam.leetify;
-      let leetifyLine = "";
-      if (lf) {
-        const parts = [];
-        if (lf.premier) parts.push(`Premier ${lf.premier}`);
-        if (lf.faceit) parts.push(`FACEIT ${lf.faceit}`);
-        if (lf.winrate != null) parts.push(`WR ${lf.winrate}%`);
-        if (lf.aim != null) parts.push(`Aim ${lf.aim}`);
-        if (lf.reaction_time_ms != null) parts.push(`RT ${lf.reaction_time_ms}ms`);
-        if (parts.length) {
-          leetifyLine = `<span class="steam-sub">${escapeHtml(parts.join(" · "))}</span>`;
-        }
-      }
-
-      const fc = steam.faceit;
-      let faceitLine = "";
-      if (fc?.found || fc?.skill_level != null) {
-        const lvlText = fc.skill_level != null ? `FACEIT Lvl ${fc.skill_level}` : "FACEIT";
-        const eloText = fc.faceit_elo != null ? ` (${fc.faceit_elo} ELO)` : "";
-        faceitLine = `<span class="steam-sub">${escapeHtml(lvlText + eloText)}</span>`;
-      }
-
-      const cheatProb = Math.round(p.cheat_probability ?? 0);
-      const smurfProb = Math.round(p.smurf_probability ?? 0);
-      const cheatRiskLevel = p.risk_level || "low";
-      const smurfRiskLevel = p.smurf_risk_level || "low";
-      const riskLabel = RISK_LABELS[cheatRiskLevel] || cheatRiskLevel;
-      const smurfRiskLabel = RISK_LABELS[smurfRiskLevel] || smurfRiskLevel;
-      const uncertaintyNote = p.uncertainty != null
-        ? `<div class="uncertainty-note">Невизначеність даних: ${Math.round(p.uncertainty)}%</div>`
-        : "";
-      const reasons = (p.reasons || []).slice(0, 3).map(escapeHtml).join(" · ");
-      const ripUrl = steam.rip_url || `https://steamcommunity.rip/id/${encodeURIComponent(p.nick)}/`;
-      const steamLink = steam.profile_url
-        ? `<a class="link-btn" href="${escapeHtml(steam.profile_url)}" target="_blank" rel="noopener noreferrer">Steam</a>`
-        : "";
-      const leetifyLink = lf?.url
-        ? `<a class="link-btn" href="${escapeHtml(lf.url)}" target="_blank" rel="noopener noreferrer">Leetify</a>`
-        : "";
-      const faceitLink = fc?.faceit_url
-        ? `<a class="link-btn link-btn-faceit" href="${escapeHtml(fc.faceit_url)}" target="_blank" rel="noopener noreferrer">FACEIT</a>`
-        : "";
-
-      const ai = p.ai_analysis || null;
-      const aiClass = ai ? `ai-${String(ai.decision || "uncertain").toLowerCase()}` : "";
-      const aiBadge = ai
-        ? `<div><span class="ai-decision-badge ${escapeHtml(aiClass)}">AI-DECISION: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)</span></div>`
-        : p.loading_stage === "ai"
-          ? `<div><span class="ai-loading-pill"><span class="spinner-dot" aria-hidden="true"></span>AI аналізує...</span></div>`
-          : "";
-      const isExpanded = state.expandedNicks.has(p.nick);
-
-      const mainRow = `
-        <tr class="player-row ${isExpanded ? "expanded" : ""}" data-nick="${escapeHtml(p.nick)}">
-          <td data-label="Гравець">
-            <div class="player-cell">
-              <span class="expand-caret" aria-hidden="true">▸</span>
-              ${avatarHtml}
-              <div class="player-names">
-                <div class="nick-row">
-                  <span class="nick-main">${escapeHtml(p.nick)}</span>
-                  <button type="button" class="edit-nick-btn" data-nick="${escapeHtml(p.nick)}" title="Виправити нік або вставити Steam URL / SteamID64">✎</button>
-                </div>
-                <span class="steam-sub">${profileName}</span>
-                ${isLoading ? '<div class="skeleton-line" aria-hidden="true"></div>' : leetifyLine}
-                ${!isLoading && faceitLine ? faceitLine : ""}
-                ${!isLoading && tags.length ? `<div class="badge-row">${tags.join("")}</div>` : ""}
-              </div>
-            </div>
-          </td>
-          <td data-label="K">${p.kills}</td>
-          <td data-label="D">${p.deaths}</td>
-          <td data-label="K/D">${Number(p.kd).toFixed(2)}</td>
-          <td data-label="HS%">${Number(p.hs).toFixed(0)}%</td>
-          <td data-label="Lvl">${p.level >= 0 ? p.level : "?"}</td>
-          <td data-label="Результати аналізу" class="prob-cell">
-            <div class="dual-prob-list">
-              <div class="dual-prob-item">
-                <div class="prob-top">
-                  <span class="dual-prob-label">Ймовірний чітер</span>
-                  <span class="prob-num">${cheatProb}%</span>
-                  <span class="risk-pill risk-${escapeHtml(cheatRiskLevel)}">${escapeHtml(riskLabel)}</span>
-                </div>
-                <div class="prob-bar" aria-hidden="true">
-                  <div class="prob-fill fill-${escapeHtml(cheatRiskLevel)}" style="width: ${Math.min(100, Math.max(0, cheatProb))}%"></div>
-                </div>
-              </div>
-              <div class="dual-prob-item">
-                <div class="prob-top">
-                  <span class="dual-prob-label">Ймовірний смурф</span>
-                  <span class="prob-num">${smurfProb}%</span>
-                  <span class="risk-pill risk-${escapeHtml(smurfRiskLevel)}">${escapeHtml(smurfRiskLabel)}</span>
-                </div>
-                <div class="prob-bar" aria-hidden="true">
-                  <div class="prob-fill fill-smurf" style="width: ${Math.min(100, Math.max(0, smurfProb))}%"></div>
-                </div>
-              </div>
-            </div>
-            ${uncertaintyNote}
-            <div class="reasons-text">${reasons}</div>
-            ${aiBadge}
-          </td>
-          <td data-label="Посилання">
-            <div class="links-cell">
-              ${leetifyLink}
-              ${faceitLink}
-              <a class="link-btn link-btn-rip" href="${escapeHtml(ripUrl)}" target="_blank" rel="noopener noreferrer">rip</a>
-              ${steamLink}
-            </div>
-          </td>
-        </tr>`;
-
-      if (!isExpanded) return mainRow;
-      return mainRow + renderPlayerDetailsRow(p);
-    })
-    .join("");
-}
-
-function renderPlayerDetailsRow(p) {
-  const steam = p.steam || {};
-  const lf = steam.leetify || {};
-  const fc = steam.faceit || {};
-  const cs2 = steam.cs2_stats || {};
-  const ew = p.effective_weights || {};
-  const ai = p.ai_analysis || null;
-  const allReasons = (p.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
-
-  const weightsText =
-    ew.scoreboard != null || ew.leetify != null || ew.steam_account != null
-      ? `Рахунок: ${Math.round((ew.scoreboard ?? 0) * 100)}%, Leetify/FACEIT: ${Math.round((ew.leetify ?? 0) * 100)}%, Steam: ${Math.round((ew.steam_account ?? 0) * 100)}%`
-      : "—";
-
-  const faceitStatsHtml =
-    fc.found || fc.skill_level != null
-      ? `
-        <div class="detail-kv"><span>FACEIT Lvl / ELO</span><strong>${fc.skill_level != null ? `Lvl ${escapeHtml(fc.skill_level)}` : "—"} / ${fc.faceit_elo != null ? `${escapeHtml(fc.faceit_elo)} ELO` : "—"}</strong></div>
-        <div class="detail-kv"><span>FACEIT K/D / WR / Матчі</span><strong>${fc.kd != null ? Number(fc.kd).toFixed(2) : "—"} / ${fc.winrate != null ? `${Number(fc.winrate).toFixed(1)}%` : "—"} / ${fc.matches != null ? fc.matches : "—"}</strong></div>`
-      : "";
-
-  const cs2StatsHtml =
-    cs2.kd != null || cs2.hs_pct != null || cs2.total_kills != null || cs2.total_matches_played != null
-      ? `
-        <div class="detail-kv"><span>Steam CS2 K/D / HS%</span><strong>${cs2.kd != null ? Number(cs2.kd).toFixed(2) : "—"} / ${cs2.hs_pct != null ? `${Number(cs2.hs_pct).toFixed(1)}%` : "—"}</strong></div>
-        <div class="detail-kv"><span>Steam CS2 Kills / Матчі</span><strong>${cs2.total_kills != null ? cs2.total_kills : "—"} / ${cs2.total_matches_played != null ? cs2.total_matches_played : "—"}</strong></div>`
-      : "";
-
-  const extra = steam.extra_stats || {};
-  const ct = extra.cstracker || {};
-  const sg = extra.scope_gg || {};
-
-  const extraStatsHtml = [
-    ct.trust != null || ct.hltv != null || ct.vaclive != null
-      ? `<div class="detail-kv"><span>CSTracker Trust / HLTV / VACLive</span><strong>${ct.trust != null ? `${Number(ct.trust).toFixed(0)}%` : "—"} / ${ct.hltv != null ? Number(ct.hltv).toFixed(2) : "—"} / ${ct.vaclive ?? "—"}</strong></div>`
-      : "",
-    sg.hltv_2_1 != null || sg.adr != null || sg.role
-      ? `<div class="detail-kv"><span>Scope.gg (${escapeHtml(sg.role || "—")}) HLTV / ADR</span><strong>${sg.hltv_2_1 != null ? Number(sg.hltv_2_1).toFixed(2) : "—"} / ${sg.adr != null ? Number(sg.adr).toFixed(1) : "—"}</strong></div>`
-      : "",
-    extra.medals_count != null || extra.xp_level != null
-      ? `<div class="detail-kv"><span>Медалі / XP Lvl</span><strong>${extra.medals_count ?? "—"} ${extra.has_veteran_coin ? "(Veteran)" : ""} / ${extra.xp_level ?? "—"}</strong></div>`
-      : "",
-  ].join("");
-
-  const aiProbsNote =
-    ai && (ai.cheat_probability != null || ai.smurf_probability != null)
-      ? `<div class="ai-meta-note">Чітер: ${escapeHtml(ai.cheat_probability ?? "—")}% · Смурф: ${escapeHtml(ai.smurf_probability ?? "—")}%</div>`
-      : "";
-
-  const aiCardBody = ai
-    ? `
-      <div class="detail-card-head">
-        <h4>AI-аналіз</h4>
-        <span class="ai-decision-badge ai-${escapeHtml(String(ai.decision || "uncertain").toLowerCase())}">
-          AI-DECISION: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)
-        </span>
-      </div>
-      <div class="ai-meta-note">Провайдер: ${escapeHtml(ai.provider || "claude_cli")} · Модель: ${escapeHtml(ai.model || "sonnet")} · ${escapeHtml((ai.analyzed_at || "").replace("T", " "))}</div>
-      ${aiProbsNote}
-      <div>
-        <div class="ai-meta-note" style="margin-bottom:4px;">Chain of Thought:</div>
-        <div class="ai-cot-block">${escapeHtml(ai.chain_of_thought || "—")}</div>
-      </div>
-      <div>
-        <div class="ai-meta-note" style="margin-bottom:4px;">Висновок:</div>
-        <div class="ai-summary-block">${escapeHtml(ai.summary || "—")}</div>
-      </div>
-      <div>
-        <button type="button" class="btn btn-secondary btn-sm run-ai-player-btn" data-nick="${escapeHtml(p.nick)}">Перезапустити AI-аналіз</button>
-      </div>`
-    : `
-      <div class="detail-card-head">
-        <h4>AI-аналіз</h4>
-      </div>
-      <p class="ai-meta-note">AI-аналіз ще не виконувався для цього гравця (можна увімкнути автозапуск у Налаштуваннях або запустити вручну).</p>
-      <div>
-        <button type="button" class="btn btn-primary btn-sm run-ai-player-btn" data-nick="${escapeHtml(p.nick)}">Запустити AI-аналіз (Claude)</button>
-      </div>`;
-
-  return `
-    <tr class="player-details-row">
-      <td colspan="8">
-        <div class="player-details-box">
-          <div class="player-details-grid">
-            <div class="detail-card">
-              <div class="detail-card-head">
-                <h4>Детальний аналіз (Steam + Leetify + Рахунок)</h4>
-              </div>
-              <div class="detail-kv-list">
-                <div class="detail-kv"><span>Невизначеність</span><strong>${Math.round(p.uncertainty ?? 50)}%</strong></div>
-                <div class="detail-kv"><span>Ефективні ваги</span><strong>${escapeHtml(weightsText)}</strong></div>
-                <div class="detail-kv"><span>SteamID64</span><strong>${escapeHtml(steam.steamid64 || "Не знайдено")}</strong></div>
-                <div class="detail-kv"><span>Метод пошуку</span><strong>${escapeHtml(steam.lookup_method || "—")}</strong></div>
-                <div class="detail-kv"><span>Вік акаунта</span><strong>${steam.account_age_years != null ? `${steam.account_age_years} р.` : "—"}</strong></div>
-                <div class="detail-kv"><span>Годин у CS2</span><strong>${steam.cs2_hours != null ? `${steam.cs2_hours} год` : "—"}</strong></div>
-                <div class="detail-kv"><span>Рівень Steam</span><strong>${steam.steam_level != null ? steam.steam_level : "—"}</strong></div>
-                <div class="detail-kv"><span>VAC / Game бани</span><strong>${steam.number_of_vac_bans || 0} VAC / ${steam.game_bans || 0} Game</strong></div>
-                <div class="detail-kv"><span>Leetify Aim / RT</span><strong>${lf.aim != null ? Number(lf.aim).toFixed(1) : "—"} / ${lf.reaction_time_ms != null ? `${lf.reaction_time_ms}ms` : "—"}</strong></div>
-                <div class="detail-kv"><span>Leetify Winrate</span><strong>${lf.winrate != null ? `${(lf.winrate <= 1 ? lf.winrate * 100 : lf.winrate).toFixed(0)}%` : "—"}</strong></div>
-                <div class="detail-kv"><span>Premier / Faceit</span><strong>${lf.premier ?? lf.premier_rank ?? "—"} / ${(lf.faceit ?? lf.faceit_level) ? `Lvl ${lf.faceit ?? lf.faceit_level}` : "—"}</strong></div>
-                ${faceitStatsHtml}
-                ${cs2StatsHtml}
-                ${extraStatsHtml}
-              </div>
-              ${allReasons ? `<ul class="detail-reasons">${allReasons}</ul>` : ""}
-            </div>
-            <div class="detail-card">
-              ${aiCardBody}
-            </div>
-          </div>
-        </div>
-      </td>
-    </tr>`;
-}
-
-function updateMatchAndHistorySelects() {
-  const filteredMatches = state.matches.filter(
-    (m) => !state.dateFilter || m.date === state.dateFilter
-  );
-
-  if (!filteredMatches.length) {
-    els.matchSelect.innerHTML = '<option value="">Немає матчів</option>';
-    els.matchSelect.disabled = true;
-  } else {
-    els.matchSelect.disabled = false;
-    els.matchSelect.innerHTML =
-      '<option value="">Усі матчі</option>' +
-      filteredMatches
-        .map((m) => {
-          const mapPart = m.map_name ? `${m.map_name} · ` : "";
-          const durPart = formatDuration(m.duration_sec);
-          const label = `${m.date} · ${mapPart}${m.match_id.slice(0, 18)} (${durPart}, ${m.scan_count} скр., макс ${m.max_risk}%)`;
-          return `<option value="${escapeHtml(m.match_id)}" ${
-            m.match_id === state.matchFilter ? "selected" : ""
-          }>${escapeHtml(label)}</option>`;
-        })
-        .join("");
-  }
-
-  const filteredScans = state.history.filter((item) => {
-    if (state.dateFilter && item.date !== state.dateFilter) return false;
-    if (state.matchFilter && item.match_id !== state.matchFilter) return false;
-    return true;
-  });
-
-  if (!filteredScans.length) {
-    els.historySelect.innerHTML = '<option value="">Немає сканів</option>';
-    els.historySelect.disabled = true;
-    return;
-  }
-  const activeId = state.currentScan?.id || "";
-  els.historySelect.disabled = false;
-  els.historySelect.innerHTML = filteredScans
-    .map(
-      (item) =>
-        `<option value="${escapeHtml(item.id)}" ${item.id === activeId ? "selected" : ""}>${escapeHtml(
-          item.created_at.replace("T", " ")
-        )} — ${item.player_count} гравців</option>`
-    )
-    .join("");
-}
-
-async function fetchLatest() {
-  try {
-    const res = await fetch("/api/latest");
-    const data = await res.json();
-    state.matches = data.matches || [];
-    state.history = data.history || [];
-    if (data.latest && !state.currentScan) {
-      renderScan(data.latest);
-    } else if (data.latest && state.currentScan?.id === data.latest.id) {
-      renderScan(data.latest);
-    }
-    updateMatchAndHistorySelects();
-  } catch (err) {
-    setStatus(`Помилка завантаження: ${err.message}`, true);
-  }
-}
-
-async function triggerScan() {
-  els.scanNowBtn.disabled = true;
-  setStatus("Роблю скріншот і сканую таблицю...");
-  try {
-    const res = await fetch("/api/scan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Scan failed");
-    }
-    renderScan(data);
-    await fetchLatest();
-    setStatus(`Готово: знайдено ${data.player_count} гравців за ${data.duration_ms} мс.`);
-  } catch (err) {
-    setStatus(`Помилка скану: ${err.message}`, true);
-  } finally {
-    els.scanNowBtn.disabled = false;
-  }
-}
-
-async function uploadFile(file) {
-  if (!file) return;
-  setStatus(`Сканую ${file.name}...`);
-  try {
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Upload failed");
-    }
-    renderScan(data);
-    await fetchLatest();
-    setStatus(`Файл проскановано: ${data.player_count} гравців.`);
-  } catch (err) {
-    setStatus(`Помилка завантаження файлу: ${err.message}`, true);
-  }
-}
-
-function connectSSE() {
-  const ev = new EventSource("/api/events");
-  ev.onopen = () => {
-    els.sseStatus.dataset.state = "connected";
-    els.sseLabel.textContent = "Live (очікування шорткату)";
-  };
-  ev.onerror = () => {
-    els.sseStatus.dataset.state = "error";
-    els.sseLabel.textContent = "Перепідключення...";
-  };
-  ev.addEventListener("scan", (event) => {
-    const scan = JSON.parse(event.data);
-    renderScan(scan);
-    if (scan.scan_status === "loading_steam") {
-      const total = scan.progress?.total ?? scan.player_count ?? 0;
-      setStatus(`OCR готово (${total} гравців). Тягну профілі Steam / Leetify...`);
-    } else if (scan.scan_status === "loading_ai") {
-      setStatus("Профілі завантажено. Запускаю AI-аналіз (Claude)...");
-    } else {
-      fetchLatest();
-      setStatus(`Скан завершено: ${scan.player_count} гравців (${scan.duration_ms} мс).`);
-    }
-  });
-  ev.addEventListener("scan_update", (event) => {
-    const payload = JSON.parse(event.data);
-    if (!state.currentScan || state.currentScan.id !== payload.scan_id) return;
-    const players = state.currentScan.players || [];
-    const idx = players.findIndex((p) => p.nick === payload.player?.nick);
-    if (idx !== -1) {
-      players[idx] = payload.player;
-    }
-    state.currentScan.progress = payload.progress;
-    state.currentScan.scan_status = payload.scan_status;
-    renderScan(state.currentScan);
-    if (payload.progress) {
-      setStatus(`Завантаження профілів: ${payload.progress.done} / ${payload.progress.total}...`);
-    }
-  });
-}
+import { connectSSE, fetchLatest, retrySource, triggerScan, uploadFile } from "/api.js";
+import { showMainTab } from "/attention.js";
+import { loadLobbyPrefs, saveLobbyPrefs } from "/lobby.js";
+import { renderPlayerDetailsRow, selectPlayerTab } from "/player-details.js";
+import { focusedPlayerRow, moveRowFocus, openAvatarCompare, openNickEditor, renderScan, updateMatchAndHistorySelects } from "/scan-table.js";
+import { populateSettingsDialog } from "/settings.js";
+import { SHORTCUT_HINT, els, state } from "/state.js";
+import { escapeHtml, playerKey, setStatus } from "/util.js";
 
 // Sortable table headers
 els.playersTable.querySelectorAll("thead th[data-key] > button").forEach((btn) => {
@@ -722,10 +105,37 @@ els.dropZone.addEventListener("drop", (e) => {
   if (file) uploadFile(file);
 });
 
+els.playersBody.addEventListener("keydown", (e) => {
+  const tab = e.target.closest?.('[role="tab"]');
+  if (!tab) return;
+  const tabs = [...tab.parentElement.querySelectorAll('[role="tab"]')];
+  const idx = tabs.indexOf(tab);
+  let next = null;
+  if (e.key === "ArrowRight") next = (idx + 1) % tabs.length;
+  else if (e.key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+  else if (e.key === "Home") next = 0;
+  else if (e.key === "End") next = tabs.length - 1;
+  if (next == null) return;
+  e.preventDefault();
+  selectPlayerTab(tabs[next], true);
+});
+
 els.playersBody.addEventListener("click", async (e) => {
+  const flag = e.target.closest(".attention-flag");
+  if (flag) {
+    showMainTab("logs");
+    document.querySelector(`.triage-card[data-nick="${CSS.escape(flag.dataset.nick)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+  const tabBtn = e.target.closest(".player-tab");
+  if (tabBtn) {
+    selectPlayerTab(tabBtn);
+    return;
+  }
   const aiBtn = e.target.closest(".run-ai-player-btn");
   if (aiBtn && state.currentScan) {
     const nick = aiBtn.dataset.nick;
+    const uid = aiBtn.dataset.playerUid;
     aiBtn.disabled = true;
     aiBtn.textContent = "Аналізую...";
     setStatus(`Запускаю AI-аналіз для ${nick}...`);
@@ -733,7 +143,7 @@ els.playersBody.addEventListener("click", async (e) => {
       const res = await fetch("/api/ai-analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scan_id: state.currentScan.id, nick }),
+        body: JSON.stringify({ scan_id: state.currentScan.id, nick, ...(uid ? { player_uid: uid } : {}) }),
       });
       const updated = await res.json();
       if (!res.ok) throw new Error(updated.error || "AI analysis failed");
@@ -747,23 +157,29 @@ els.playersBody.addEventListener("click", async (e) => {
     return;
   }
 
+  const retryBtn = e.target.closest(".source-retry-btn, .source-recheck");
+  if (retryBtn && state.currentScan) {
+    retrySource(retryBtn);
+    return;
+  }
+
   const btn = e.target.closest(".edit-nick-btn");
   if (!btn) {
     if (!e.target.closest("a, button, input, form")) {
       const row = e.target.closest("tr.player-row");
       if (row && row.dataset.nick && state.currentScan) {
-        const nick = row.dataset.nick;
+        const key = row.dataset.playerUid || row.dataset.nick;
         const nextRow = row.nextElementSibling;
         const hasDetailsRow = nextRow && nextRow.classList.contains("player-details-row");
-        if (state.expandedNicks.has(nick)) {
-          state.expandedNicks.delete(nick);
+        if (state.expandedNicks.has(key)) {
+          state.expandedNicks.delete(key);
           row.classList.remove("expanded");
           if (hasDetailsRow) nextRow.remove();
         } else {
-          state.expandedNicks.add(nick);
+          state.expandedNicks.add(key);
           row.classList.add("expanded");
           if (!hasDetailsRow) {
-            const player = (state.currentScan.players || []).find((p) => p.nick === nick);
+            const player = (state.currentScan.players || []).find((p) => playerKey(p) === key);
             if (player) {
               row.insertAdjacentHTML("afterend", renderPlayerDetailsRow(player));
             }
@@ -781,6 +197,7 @@ els.playersBody.addEventListener("click", async (e) => {
     return;
   }
   const oldNick = btn.dataset.nick;
+  const playerUid = btn.dataset.playerUid;
   const form = document.createElement("form");
   form.className = "recheck-form";
   form.innerHTML = `
@@ -806,6 +223,7 @@ els.playersBody.addEventListener("click", async (e) => {
         body: JSON.stringify({
           scan_id: state.currentScan.id,
           old_nick: oldNick,
+          ...(playerUid ? { player_uid: playerUid } : {}),
           query,
         }),
       });
@@ -820,74 +238,21 @@ els.playersBody.addEventListener("click", async (e) => {
   });
 });
 
-function renderLogs(scan) {
-  const players = scan?.players || [];
-  if (!players.length) {
-    els.logsContainer.innerHTML = '<p class="logs-empty">Немає даних сканування.</p>';
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => showMainTab(btn.dataset.tab));
+});
+
+document.getElementById("closeCompareBtn").addEventListener("click", () => document.getElementById("avatarCompareDialog").close());
+document.getElementById("closeCompareXBtn").addEventListener("click", () => document.getElementById("avatarCompareDialog").close());
+
+els.logsContainer.addEventListener("click", (e) => {
+  const cmp = e.target.closest(".compare-cand-btn");
+  if (cmp) {
+    openAvatarCompare(cmp.dataset.nick, cmp.dataset.steamid64);
     return;
   }
-
-  els.logsContainer.innerHTML = players
-    .map((p) => {
-      const steam = p.steam || {};
-      const logs = (steam.search_log || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-      const cands = steam.candidates || [];
-      const candHtml = cands.length
-        ? `<div class="cand-list">${cands
-            .map((c) => {
-              const st = c.in_cs2 ? "In CS2" : c.online_state || "offline";
-              const avPct = Math.round((c.avatar_match || 0) * 100);
-              const hrs = c.cs2_hours != null ? ` · ${Math.round(c.cs2_hours)}h` : "";
-              const isSelected = steam.steamid64 && c.steamid64 === steam.steamid64;
-              const imgHtml = c.avatar_url
-                ? `<img src="${escapeHtml(c.avatar_url)}" alt="" loading="lazy" />`
-                : "";
-              return `
-                <div class="cand-row">
-                  <div class="cand-left">
-                    ${imgHtml}
-                    <div>
-                      <div><a href="${escapeHtml(c.profile_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-                c.profile_name || "?"
-              )}</a></div>
-                      <div class="cand-meta">${escapeHtml(st)} · av ${avPct}%${hrs} · score ${c.score}</div>
-                    </div>
-                  </div>
-                  <button type="button" class="btn btn-secondary recheck-submit pick-cand-btn"
-                    data-old-nick="${escapeHtml(p.nick)}"
-                    data-url="${escapeHtml(c.profile_url)}"
-                    ${isSelected ? "disabled" : ""}>
-                    ${isSelected ? "Обрано" : "Вибрати"}
-                  </button>
-                </div>`;
-            })
-            .join("")}</div>`
-        : '<div class="cand-meta">Кандидатів не знайдено</div>';
-
-      return `
-        <article class="log-card">
-          <div class="log-card-head">
-            <strong>${escapeHtml(p.nick)}</strong>
-            <span class="cand-meta">${escapeHtml(steam.profile_name || "Не знайдено")}</span>
-          </div>
-          ${logs ? `<ul class="log-steps">${logs}</ul>` : ""}
-          ${candHtml}
-        </article>`;
-    })
-    .join("");
-}
-
-document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.tab;
-    document.querySelectorAll(".tab-btn").forEach((b) => {
-      const active = b.dataset.tab === target;
-      b.classList.toggle("active", active);
-      b.setAttribute("aria-selected", String(active));
-    });
-    els.tabPanelTable.hidden = target !== "table";
-    els.tabPanelLogs.hidden = target !== "logs";
-  });
+  const ed = e.target.closest(".open-nick-editor-btn");
+  if (ed) openNickEditor(ed.dataset.nick);
 });
 
 els.logsContainer.addEventListener("click", async (e) => {
@@ -895,13 +260,14 @@ els.logsContainer.addEventListener("click", async (e) => {
   if (!btn || !state.currentScan) return;
   btn.disabled = true;
   const oldNick = btn.dataset.oldNick;
+  const playerUid = btn.dataset.playerUid;
   const url = btn.dataset.url;
   setStatus(`Оновлюю профіль для "${oldNick}"...`);
   try {
     const res = await fetch("/api/recheck", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scan_id: state.currentScan.id, old_nick: oldNick, query: url }),
+      body: JSON.stringify({ scan_id: state.currentScan.id, old_nick: oldNick, ...(playerUid ? { player_uid: playerUid } : {}), query: url }),
     });
     const updated = await res.json();
     if (!res.ok) throw new Error(updated.error || "Recheck failed");
@@ -920,6 +286,19 @@ els.searchInput.addEventListener("input", (e) => {
 
 els.riskFilter.addEventListener("change", (e) => {
   state.riskFilter = e.target.value;
+  saveLobbyPrefs();
+  if (state.currentScan) renderScan(state.currentScan);
+});
+
+els.onlyWithDataFilter.addEventListener("change", (e) => {
+  state.onlyWithData = e.target.checked;
+  saveLobbyPrefs();
+  if (state.currentScan) renderScan(state.currentScan);
+});
+
+els.onlyHighRiskFilter.addEventListener("change", (e) => {
+  state.onlyHighRisk = e.target.checked;
+  saveLobbyPrefs();
   if (state.currentScan) renderScan(state.currentScan);
 });
 
@@ -948,10 +327,15 @@ els.clearFiltersBtn.addEventListener("click", async () => {
   state.searchQuery = "";
   state.dateFilter = "";
   state.matchFilter = "";
-  state.riskFilter = "all";
+  state.riskFilter = "high-critical";
+  state.onlyWithData = false;
+  state.onlyHighRisk = false;
   els.searchInput.value = "";
   els.dateFilter.value = "";
-  els.riskFilter.value = "all";
+  els.riskFilter.value = "high-critical";
+  els.onlyWithDataFilter.checked = false;
+  els.onlyHighRiskFilter.checked = false;
+  saveLobbyPrefs();
   updateMatchAndHistorySelects();
   if (state.history.length) {
     const res = await fetch(`/api/scan/${encodeURIComponent(state.history[0].id)}`);
@@ -986,82 +370,10 @@ els.copyLaunchBtn.addEventListener("click", async () => {
   els.copyLaunchBtn.textContent = "Скопійовано!";
 });
 
+document.getElementById("closeSetupXBtn")?.addEventListener("click", () => els.cs2SetupDialog.close());
 els.closeSetupBtn.addEventListener("click", () => {
   els.cs2SetupDialog.close();
 });
-
-let pendingClearSteamKey = false;
-let pendingClearFaceitKey = false;
-let pendingClearAnthropicKey = false;
-
-function populateSettingsDialog(data) {
-  const cfg = data.config || {};
-  const resolved = data.resolved || {};
-  const weights = cfg.ai_weights || {};
-  els.cfgTabDelay.value = cfg.tab_delay_sec ?? 0.5;
-  els.cfgTabCooldown.value = cfg.tab_cooldown_sec ?? 4.0;
-  els.cfgCs2Only.checked = cfg.cs2_only !== false;
-  els.cfgNotifyEnabled.checked = cfg.notify_enabled !== false;
-  els.cfgCs2Dir.value = cfg.cs2_game_dir || "";
-  els.cfgConsoleLog.value = cfg.console_log_path || "";
-  els.cfgScreenshotsDir.value = cfg.screenshots_dir || "";
-  els.cfgScreenshotTool.value = cfg.screenshot_tool || "auto";
-  els.cfgSteamApiKey.value = "";
-  pendingClearSteamKey = false;
-  if (els.cfgFaceitApiKey) els.cfgFaceitApiKey.value = "";
-  pendingClearFaceitKey = false;
-
-  els.cfgAiEnabled.checked = Boolean(cfg.ai_enabled);
-  els.cfgAiProvider.value = cfg.ai_provider || "claude_cli";
-  els.cfgAiModel.value = cfg.ai_model || "sonnet";
-  els.cfgWeightScoreboard.value = weights.scoreboard ?? 0.30;
-  els.cfgWeightLeetify.value = weights.leetify ?? 0.40;
-  els.cfgWeightSteam.value = weights.steam_account ?? 0.30;
-  els.cfgAiPrompt.value = cfg.ai_prompt || "";
-  els.cfgAnthropicApiKey.value = "";
-  pendingClearAnthropicKey = false;
-
-  els.cfgClaudeCliStatus.textContent = resolved.claude_cli_available
-    ? "Claude CLI знайдено"
-    : "Claude CLI не знайдено в PATH";
-
-  if (data.anthropic_api_key_source === "config") {
-    els.cfgAnthropicKeyStatus.textContent = `(збережено: ${data.anthropic_api_key_masked})`;
-  } else if (data.anthropic_api_key_source === "env") {
-    els.cfgAnthropicKeyStatus.textContent = "(зі змінної середовища)";
-  } else {
-    els.cfgAnthropicKeyStatus.textContent = "(не задано)";
-  }
-
-  els.cfgCs2DirHint.textContent = resolved.cs2_game_dir
-    ? `Зараз використовується: ${resolved.cs2_game_dir}`
-    : "Автовизначення: папку CS2 не знайдено";
-  els.cfgConsoleLogHint.textContent = resolved.console_log_path
-    ? `Зараз використовується: ${resolved.console_log_path}`
-    : "";
-  els.cfgScreenshotsDirHint.textContent = resolved.screenshots_dir
-    ? `Зараз використовується: ${resolved.screenshots_dir}`
-    : "";
-
-  if (data.steam_api_key_source === "config") {
-    els.cfgSteamKeyStatus.textContent = `(збережено в config.json: ${data.steam_api_key_masked})`;
-  } else if (data.steam_api_key_source === "env") {
-    els.cfgSteamKeyStatus.textContent = "(підключено зі змінної середовища)";
-  } else {
-    els.cfgSteamKeyStatus.textContent = "(не задано)";
-  }
-  if (els.cfgFaceitKeyStatus) {
-    if (data.faceit_api_key_source === "config") {
-      els.cfgFaceitKeyStatus.textContent = `(збережено в config.json: ${data.faceit_api_key_masked})`;
-    } else if (data.faceit_api_key_source === "env") {
-      els.cfgFaceitKeyStatus.textContent = "(підключено зі змінної середовища)";
-    } else {
-      els.cfgFaceitKeyStatus.textContent = "(не задано)";
-    }
-  }
-  els.settingsSaveMsg.textContent = "";
-  els.settingsSaveMsg.classList.remove("error");
-}
 
 els.settingsBtn?.addEventListener("click", async () => {
   if (els.toolsMenu) els.toolsMenu.open = false;
@@ -1082,26 +394,6 @@ els.resetPathsBtn?.addEventListener("click", () => {
   els.cfgScreenshotsDir.value = "";
   els.settingsSaveMsg.textContent = "Поля шляхів очищено — натисніть «Зберегти» для автовизначення.";
   els.settingsSaveMsg.classList.remove("error");
-});
-
-els.clearSteamKeyBtn?.addEventListener("click", () => {
-  els.cfgSteamApiKey.value = "";
-  pendingClearSteamKey = true;
-  els.cfgSteamKeyStatus.textContent = "(буде видалено з config.json після збереження)";
-});
-
-els.clearFaceitKeyBtn?.addEventListener("click", () => {
-  if (els.cfgFaceitApiKey) els.cfgFaceitApiKey.value = "";
-  pendingClearFaceitKey = true;
-  if (els.cfgFaceitKeyStatus) {
-    els.cfgFaceitKeyStatus.textContent = "(буде видалено з config.json після збереження)";
-  }
-});
-
-els.clearAnthropicKeyBtn?.addEventListener("click", () => {
-  els.cfgAnthropicApiKey.value = "";
-  pendingClearAnthropicKey = true;
-  els.cfgAnthropicKeyStatus.textContent = "(буде видалено з config.json після збереження)";
 });
 
 els.aiAnalyzeScanBtn?.addEventListener("click", async () => {
@@ -1129,55 +421,6 @@ els.aiAnalyzeScanBtn?.addEventListener("click", async () => {
   }
 });
 
-els.settingsForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  els.saveSettingsBtn.disabled = true;
-  els.settingsSaveMsg.textContent = "Збереження...";
-  els.settingsSaveMsg.classList.remove("error");
-  try {
-    const payload = {
-      tab_delay_sec: parseFloat(els.cfgTabDelay.value),
-      tab_cooldown_sec: parseFloat(els.cfgTabCooldown.value),
-      cs2_only: els.cfgCs2Only.checked,
-      notify_enabled: els.cfgNotifyEnabled.checked,
-      cs2_game_dir: els.cfgCs2Dir.value.trim(),
-      console_log_path: els.cfgConsoleLog.value.trim(),
-      screenshots_dir: els.cfgScreenshotsDir.value.trim(),
-      screenshot_tool: els.cfgScreenshotTool.value,
-      steam_api_key: els.cfgSteamApiKey.value.trim(),
-      clear_steam_api_key: pendingClearSteamKey,
-      faceit_api_key: els.cfgFaceitApiKey ? els.cfgFaceitApiKey.value.trim() : "",
-      clear_faceit_api_key: pendingClearFaceitKey,
-      ai_enabled: els.cfgAiEnabled.checked,
-      ai_provider: els.cfgAiProvider.value,
-      ai_model: els.cfgAiModel.value,
-      ai_weights: {
-        scoreboard: parseFloat(els.cfgWeightScoreboard.value),
-        leetify: parseFloat(els.cfgWeightLeetify.value),
-        steam_account: parseFloat(els.cfgWeightSteam.value),
-      },
-      ai_prompt: els.cfgAiPrompt.value.trim(),
-      anthropic_api_key: els.cfgAnthropicApiKey.value.trim(),
-      clear_anthropic_api_key: pendingClearAnthropicKey,
-    };
-    const res = await fetch("/api/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Помилка збереження");
-    populateSettingsDialog(data);
-    els.settingsSaveMsg.textContent = "Збережено і застосовано.";
-    setStatus(`Налаштування оновлено (затримка TAB: ${data.config.tab_delay_sec}с).`);
-  } catch (err) {
-    els.settingsSaveMsg.textContent = err.message;
-    els.settingsSaveMsg.classList.add("error");
-  } finally {
-    els.saveSettingsBtn.disabled = false;
-  }
-});
-
 els.closeSettingsXBtn?.addEventListener("click", () => els.settingsDialog.close());
 els.cancelSettingsBtn?.addEventListener("click", () => els.settingsDialog.close());
 
@@ -1187,6 +430,53 @@ els.helpBtn?.addEventListener("click", () => {
 });
 els.closeHelpBtn?.addEventListener("click", () => els.helpDialog.close());
 els.closeHelpXBtn?.addEventListener("click", () => els.helpDialog.close());
+
+loadLobbyPrefs();
+
+document.getElementById("rateLimitRescanBtn")?.addEventListener("click", () => els.rescanBtn.click());
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector("dialog[open]")) return;
+  const target = e.target;
+  // Не перехоплюємо клавіші, коли користувач друкує у полі вводу.
+  if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+  if (target?.isContentEditable) return;
+
+  if (e.key === "?") {
+    e.preventDefault();
+    setStatus(SHORTCUT_HINT);
+    return;
+  }
+  if (e.key === "j" || e.key === "k") {
+    if (!els.playersBody.querySelector("tr.player-row")) return;
+    e.preventDefault();
+    moveRowFocus(e.key === "j" ? 1 : -1);
+    return;
+  }
+  if (e.key === "Enter") {
+    // Enter на кнопці/посиланні має спрацьовувати нативно, не подвійно з рядком.
+    const row = focusedPlayerRow();
+    if (!row || target.closest("button, a")) return;
+    e.preventDefault();
+    row.click();
+    return;
+  }
+  if (e.key === "a") {
+    const row = focusedPlayerRow();
+    if (!row) {
+      setStatus("Спочатку виберіть рядок клавішами j / k.", true);
+      return;
+    }
+    const aiBtn = row.querySelector(".run-ai-player-btn");
+    if (!aiBtn || aiBtn.disabled) {
+      setStatus("AI-аналіз для цього гравця зараз недоступний (профіль ще завантажується).", true);
+      return;
+    }
+    e.preventDefault();
+    aiBtn.click();
+  }
+});
 
 fetchLatest();
 connectSSE();

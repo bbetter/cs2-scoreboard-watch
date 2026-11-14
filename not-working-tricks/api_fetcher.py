@@ -6,9 +6,9 @@ multi-source telemetry dict (profile, steam, leetify, faceit, cstracker, scope_g
 medals, matches) that external_parser.parse_multi_source_payload understands,
 or None when unconfigured.
 
-Configuration: set CSST_PROFILE_URL to a URL template containing {steamid64}, e.g.
-    CSST_PROFILE_URL='https://csst.at/p/{steamid64}'
-While it is unset, nothing is fetched and the hook returns None.
+Configuration: config.json key "csst_profile_url" holds a URL template containing
+{steamid64}, e.g. "https://csst.at/p/{steamid64}". The CSST_PROFILE_URL env var is a fallback.
+While both are empty, nothing is fetched and the hook returns None.
 
 Standalone CLI (this was magic-legal.py):
     python api_fetcher.py https://csst.at/p/<name> -o profile.json
@@ -27,24 +27,69 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup, Tag
 
 PROFILE_URL_ENV = "CSST_PROFILE_URL"
+LOG_PATH_ENV = "API_FETCHER_LOG"
+DEFAULT_LOG_PATH = Path(__file__).resolve().parent / "pton.logs"
+
+log = logging.getLogger("api_fetcher")
+
+
+def _profile_url_template() -> str:
+    """URL template from config.json key csst_profile_url; falls back to the CSST_PROFILE_URL env var."""
+    try:
+        from config_store import load_config
+
+        value = str(load_config().get("csst_profile_url") or "").strip()
+    except Exception:
+        value = ""
+    return value or os.environ.get(PROFILE_URL_ENV, "").strip()
+
+
+def _setup_logging() -> None:
+    """Append INFO+ records to pton.logs (or $API_FETCHER_LOG) once per process."""
+    if any(isinstance(h, logging.FileHandler) for h in log.handlers):
+        return
+    handler = logging.FileHandler(os.environ.get(LOG_PATH_ENV) or DEFAULT_LOG_PATH, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    log.addHandler(handler)
+    log.setLevel(logging.INFO)
+    log.propagate = False
+
+
+_setup_logging()
+log.info("api_fetcher imported: csst_profile_url is %s", "set" if _profile_url_template() else "NOT set")
 
 
 def fetch_player_telemetry(steamid64: str) -> Optional[dict[str, Any]]:
     """Return a multi-source telemetry dict for the given SteamID64, or None when unconfigured."""
-    template = os.environ.get(PROFILE_URL_ENV, "").strip()
-    if not template or not steamid64:
+    template = _profile_url_template()
+    if not template:
+        log.info("skip steamid64=%s: csst_profile_url not set in config.json", steamid64)
+        return None
+    if not steamid64:
+        log.info("skip: empty steamid64")
         return None
     url = template.format(steamid64=steamid64)
-    return parse_profile_html(fetch_rendered_html(url, headless=True))
+    log.info("start steamid64=%s url=%s", steamid64, url)
+    started = time.monotonic()
+    try:
+        payload = parse_profile_html(fetch_rendered_html(url, headless=True))
+    except Exception:
+        log.exception("failed steamid64=%s url=%s after %.1fs", steamid64, url, time.monotonic() - started)
+        raise
+    statuses = {k: v.get("status") for k, v in payload.items() if isinstance(v, dict)}
+    log.info("ok steamid64=%s in %.1fs sections=%s", steamid64, time.monotonic() - started, statuses)
+    return payload
 
 
 # ============================================================== step 1: Playwright

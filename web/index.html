@@ -13,97 +13,92 @@
         <div class="brand-badge" aria-hidden="true">CS2</div>
         <div>
           <h1>Scoreboard Watch</h1>
-          <p class="subtitle">OCR аналіз таблиці рахунку, пошук профілю Steam та оцінка ризику</p>
+          <p class="subtitle">Аналіз таблиці та ризику</p>
         </div>
       </div>
 
       <div class="topbar-actions">
-        <div class="live-pill" id="sseStatus" data-state="connecting">
-          <span class="dot" aria-hidden="true"></span>
-          <span id="sseLabel">Підключення...</span>
-        </div>
         <button type="button" class="btn btn-primary" id="scanNowBtn">
-          Зробити скріншот і скан
-        </button>
-        <button type="button" class="btn btn-secondary" id="rescanBtn" disabled>
-          Повторний аналіз
+          Скан
         </button>
         <details class="tools-menu" id="toolsMenu">
           <summary class="btn btn-secondary tools-trigger">
-            Інструменти <span class="chevron" aria-hidden="true">▾</span>
+            Засоби <span class="chevron" aria-hidden="true">▾</span>
           </summary>
           <div class="tools-dropdown" role="menu" aria-label="Додаткові інструменти">
             <label class="tools-item file-btn" role="menuitem" tabindex="0">
-              <span>Завантажити скріншот</span>
+              <span>Завантажити</span>
               <span class="tools-hint">PNG / JPG</span>
               <input type="file" id="fileInput" accept="image/*" hidden />
             </label>
+            <button type="button" class="tools-item" id="rescanBtn" role="menuitem" disabled>
+              <span>Повторний аналіз</span>
+              <span class="tools-hint">Останній скан</span>
+            </button>
             <button type="button" class="tools-item" id="setupCs2Btn" role="menuitem">
-              <span>Налаштувати CS2 (autoexec)</span>
+              <span>Налаштування CS2</span>
               <span class="tools-hint">Бінд</span>
             </button>
             <button type="button" class="tools-item" id="aiAnalyzeScanBtn" role="menuitem">
-              <span>Запустити AI-аналіз (Claude)</span>
+              <span>AI-аналіз</span>
               <span class="tools-hint">Усі гравці</span>
             </button>
           </div>
         </details>
-        <button type="button" class="btn btn-secondary" id="settingsBtn" title="Налаштування шляхів і затримки">
-          ⚙ Налаштування
+        <button type="button" class="btn btn-secondary btn-icon" id="settingsBtn" title="Налаштування">
+          ⚙
         </button>
-        <button type="button" class="btn btn-secondary" id="helpBtn" title="Короткий мануал користувача">
-          ? Мануал
+        <button type="button" class="btn btn-secondary btn-icon" id="helpBtn" title="Довідка">
+          ?
         </button>
+        <div class="live-pill" id="sseStatus" data-state="connecting">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="sseLabel">Підключення...</span>
+        </div>
       </div>
     </header>
 
-    <section class="summary-grid" aria-label="Підсумок сканування">
-      <article class="stat-card">
-        <span class="stat-label">Гравців розпізнано</span>
-        <strong class="stat-value" id="statPlayers">—</strong>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Високий ризик (&ge; 55%)</span>
-        <strong class="stat-value risk-high-text" id="statSuspects">—</strong>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Найбільш підозрілий</span>
-        <strong class="stat-value" id="statTopSuspect">—</strong>
-      </article>
-      <article class="stat-card">
-        <span class="stat-label">Останній скан</span>
-        <strong class="stat-value stat-value-sm" id="statLastScan">Очікування...</strong>
-      </article>
-    </section>
 
     <section class="filter-bar" aria-label="Фільтри та пошук">
       <div class="filter-group filter-search">
-        <label for="searchInput">Пошук гравця</label>
-        <input type="search" id="searchInput" class="filter-input" placeholder="Нік, Steam, ID64 або причина..." />
+        <label class="sr-only" for="searchInput">Пошук</label>
+        <input type="search" id="searchInput" class="filter-input" placeholder="Нік, Steam, ID…" />
       </div>
       <div class="filter-group">
-        <label for="dateFilter">Дата</label>
-        <input type="date" id="dateFilter" class="filter-input" />
-      </div>
-      <div class="filter-group">
-        <label for="matchSelect">Матч</label>
-        <select id="matchSelect" class="filter-input" disabled>
-          <option value="">Усі матчі</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="riskFilter">Ризик</label>
+        <label class="sr-only" for="riskFilter">Ризик</label>
         <select id="riskFilter" class="filter-input">
+          <option value="high-critical">Високий+Критичний</option>
           <option value="all">Усі гравці</option>
           <option value="suspicious">Підозрілі (&ge; 55%)</option>
-          <option value="smurf">Ймовірні смурфи (&ge; 55%)</option>
+          <option value="smurf">Смурфи (&ge; 55%)</option>
           <option value="critical">Критичні (&ge; 75%)</option>
-          <option value="banned">З банами (VAC / Leetify)</option>
+          <option value="banned">З банами</option>
         </select>
       </div>
-      <div class="filter-actions">
-        <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm">Скинути</button>
-      </div>
+      <details class="filter-advanced" id="filterAdvanced">
+        <summary class="filter-toggle">Ще…</summary>
+        <div class="filter-advanced-menu">
+          <div class="filter-group">
+            <label for="dateFilter">Дата</label>
+            <input type="date" id="dateFilter" class="filter-input" />
+          </div>
+          <div class="filter-group">
+            <label for="matchSelect">Матч</label>
+            <select id="matchSelect" class="filter-input" disabled>
+              <option value="">Усі матчі</option>
+            </select>
+          </div>
+          <label class="lobby-check" style="margin: 0; border: none; background: none; padding: 0;">
+            <input type="checkbox" id="onlyWithDataFilter" />
+            Лише з даними
+          </label>
+          <label class="lobby-check" style="margin: 0; border: none; background: none; padding: 0;">
+            <input type="checkbox" id="onlyHighRiskFilter" />
+            Лише високий/критичний
+          </label>
+          <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm">Скинути</button>
+        </div>
+      </details>
     </section>
 
     <section class="controls-bar">
@@ -112,7 +107,7 @@
           Таблиця гравців <span class="tab-count" id="tabCountTable">0</span>
         </button>
         <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="logs">
-          Логи пошуку та кандидати <span class="tab-count" id="tabCountLogs">0</span>
+          Потребує уваги <span class="tab-count" id="tabCountLogs">0</span>
         </button>
       </div>
       <div class="controls-right">
@@ -128,6 +123,45 @@
 
     <main class="main-panel" id="dropZone">
       <div id="tabPanelTable" class="tab-panel">
+      <div id="rateLimitBanner" class="rate-limit-banner" role="status" hidden>
+        <span>Steam тимчасово обмежив запити; повторний аналіз допоможе пізніше.</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="rateLimitRescanBtn">Повторити аналіз скану</button>
+      </div>
+      <div class="table-view-bar">
+        <div class="risk-indicator">
+          <span class="risk-label" id="statSusLabel">Ризик ≥55%</span>
+          <strong class="risk-value" id="statSuspects">—</strong>
+        </div>
+        <details class="summary-detail" id="summaryDetail">
+          <summary class="summary-toggle">Деталі ▾</summary>
+          <div class="summary-breakdown">
+            <div class="stat-mini">
+              <span class="stat-label">Всього</span>
+              <strong id="statPlayers">—</strong>
+            </div>
+            <div class="stat-mini">
+              <span class="stat-label">Найвищий</span>
+              <strong id="statTopSuspect">—</strong>
+            </div>
+            <div class="stat-mini">
+              <span class="stat-label">Часовий</span>
+              <strong id="statLastScan">—</strong>
+            </div>
+            <div class="lobby-summary-content">
+              <div class="lobby-risk" id="lobbyRisk" aria-label="Розподіл за ризиком"></div>
+              <div class="lobby-sources" id="lobbySources" aria-label="Джерела даних"></div>
+            </div>
+          </div>
+        </details>
+        <label class="view-toggle">
+          <input type="checkbox" id="compactToggle" />
+          Компактно
+        </label>
+        <details class="columns-menu" id="columnsMenu">
+          <summary>Колонки</summary>
+          <div class="columns-menu-list" id="columnsMenuList"></div>
+        </details>
+      </div>
       <div tabindex="0" role="region" aria-labelledby="players-caption" class="table-wrapper">
         <table id="playersTable">
           <caption id="players-caption">Таблиця гравців останнього скану</caption>
@@ -154,7 +188,9 @@
               <th scope="col" data-key="cheat_probability" data-type="number" aria-sort="descending">
                 <button type="button">Результати аналізу <span class="sort-icon" aria-hidden="true"></span></button>
               </th>
-              <th scope="col">Leetify / Steam / rip</th>
+              <th scope="col" data-key="sources">
+                <button type="button">Дані <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
             </tr>
           </thead>
           <tbody id="playersBody">
@@ -176,7 +212,7 @@
       </div>
 
       <div id="tabPanelLogs" class="tab-panel logs-panel" hidden>
-        <div id="logsContainer" class="logs-grid">
+        <div id="logsContainer">
           <p class="logs-empty">Немає даних сканування.</p>
         </div>
       </div>
@@ -185,20 +221,27 @@
     <footer class="footer-note">
       Оцінка ймовірності базується на статистичному відхиленні (HS%, K/D, рівень) та публічних сигналах Steam (VAC, обмеження акаунта, приватність) і не є остаточним доказом чітерства.
       Посилання <code>steamcommunity.rip/id/&lt;nickname&gt;/</code> відкриваються безпосередньо в браузері (сайт перенаправляє на <code>csst.at</code> із захистом Cloudflare).
+      <div class="leetify-attribution"><a href="https://leetify.com/" target="_blank" rel="noopener noreferrer">Data Provided by Leetify</a></div>
     </footer>
   </div>
 
   <dialog id="cs2SetupDialog" class="setup-dialog">
     <div class="setup-dialog-body">
-      <h2>Налаштування CS2 (autoexec.cfg)</h2>
+      <div class="dialog-head">
+        <h2>Налаштування CS2 (autoexec.cfg)</h2>
+        <button type="button" id="closeSetupXBtn" class="btn-icon" aria-label="Закрити">✕</button>
+      </div>
       <p id="setupStatusText" class="subtitle"></p>
       <div class="copy-box">
         <code id="launchOptionsCode">-condebug +exec autoexec.cfg</code>
         <button type="button" id="copyLaunchBtn" class="btn btn-primary btn-sm">Копіювати</button>
       </div>
       <p class="subtitle">Вставте цей рядок у <strong>Steam → Counter-Strike 2 → Властивості → Параметри запуску</strong> і перезапустіть гру.</p>
-      <div class="dialog-actions">
-        <button type="button" id="closeSetupBtn" class="btn btn-secondary btn-sm">Закрити</button>
+      <div class="dialog-footer">
+        <span></span>
+        <div class="dialog-actions">
+          <button type="button" id="closeSetupBtn" class="btn btn-secondary btn-sm">Закрити</button>
+        </div>
       </div>
     </div>
   </dialog>
@@ -276,6 +319,13 @@
             <div class="key-input-row">
               <input type="password" id="cfgSteamApiKey" class="filter-input" placeholder="Введіть новий ключ (опціонально)" autocomplete="off" />
               <button type="button" id="clearSteamKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
+            </div>
+          </label>
+          <label class="field-group">
+            <span>FACEIT API Key <em id="cfgFaceitKeyStatus" class="key-status"></em></span>
+            <div class="key-input-row">
+              <input type="password" id="cfgFaceitApiKey" class="filter-input" placeholder="Введіть новий ключ (опціонально)" autocomplete="off" />
+              <button type="button" id="clearFaceitKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
             </div>
           </label>
         </div>
@@ -365,19 +415,50 @@
         </article>
         <article class="manual-step">
           <h3>4. Повторний аналіз і ручний вибір профілю</h3>
-          <p>Якщо Steam тимчасово обмежив пошук (429), натисніть <strong>Повторний аналіз</strong> — знайдені профілі кешуються на 24 години. Для ручного уточнення гравця натисніть <code>✎</code> біля ніка і вставте SteamID64 або посилання, або виберіть кандидата у вкладці <strong>Логи пошуку та кандидати</strong>.</p>
+          <p>Якщо Steam тимчасово обмежив пошук (429), натисніть <strong>Повторний аналіз</strong> — знайдені профілі кешуються на 24 години. Для ручного уточнення гравця натисніть <code>✎</code> біля ніка і вставте SteamID64 або посилання, або виберіть кандидата у вкладці <strong>Потребує уваги</strong>.</p>
         </article>
         <article class="manual-step">
           <h3>5. Налаштування шляхів і таймінгів</h3>
           <p>У кнопці <strong>⚙ Налаштування</strong> можна змінити затримку перед скріншотом, cooldown, інструмент захоплення екрана, власні шляхи до CS2 / <code>console.log</code> / скріншотів та Steam API Key.</p>
         </article>
       </div>
-      <div class="dialog-actions">
-        <button type="button" id="closeHelpBtn" class="btn btn-primary btn-sm">Зрозуміло</button>
+      <div class="dialog-footer">
+        <span></span>
+        <div class="dialog-actions">
+          <button type="button" id="closeHelpBtn" class="btn btn-primary btn-sm">Зрозуміло</button>
+        </div>
       </div>
     </div>
   </dialog>
 
-  <script src="/app.js"></script>
+  <dialog id="avatarCompareDialog" class="setup-dialog compare-dialog">
+    <div class="setup-dialog-body">
+      <div class="dialog-head">
+        <h2 id="compareTitle">Порівняння аватарів</h2>
+        <button type="button" id="closeCompareXBtn" class="btn-icon" aria-label="Закрити">✕</button>
+      </div>
+      <div class="compare-pair">
+        <figure>
+          <img id="compareShot" alt="Аватар зі скріншота" />
+          <figcaption>Зі скріншота</figcaption>
+        </figure>
+        <figure>
+          <img id="compareCand" alt="Аватар кандидата" />
+          <figcaption>Кандидат у Steam</figcaption>
+        </figure>
+      </div>
+      <p class="subtitle" id="compareShotNote"></p>
+      <p class="subtitle" id="compareMeta"></p>
+      <div class="dialog-footer">
+        <span></span>
+        <div class="dialog-actions">
+          <button type="button" id="closeCompareBtn" class="btn btn-secondary btn-sm">Закрити</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/app.js"></script>
+  <script type="module" src="/table-view.js"></script>
 </body>
 </html>

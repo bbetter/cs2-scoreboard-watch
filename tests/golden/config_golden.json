@@ -1,0 +1,2708 @@
+{
+  "absent_file_no_env": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "absent_file_env_all_set": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "env",
+        "steam_api_key_masked": "**** (з середовища)",
+        "has_faceit_api_key": true,
+        "faceit_api_key_source": "env",
+        "faceit_api_key_masked": "**** (з середовища)",
+        "has_anthropic_api_key": true,
+        "anthropic_api_key_source": "env",
+        "anthropic_api_key_masked": "**** (з середовища)",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "absent_file_env_param_only": [
+    {
+      "op": "public",
+      "args": {
+        "env_key_present": true,
+        "env_faceit_key_present": true
+      },
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "env",
+        "steam_api_key_masked": "**** (з середовища)",
+        "has_faceit_api_key": true,
+        "faceit_api_key_source": "env",
+        "faceit_api_key_masked": "**** (з середовища)",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "invalid_json_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "json_list_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "full_valid_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 1.25,
+        "tab_cooldown_sec": 6.0,
+        "cs2_only": false,
+        "cs2_game_dir": "/games/cs2",
+        "console_log_path": "/logs/console.log",
+        "screenshots_dir": "/shots",
+        "screenshot_tool": "grim",
+        "notify_enabled": false,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "sk-TESTKEY-ABCDEFGHIJ",
+        "ai_enabled": true,
+        "ai_provider": "anthropic_api",
+        "ai_model": "opus",
+        "ai_prompt": "custom prompt",
+        "ai_weights": {
+          "scoreboard": 0.2,
+          "leetify": 0.5,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "sk-TESTKEY-1234567890",
+        "leetify_api_key": "lf-TESTKEY-1234567890",
+        "leetify_cache_ttl_sec": 600
+      }
+    },
+    {
+      "op": "public",
+      "args": {
+        "resolved": {
+          "x": 1
+        }
+      },
+      "result": {
+        "config": {
+          "tab_delay_sec": 1.25,
+          "tab_cooldown_sec": 6.0,
+          "cs2_only": false,
+          "cs2_game_dir": "/games/cs2",
+          "console_log_path": "/logs/console.log",
+          "screenshots_dir": "/shots",
+          "screenshot_tool": "grim",
+          "notify_enabled": false,
+          "ai_enabled": true,
+          "ai_provider": "anthropic_api",
+          "ai_model": "opus",
+          "ai_prompt": "custom prompt",
+          "ai_weights": {
+            "scoreboard": 0.2,
+            "leetify": 0.5,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "lf-TESTKEY-1234567890",
+          "leetify_cache_ttl_sec": 600
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "*****************7890",
+        "has_faceit_api_key": true,
+        "faceit_api_key_source": "config",
+        "faceit_api_key_masked": "*****************GHIJ",
+        "has_anthropic_api_key": true,
+        "anthropic_api_key_source": "config",
+        "anthropic_api_key_masked": "*****************7890",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {
+          "x": 1
+        }
+      }
+    }
+  ],
+  "bad_numbers_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": false,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 12
+      }
+    }
+  ],
+  "bad_enums_text_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "0",
+        "console_log_path": "False",
+        "screenshots_dir": "5",
+        "screenshot_tool": "grim",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "weights_partial_and_invalid": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 1.0,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "weights_not_dict": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "ttd_edge_values": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 3
+      }
+    }
+  ],
+  "ttd_negative_and_huge": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "ttd_huge_int": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 86400
+      }
+    }
+  ],
+  "ttd_true": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 1
+      }
+    }
+  ],
+  "float_nan_inf_strings": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 5.0,
+        "tab_cooldown_sec": 30.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "ttd_infinity_literal_file": [
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "keep_on_empty_steam": [
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": ""
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"sk-TESTKEY-1234567890\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "*****************7890",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "replace_steam_stripped": [
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": "  sk-TESTKEY-ABCDEFGHIJ  "
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-ABCDEFGHIJ",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"sk-TESTKEY-ABCDEFGHIJ\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "*****************GHIJ",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "clear_steam_flag": [
+    {
+      "op": "save",
+      "args": {
+        "clear_steam_api_key": true
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "clear_steam_flag_with_new_value": [
+    {
+      "op": "save",
+      "args": {
+        "clear_steam_api_key": true,
+        "steam_api_key": "sk-TESTKEY-ABCDEFGHIJ"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "faceit_set_keep_clear": [
+    {
+      "op": "save",
+      "args": {
+        "faceit_api_key": "sk-TESTKEY-ABCDEFGHIJ"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "sk-TESTKEY-ABCDEFGHIJ",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"sk-TESTKEY-ABCDEFGHIJ\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "save",
+      "args": {
+        "faceit_api_key": null
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "sk-TESTKEY-ABCDEFGHIJ",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"sk-TESTKEY-ABCDEFGHIJ\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "save",
+      "args": {
+        "clear_faceit_api_key": true,
+        "faceit_api_key": "sk-TESTKEY-1234567890"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "anthropic_set_keep_clear": [
+    {
+      "op": "save",
+      "args": {
+        "anthropic_api_key": "sk-TESTKEY-1234567890"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "sk-TESTKEY-1234567890",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"sk-TESTKEY-1234567890\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "save",
+      "args": {
+        "anthropic_api_key": "   "
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "sk-TESTKEY-1234567890",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"sk-TESTKEY-1234567890\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "save",
+      "args": {
+        "clear_anthropic_api_key": true
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "leetify_set_empty_clears_and_flag_ignored": [
+    {
+      "op": "save",
+      "args": {
+        "leetify_api_key": "lf-TESTKEY-1234567890"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "lf-TESTKEY-1234567890",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"lf-TESTKEY-1234567890\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "save",
+      "args": {
+        "clear_leetify_api_key": true
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "lf-TESTKEY-1234567890",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"lf-TESTKEY-1234567890\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "lf-TESTKEY-1234567890",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "leetify_api_key": ""
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "unknown_and_non_config_keys_ignored": [
+    {
+      "op": "save",
+      "args": {
+        "not_a_key": 1,
+        "clear_cs2_only": true,
+        "tab_delay_sec": 2.0
+      },
+      "result": {
+        "tab_delay_sec": 2.0,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 2.0,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 2.0,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "none_values_for_normal_keys": [
+    {
+      "op": "save",
+      "args": {
+        "tab_delay_sec": null,
+        "cs2_only": null,
+        "ai_prompt": null,
+        "screenshot_tool": null,
+        "leetify_cache_ttl_sec": null
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": false,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": false,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": false,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "falsy_values_text_and_secret_rules": [
+    {
+      "op": "save",
+      "args": {
+        "cs2_game_dir": 0,
+        "console_log_path": false,
+        "anthropic_api_key": 0,
+        "steam_api_key": 0,
+        "leetify_api_key": false
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "0",
+        "console_log_path": "False",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "False",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"0\",\n  \"console_log_path\": \"False\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"False\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "0",
+          "console_log_path": "False",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "False",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": false,
+        "steam_api_key_source": "none",
+        "steam_api_key_masked": "",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "truthy_non_string_values": [
+    {
+      "op": "save",
+      "args": {
+        "cs2_game_dir": 5,
+        "anthropic_api_key": 5,
+        "steam_api_key": 5,
+        "ai_model": 7,
+        "ai_prompt": 9
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "5",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "5",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "7",
+        "ai_prompt": "9",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "5",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"5\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"5\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"7\",\n  \"ai_prompt\": \"9\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"5\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "5",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "5",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "7",
+        "ai_prompt": "9",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "5",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "ai_prompt_blank_variants": [
+    {
+      "op": "save",
+      "args": {
+        "ai_prompt": "   "
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "ai_prompt": ""
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "ai_weights_save_partial": [
+    {
+      "op": "save",
+      "args": {
+        "ai_weights": {
+          "scoreboard": 0.9
+        }
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.9,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.9,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.9,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "env_and_file_key_precedence": [
+    {
+      "op": "public",
+      "args": {
+        "env_key_present": true
+      },
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "*****************7890",
+        "has_faceit_api_key": true,
+        "faceit_api_key_source": "config",
+        "faceit_api_key_masked": "*****************GHIJ",
+        "has_anthropic_api_key": true,
+        "anthropic_api_key_source": "env",
+        "anthropic_api_key_masked": "**** (з середовища)",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "masked_format_lengths": [
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": "abc"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "abc",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"abc\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "****",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": "123456"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "123456",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"123456\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "****",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": "1234567"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "1234567",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"1234567\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "***4567",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "steam_api_key": "sk-TESTKEY-LONGERVALUE-9999"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-LONGERVALUE-9999",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"sk-TESTKEY-LONGERVALUE-9999\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {},
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "auto",
+          "notify_enabled": true,
+          "ai_enabled": false,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "***********************9999",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {}
+      }
+    }
+  ],
+  "multi_step_save_load_public": [
+    {
+      "op": "save",
+      "args": {
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "steam_api_key": "sk-TESTKEY-1234567890"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"sk-TESTKEY-1234567890\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": true,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "screenshot_tool": "mss"
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "mss",
+        "notify_enabled": true,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"mss\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"sk-TESTKEY-1234567890\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": true,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "public",
+      "args": {
+        "resolved": {
+          "cs2_game_dir": ""
+        }
+      },
+      "result": {
+        "config": {
+          "tab_delay_sec": 0.5,
+          "tab_cooldown_sec": 4.0,
+          "cs2_only": true,
+          "cs2_game_dir": "",
+          "console_log_path": "",
+          "screenshots_dir": "",
+          "screenshot_tool": "mss",
+          "notify_enabled": true,
+          "ai_enabled": true,
+          "ai_provider": "claude_cli",
+          "ai_model": "sonnet",
+          "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+          "ai_weights": {
+            "scoreboard": 0.3,
+            "leetify": 0.4,
+            "steam_account": 0.3
+          },
+          "leetify_api_key": "",
+          "leetify_cache_ttl_sec": 0
+        },
+        "has_steam_api_key": true,
+        "steam_api_key_source": "config",
+        "steam_api_key_masked": "*****************7890",
+        "has_faceit_api_key": false,
+        "faceit_api_key_source": "none",
+        "faceit_api_key_masked": "",
+        "has_anthropic_api_key": false,
+        "anthropic_api_key_source": "none",
+        "anthropic_api_key_masked": "",
+        "allowed_screenshot_tools": [
+          "auto",
+          "grim",
+          "imagemagick",
+          "mss",
+          "screencapture",
+          "pil"
+        ],
+        "allowed_ai_providers": [
+          "claude_cli",
+          "anthropic_api"
+        ],
+        "platform": "linux",
+        "resolved": {
+          "cs2_game_dir": ""
+        }
+      }
+    },
+    {
+      "op": "save",
+      "args": {
+        "notify_enabled": 0
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "mss",
+        "notify_enabled": false,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"mss\",\n  \"notify_enabled\": false,\n  \"steam_api_key\": \"sk-TESTKEY-1234567890\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": true,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "mss",
+        "notify_enabled": false,
+        "steam_api_key": "sk-TESTKEY-1234567890",
+        "faceit_api_key": "",
+        "ai_enabled": true,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "save_invalid_existing_file_recovers": [
+    {
+      "op": "save",
+      "args": {
+        "cs2_only": false
+      },
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": false,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      },
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": false,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": false,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ],
+  "save_infinity_ttl_raises": [
+    {
+      "op": "save",
+      "args": {
+        "leetify_cache_ttl_sec": "Infinity"
+      },
+      "raised": "OverflowError",
+      "file_after": null
+    },
+    {
+      "op": "load",
+      "result": {
+        "tab_delay_sec": 0.5,
+        "tab_cooldown_sec": 4.0,
+        "cs2_only": true,
+        "cs2_game_dir": "",
+        "console_log_path": "",
+        "screenshots_dir": "",
+        "screenshot_tool": "auto",
+        "notify_enabled": true,
+        "steam_api_key": "",
+        "faceit_api_key": "",
+        "ai_enabled": false,
+        "ai_provider": "claude_cli",
+        "ai_model": "sonnet",
+        "ai_prompt": "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.",
+        "ai_weights": {
+          "scoreboard": 0.3,
+          "leetify": 0.4,
+          "steam_account": 0.3
+        },
+        "anthropic_api_key": "",
+        "leetify_api_key": "",
+        "leetify_cache_ttl_sec": 0
+      }
+    }
+  ]
+}
