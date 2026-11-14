@@ -19,8 +19,9 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
+import player_db
 from ai_analyzer import analyze_players_with_ai
 from config_store import get_public_config, load_config, save_config
 from console_parser import (
@@ -449,6 +450,10 @@ def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
         scan_rec["progress"] = {"done": total, "total": total}
         _save_history_locked()
         final_snapshot = dict(scan_rec)
+    try:
+        player_db.record_scan_sightings(final_snapshot)
+    except Exception as exc:
+        print(f"[player-db error] sightings not saved for scan {scan_id}: {exc}")
     _broadcast_event("scan", final_snapshot)
 
 
@@ -713,6 +718,27 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 self._send_json(match)
             return
 
+        if path.startswith("/api/players/"):
+            steamid = path.split("/api/players/", 1)[1].strip("/")
+            if not player_db.is_valid_steamid64(steamid):
+                self._send_json({"error": "Invalid steamid64"}, status=400)
+                return
+            try:
+                limit = min(max(int(parse_qs(parsed.query).get("limit", ["50"])[0]), 1), 500)
+            except ValueError:
+                self._send_json({"error": "limit must be an integer"}, status=400)
+                return
+            try:
+                profile = player_db.get_db().get_player(steamid, sightings_limit=limit)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+                return
+            if profile is None:
+                self._send_json({"error": "Player not found"}, status=404)
+            else:
+                self._send_json(profile)
+            return
+
         if path.startswith("/screenshots/"):
             filename = Path(path.split("/screenshots/", 1)[1]).name
             sdir = get_screenshot_dir().resolve()
@@ -963,6 +989,37 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 out_path.write_bytes(raw)
                 result = run_scan(image_path=out_path, fetch_steam=True)
                 self._send_json(result)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+            return
+
+        if path.startswith("/api/players/"):
+            steamid = path.split("/api/players/", 1)[1].strip("/")
+            if not player_db.is_valid_steamid64(steamid):
+                self._send_json({"error": "Invalid steamid64"}, status=400)
+                return
+            try:
+                raw = self._read_body()
+                payload = json.loads(raw.decode("utf-8")) if raw else {}
+                if not isinstance(payload, dict):
+                    self._send_json({"error": "Invalid player payload"}, status=400)
+                    return
+                fields: dict[str, Optional[str]] = {}
+                for name, max_len in (("tag", player_db.TAG_MAX_LEN), ("notes", player_db.NOTES_MAX_LEN)):
+                    if name in payload:
+                        value = payload[name]
+                        if value is not None and not isinstance(value, str):
+                            self._send_json({"error": f"{name} must be a string"}, status=400)
+                            return
+                        if value and len(value) > max_len:
+                            self._send_json({"error": f"{name} is too long (max {max_len})"}, status=400)
+                            return
+                        fields[name] = value or None
+                db = player_db.get_db()
+                if not db.set_player_meta(steamid, **fields):
+                    self._send_json({"error": "Player not found"}, status=404)
+                    return
+                self._send_json(db.get_player(steamid, sightings_limit=50))
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=500)
             return
