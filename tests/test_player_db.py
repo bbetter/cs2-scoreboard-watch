@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import storage.player_db as player_db  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 from storage.player_db import PlayerDB  # noqa: E402
 
 SID_A = "76561198000000001"
@@ -174,6 +175,13 @@ class DbFailureTests(_TempDBCase):
     def test_scan_finalization_survives_db_failure(self) -> None:
         """A broken DB must not stop the scan from reaching status 'done' and being broadcast."""
         import app.server as server
+
+        # The scan store must not touch the real data/scans_history.json: use a temporary history file.
+        store_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(store_dir.cleanup)
+        store_patch = mock.patch.object(server, "STORE", ScanStore(Path(store_dir.name) / "scans_history.json"))
+        store_patch.start()
+        self.addCleanup(store_patch.stop)
 
         self.db.close()  # every DB call now raises sqlite3.ProgrammingError
         scan_id = "failscan01"

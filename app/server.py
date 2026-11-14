@@ -197,7 +197,7 @@ class _ServerRepo:
         return STORE.max_history
 
     def save_locked(self) -> None:
-        STORE.save_locked()
+        _save_history_locked()  # module-level hook, so tests can patch it (see tests/test_player_db.py)
 
 
 def _ocr_image(image_path: Path) -> tuple[list, object]:
