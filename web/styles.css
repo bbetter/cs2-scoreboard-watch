@@ -1561,4 +1561,19 @@ tr.player-details-row td {
   margin: 0;
   color: var(--muted);
   font-size: 0.85rem;
+/* U3: міні-графіки історії матчів */
+.detail-kv-spark {
+  gap: 3px;
+}
+
+.sparkline {
+  display: block;
+  color: var(--accent, #6ea8fe);
+  overflow: visible;
+}
+
+.spark-empty {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: italic;
 }

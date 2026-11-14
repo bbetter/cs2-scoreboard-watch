@@ -373,6 +373,100 @@ function leetifyAttribution() {
   return '<div class="leetify-attribution"><a href="https://leetify.com/" target="_blank" rel="noopener noreferrer">Data Provided by Leetify</a></div>';
 }
 
+// --- U3: міні-графіки історії матчів і порівняння з медіаною лобі ---
+function toNum(v) {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return parseFloat(v);
+  return NaN;
+}
+
+// Інлайн SVG-лінія. Повертає "" якщо значень немає, текст "мало даних" якщо < 2 точок.
+function renderSparkline(values, opts = {}) {
+  const nums = (Array.isArray(values) ? values : []).map(toNum).filter(Number.isFinite);
+  if (!nums.length) return "";
+  if (nums.length < 2) return `<span class="spark-empty">мало даних</span>`;
+  const w = opts.width || 120;
+  const h = opts.height || 28;
+  const pad = 3;
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const span = max - min;
+  const stepX = (w - pad * 2) / (nums.length - 1);
+  const yOf = (v) => (span === 0 ? h / 2 : pad + (1 - (v - min) / span) * (h - pad * 2));
+  const pts = nums.map((v, i) => [pad + i * stepX, yOf(v)]);
+  const line = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const [lx, ly] = pts[pts.length - 1];
+  const fmt = opts.fmt || ((v) => v.toFixed(1));
+  const title = `${opts.label ? `${opts.label}: ` : ""}останнє ${fmt(nums[nums.length - 1])}, мін ${fmt(min)}, макс ${fmt(max)} (${nums.length} матчів)`;
+  return `<svg class="sparkline" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${escapeHtml(title)}"><title>${escapeHtml(title)}</title><polyline fill="none" stroke="currentColor" stroke-width="1.5" points="${line}"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="2.5" fill="currentColor"/></svg>`;
+}
+
+function detailSparkRow(label, values, opts = {}) {
+  const svg = renderSparkline(values, { ...opts, label });
+  if (!svg) return "";
+  return `<div class="detail-kv detail-kv-spark"><span>${escapeHtml(label)}</span>${svg}</div>`;
+}
+
+// Метрики лобі: витягують значення з запису гравця (p.steam, як у renderPlayerDetailsRow).
+const LOBBY_METRICS = {
+  lf_rating: (p) => {
+    const lf = p.steam?.leetify || {};
+    return (lf.ranks || {}).leetify ?? lf.leetify_rating;
+  },
+  lf_aim: (p) => (p.steam?.leetify?.rating || {}).aim,
+  reaction: (p) => (p.steam?.leetify?.stats || {}).reaction_time_ms,
+  ct_trust: (p) => (p.steam?.extra_stats?.cstracker || {}).trust,
+  ct_preaim: (p) => ((((p.steam?.extra_stats?.cstracker || {}).sections || {}).aim_reactions) || {}).Preaim,
+};
+
+// Медіана по поточному скану; null якщо в лобі < 3 гравців з даними.
+function lobbyMedian(key) {
+  const getter = LOBBY_METRICS[key];
+  if (!getter) return null;
+  const vals = (state.currentScan?.players || []).map((p) => toNum(getter(p))).filter(Number.isFinite);
+  if (vals.length < 3) return null;
+  vals.sort((a, b) => a - b);
+  const mid = vals.length >> 1;
+  const med = vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+  return { med, n: vals.length };
+}
+
+// Стрілка і відсоток відхилення значення гравця від медіани лобі; "" якщо вибірка замала.
+function lobbyTag(key, raw) {
+  const v = toNum(raw);
+  const m = Number.isFinite(v) ? lobbyMedian(key) : null;
+  if (!m || m.med === 0) return "";
+  const pct = ((v - m.med) / Math.abs(m.med)) * 100;
+  const arrow = Math.abs(pct) < 0.5 ? "≈" : pct > 0 ? "▲" : "▼";
+  const sign = pct > 0 ? "+" : "";
+  return ` ${arrow} ${sign}${pct.toFixed(0)}% від лобі`;
+}
+
+function withLobbyTag(text, key, raw) {
+  return text == null ? null : text + lobbyTag(key, raw);
+}
+
+function leetifySparkRows(lf) {
+  const pls = (lf.matches || [])
+    .filter((m) => m && m.player)
+    .sort((a, b) => String(a.finished_at || "").localeCompare(String(b.finished_at || "")))
+    .map((m) => m.player);
+  return [
+    detailSparkRow("Leetify rating (історія)", pls.map((p) => p.leetify_rating), { fmt: (v) => v.toFixed(2) }),
+    detailSparkRow("K/D (історія)", pls.map((p) => (p.total_deaths ? p.total_kills / p.total_deaths : NaN)), { fmt: (v) => v.toFixed(2) }),
+  ];
+}
+
+// CSTracker віддає матчі у порядку сторінки (найновіші першими), тому розвертаємо.
+function cstrackerSparkRows(matches) {
+  const chrono = [...(matches || [])].reverse();
+  return [
+    detailSparkRow("Rating (історія CSTracker)", chrono.map((m) => m.rating), { fmt: (v) => v.toFixed(2) }),
+    detailSparkRow("TTD, ms (історія)", chrono.map((m) => m.ttd), { fmt: (v) => `${Math.round(v)}` }),
+    detailSparkRow("ACC, % (історія)", chrono.map((m) => m.acc), { fmt: (v) => v.toFixed(1) }),
+  ];
+}
+
 function leetifyRows(lf) {
   if (!lf || !Object.keys(lf).length) {
     return [detailKv("Статус", "Немає профілю в Leetify (не зареєстрований або профіль прихований)")];
@@ -395,13 +489,13 @@ function leetifyRows(lf) {
   });
   const dash = (x) => x ?? "—";
   return [
-    detailKv("Рейтинг Leetify", fmtNum(rk.leetify ?? lf.leetify_rating, 2)),
-    detailKv("Aim / Positioning / Utility", [fmtNum(r.aim), fmtNum(r.positioning), fmtNum(r.utility)].map(dash).join(" / ")),
+    detailKv("Рейтинг Leetify", withLobbyTag(fmtNum(rk.leetify ?? lf.leetify_rating, 2), "lf_rating", rk.leetify ?? lf.leetify_rating)),
+    detailKv("Aim / Positioning / Utility", [withLobbyTag(fmtNum(r.aim), "lf_aim", r.aim) ?? "—", fmtNum(r.positioning), fmtNum(r.utility)].map(dash).join(" / ")),
     detailKv("Clutch / Opening", [fmtNum(r.clutch, 2), fmtNum(r.opening, 2)].map(dash).join(" / ")),
     detailKv("CT / T Leetify", [fmtNum(r.ct_leetify, 2), fmtNum(r.t_leetify, 2)].map(dash).join(" / ")),
     detailKv("Матчі / Winrate", `${lf.total_matches ?? "—"} / ${fmtNum(lf.winrate, 1, "%") ?? "—"}`),
     detailKv("K/D / HS% (історія)", `${agg.kd != null ? agg.kd.toFixed(2) : "—"} / ${fmtNum(agg.hs_pct, 1, "%") ?? "—"}`),
-    detailKv("Reaction time", s.reaction_time_ms != null ? `${Math.round(s.reaction_time_ms)} ms` : null),
+    detailKv("Reaction time", withLobbyTag(s.reaction_time_ms != null ? `${Math.round(s.reaction_time_ms)} ms` : null, "reaction", s.reaction_time_ms)),
     detailKv("Preaim / Accuracy head", `${fmtNum(s.preaim, 1, "°") ?? "—"} / ${fmtNum(s.accuracy_head, 1, "%") ?? "—"}`),
     detailKv("Counter-strafe / Spray", `${fmtNum(s.counter_strafing_good_shots_ratio, 1, "%") ?? "—"} / ${fmtNum(s.spray_accuracy, 1, "%") ?? "—"}`),
     detailKv("Premier / FACEIT / Wingman", `${rk.premier ?? "—"} / ${rk.faceit ?? "—"} / ${rk.wingman ?? "—"}`),
@@ -409,6 +503,7 @@ function leetifyRows(lf) {
     detailKv("Бани платформ", bans || "немає"),
     detailKv("Приватність", lf.privacy_mode),
     detailKv("Перший матч", lf.first_match_date),
+    ...leetifySparkRows(lf),
     recent.join(""),
   ];
 }
@@ -439,14 +534,15 @@ function renderCstrackerSection(ct) {
       `${m.kills ?? "—"}/${m.deaths ?? "—"}/${m.assists ?? "—"} · rating ${fmt(m.rating)} · ACC ${fmt(m.acc, "%")}`)
   ).join("");
   return detailSection("CSTracker", [
-    detailKv("Trust rating", fmt(ct.trust, "%")),
+    detailKv("Trust rating", withLobbyTag(fmt(ct.trust, "%"), "ct_trust", ct.trust)),
     detailKv("Accuracy / Spray", `${fmt(aim.Accuracy, "%") ?? "—"} / ${fmt(aim["Spray accuracy"], "%") ?? "—"}`),
-    detailKv("Preaim / Aim offset", `${fmt(aim.Preaim, "°") ?? "—"} / ${fmt(aim["Aim offset"], "°") ?? "—"}`),
+    detailKv("Preaim / Aim offset", `${withLobbyTag(fmt(aim.Preaim, "°"), "ct_preaim", aim.Preaim) ?? "—"} / ${fmt(aim["Aim offset"], "°") ?? "—"}`),
     detailKv("Spot to kill", aim["Spot to kill"] != null ? `${Math.round(aim["Spot to kill"])} ms` : null),
     detailKv("Counter-strafing", fmt(aim["Counter-strafing"], "%")),
     detailKv("TTD (середнє, матчі)", avgTtd != null ? `${avgTtd} ms` : null),
     detailKv("K / D / A (загалом) / Win rate", `${fmt(gen["K/D/A"]) ?? "—"} / ${fmt(gen["Win rate"], "%") ?? "—"}`),
     detailKv("Teamkills / AFK per match", `${fmt(beh["Teamkills / match"]) ?? "—"} / ${fmt(beh["AFK time / match"]) ?? "—"}`),
+    ...cstrackerSparkRows(matches),
     recent,
   ]);
 }
