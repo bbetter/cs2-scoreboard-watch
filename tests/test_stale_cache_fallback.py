@@ -3,12 +3,13 @@ from pathlib import Path
 from unittest import mock
 sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.dirname(__import__("os").path.abspath(__file__))))
 import lookup.steam_lookup as sl
+import lookup.steam_search as steam_search
 from storage import config_store
 from storage.profile_cache import ProfileCache
 
 class StaleFallback(unittest.TestCase):
     def setUp(self):
-        self._orig = (sl._search_steam_community, sl._leetify_cached_or_fetch)
+        self._orig = (steam_search._search_steam_community, sl._leetify_cached_or_fetch)
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         # Isolated cache object: nothing is written to data/profile_cache.json.
@@ -29,19 +30,19 @@ class StaleFallback(unittest.TestCase):
         sl.PROFILE_CACHE.entries()["zed"] = (time.time(), base)
 
     def tearDown(self):
-        sl._search_steam_community, sl._leetify_cached_or_fetch = self._orig
+        steam_search._search_steam_community, sl._leetify_cached_or_fetch = self._orig
         sl.PROFILE_CACHE.clear()
 
     def test_stale_entry_served_when_refresh_rate_limited(self):
         sl._get_steam_api_key = lambda: "key"
-        sl._search_steam_community = lambda *a, **k: ({"_rate_limited": True}, ["429"], [])
+        steam_search._search_steam_community = lambda *a, **k: ({"_rate_limited": True}, ["429"], [])
         p = sl.lookup_steam_profile("Zed")
         self.assertEqual(p.lookup_source, "steam_web_api")
         self.assertEqual(p.steamid64, "76561198000000009")
 
     def test_no_cache_entry_still_reports_rate_limited(self):
         sl.PROFILE_CACHE.clear()
-        sl._search_steam_community = lambda *a, **k: ({"_rate_limited": True}, ["429"], [])
+        steam_search._search_steam_community = lambda *a, **k: ({"_rate_limited": True}, ["429"], [])
         p = sl.lookup_steam_profile("Nobody")
         self.assertEqual(p.lookup_source, "rate_limited")
 
