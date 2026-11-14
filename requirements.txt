@@ -1,3 +1,4 @@
+# Keep in sync with [project].dependencies in pyproject.toml.
 numpy>=2.0.0
 onnxruntime>=1.20.0
 opencv-python>=4.10.0
@@ -5,5 +6,4 @@ pillow>=11.0.0
 rapidocr-onnxruntime>=1.4.0
 mss>=9.0.0; sys_platform != "linux"
 pynput>=1.7.6; sys_platform != "linux"
-playwright>=1.49.0
 beautifulsoup4>=4.12
