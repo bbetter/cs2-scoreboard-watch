@@ -31,6 +31,7 @@ from cs2platform.notify import send_notification
 from app.events import EventBus
 from app.pipeline import ScanPipeline
 from app.scan_store import ScanStore
+from app.sse import SseHub
 from app.web_router import (
     JsonBodyError,
     Router,
@@ -57,9 +58,8 @@ from storage.paths import DATA_DIR, WEB_DIR
 
 HISTORY_FILE = DATA_DIR / "scans_history.json"
 
-_SUBSCRIBERS_LOCK = threading.Lock()
 _MAX_HISTORY = 100
-_SUBSCRIBERS: list[queue.Queue[str]] = []
+SSE = SseHub()
 STORE = ScanStore(HISTORY_FILE, _MAX_HISTORY)
 _TAB_LOCK = threading.Lock()
 _LAST_TAB_TS = 0.0
@@ -92,16 +92,7 @@ def configure_tab_watcher(delay_sec: float = 0.5, cooldown_sec: float = 4.0, cs2
 
 
 def _broadcast_event(event: str, payload: dict) -> None:
-    msg = f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
-    with _SUBSCRIBERS_LOCK:
-        dead: list[queue.Queue[str]] = []
-        for q in _SUBSCRIBERS:
-            try:
-                q.put_nowait(msg)
-            except queue.Full:
-                dead.append(q)
-        for q in dead:
-            _SUBSCRIBERS.remove(q)
+    SSE.broadcast(event, payload)
 
 
 def _adapt_legacy_scan(scan: dict) -> None:
@@ -501,6 +492,10 @@ def _get_screenshot(h: CsWatchHandler, name: str) -> None:
 
 @router.route("GET", "/api/events")
 def _get_events(h: CsWatchHandler) -> None:
+    q = SSE.subscribe()
+    if q is None:
+        h._send_json({"error": "Too many event streams"}, status=503)
+        return
     # Long-lived SSE stream: writes straight to the socket, so it must not be wrapped.
     h.send_response(HTTPStatus.OK)
     h.send_header("Content-Type", "text/event-stream")
@@ -508,9 +503,6 @@ def _get_events(h: CsWatchHandler) -> None:
     h.send_header("Connection", "keep-alive")
     h.end_headers()
 
-    q: queue.Queue[str] = queue.Queue(maxsize=20)
-    with _SUBSCRIBERS_LOCK:
-        _SUBSCRIBERS.append(q)
     try:
         h.wfile.write(b": connected\n\n")
         h.wfile.flush()
@@ -525,9 +517,7 @@ def _get_events(h: CsWatchHandler) -> None:
     except (BrokenPipeError, ConnectionResetError):
         pass
     finally:
-        with _SUBSCRIBERS_LOCK:
-            if q in _SUBSCRIBERS:
-                _SUBSCRIBERS.remove(q)
+        SSE.unsubscribe(q)
 
 
 @router.fallback("GET")

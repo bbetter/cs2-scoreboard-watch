@@ -26,7 +26,8 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `app/server.py` | HTTP server: router table, route functions, the scan store `STORE`, SSE, wiring of the pipeline |
+| `app/server.py` | HTTP server: router table, route functions, the scan store `STORE`, the SSE hub `SSE`, wiring of the pipeline |
+| `app/sse.py` | `SseHub`: subscriber queues for `/api/events`, max 8 open streams (`subscribe()` returns `None` when full), overflowing queues dropped on broadcast |
 | `app/watch_cs2.py` | Entry point for the TAB watcher: registers the Hyprland bind or a pynput listener, then serves `app.server.CsWatchHandler` |
 | `app/web_router.py` | Stdlib router (`Router.route` / `fallback`), JSON body helper, static-file resolution |
 | `app/pipeline.py` | `ScanPipeline`: scan / rescan / enrichment flow, the only code that writes scan records |
@@ -139,9 +140,11 @@ route function
    └─ storage: app.server.STORE (ScanStore.save_locked) → data/scans_history.json (atomic_io)
 ```
 
-SSE: `GET /api/events` keeps one connection open. The `_SUBSCRIBERS` queues receive pre-formatted messages from
-`app.server._broadcast_event`. Topics map to SSE event names: `scan.created`, `scan.updated`, `scan.finished` → `scan`;
-`player.enriched` → `scan_update`. The subscriber list is guarded by `app.server._SUBSCRIBERS_LOCK`, separate from the scan lock.
+SSE: `GET /api/events` keeps one connection open per subscriber. `app.server.SSE` is an `app.sse.SseHub` that holds the
+subscriber queues and their lock (separate from the scan lock). `app.server._broadcast_event` formats each message and
+calls `SSE.broadcast`. The hub allows at most 8 open streams; a ninth `GET /api/events` gets 503
+`{"error": "Too many event streams"}` before any SSE headers are sent. Topics map to SSE event names: `scan.created`,
+`scan.updated`, `scan.finished` → `scan`; `player.enriched` → `scan_update`.
 
 Routes (from `app.server.router.routes()`; `tests/test_router.py::RouteTableTests.EXPECTED` freezes this list):
 
@@ -378,6 +381,8 @@ cross-site requests. `app.web_router.check_request` runs for every request, befo
   `image/png`, `image/jpeg` and `application/octet-stream`. Anything else gets 415 `Unsupported Content-Type`. Bodyless
   POSTs skip this rule.
 - A rejected request gets a JSON error and its connection is closed.
+- **SSE limit:** at most 8 open `GET /api/events` streams (`app.sse.SseHub`). Each stream holds a server thread, so a
+  ninth one gets 503 `Too many event streams` and no stream is opened.
 
 Scan files: `POST /api/scan` accepts an `image_path` only if it resolves to a `.png`, `.jpg` or `.jpeg` file inside the
 configured screenshots directory or `SCREENSHOT_DIR` (`data/screenshots`). Otherwise it returns 400; a missing file
