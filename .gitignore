@@ -12,3 +12,6 @@ server.log
 magic-legal.py
 profile.json
 pton.logs
+feedback.json
+feedback.json.tmp
+feedback.json.corrupt

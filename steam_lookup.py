@@ -1229,6 +1229,107 @@ def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[s
     return uncertainty, effective_weights
 
 
+# Евристичні пороги для недавнього вікна (Leetify stats ~останні матчі, cstracker aim_reactions).
+# ЕВРИСТИКИ: не калібровані на розміченій вибірці. Перевіряти через feedback.json (POST /api/feedback).
+# Значення cstracker/Leetify вважаються у відсотках (0..100), як і в web/app.js.
+AIM_COUNTER_STRAFE_STRONG = 95.0      # % добрих counter-strafe
+AIM_COUNTER_STRAFE_WEAK = 90.0
+AIM_COUNTER_STRAFE_POINTS = (12.0, 6.0)
+AIM_ACCURACY_HEAD_STRONG = 50.0       # % попадань у голову
+AIM_ACCURACY_HEAD_WEAK = 40.0
+AIM_ACCURACY_HEAD_POINTS = (15.0, 7.0)
+AIM_SPRAY_STRONG = 55.0               # % попадань при спреї
+AIM_SPRAY_WEAK = 45.0
+AIM_SPRAY_POINTS = (10.0, 5.0)
+AIM_SPOT_TO_KILL_MS_STRONG = 250.0    # cstracker "Spot to kill"; лише коли немає Leetify reaction_time_ms
+AIM_SPOT_TO_KILL_MS_WEAK = 320.0
+AIM_SPOT_TO_KILL_POINTS = (20.0, 10.0)
+# Сумарні бали з недавнього вікна, з яких вважаємо, що аім "елітний" для смурф-бонусу.
+AIM_ELITE_RECENT_POINTS = 20.0
+AIM_ELITE_SMURF_BONUS = 8.0
+
+
+def _pick_recent_metric(
+    lf: Optional[dict], cst_sections: dict, leetify_key: str, cst_key: Optional[str] = None
+) -> tuple[Optional[float], str]:
+    """Return (value, source) for one metric: Leetify first, cstracker as fallback.
+
+    Using one source per metric avoids double-counting the same aim metric.
+    """
+    if lf:
+        # Flat keys (accuracy_head, preaim, reaction_time_ms) and raw stats (counter-strafe, spray).
+        raw = lf.get(leetify_key)
+        if raw is None:
+            raw = (lf.get("stats") or {}).get(leetify_key)
+        val = _num(raw, 1)
+        if val is not None:
+            return float(val), "Leetify"
+    if cst_key:
+        val = (cst_sections.get("aim_reactions") or {}).get(cst_key)
+        if isinstance(val, (int, float)) and not isinstance(val, bool):
+            return float(val), "cstracker"
+    return None, ""
+
+
+def _recent_aim_signals(
+    lf: Optional[dict], extra_stats: dict, high_elo: bool
+) -> tuple[float, bool, list[str]]:
+    """Score recent-window aim metrics from Leetify and cstracker.
+
+    Returns (points added to the external component, elite_recent flag, reasons).
+    Only adds points, never subtracts: missing data contributes nothing. Players with
+    high_elo are skipped for the aim metrics, matching the existing reaction/aim rules.
+    Reasons name the source (Leetify or cstracker) and the window; lifetime Steam
+    cs2_stats are not used here.
+    """
+    cst = (extra_stats or {}).get("cstracker") or {}
+    cst_sections = (cst.get("sections") or {}) if cst.get("status") == "ok" else {}
+    points = 0.0
+    reasons: list[str] = []
+    if high_elo:
+        return 0.0, False, reasons
+
+    cs_val, cs_src = _pick_recent_metric(lf, cst_sections, "counter_strafing_good_shots_ratio", "Counter-strafing")
+    if cs_val is not None:
+        if cs_val >= AIM_COUNTER_STRAFE_STRONG:
+            points += AIM_COUNTER_STRAFE_POINTS[0]
+            reasons.append(f"Counter-strafing {cs_val:.0f}% ({cs_src}, недавні матчі)")
+        elif cs_val >= AIM_COUNTER_STRAFE_WEAK:
+            points += AIM_COUNTER_STRAFE_POINTS[1]
+            reasons.append(f"Високий counter-strafing {cs_val:.0f}% ({cs_src}, недавні матчі)")
+
+    head_val, head_src = _pick_recent_metric(lf, cst_sections, "accuracy_head")
+    if head_val is not None:
+        if head_val >= AIM_ACCURACY_HEAD_STRONG:
+            points += AIM_ACCURACY_HEAD_POINTS[0]
+            reasons.append(f"Точність у голову {head_val:.0f}% ({head_src}, недавні матчі)")
+        elif head_val >= AIM_ACCURACY_HEAD_WEAK:
+            points += AIM_ACCURACY_HEAD_POINTS[1]
+            reasons.append(f"Висока точність у голову {head_val:.0f}% ({head_src}, недавні матчі)")
+
+    spray_val, spray_src = _pick_recent_metric(lf, cst_sections, "spray_accuracy", "Spray accuracy")
+    if spray_val is not None:
+        if spray_val >= AIM_SPRAY_STRONG:
+            points += AIM_SPRAY_POINTS[0]
+            reasons.append(f"Точність спрею {spray_val:.0f}% ({spray_src}, недавні матчі)")
+        elif spray_val >= AIM_SPRAY_WEAK:
+            points += AIM_SPRAY_POINTS[1]
+            reasons.append(f"Висока точність спрею {spray_val:.0f}% ({spray_src}, недавні матчі)")
+
+    # Spot-to-kill is a fallback for reaction time only when Leetify reaction_time_ms is absent.
+    if not (lf and lf.get("reaction_time_ms") is not None):
+        stk = (cst_sections.get("aim_reactions") or {}).get("Spot to kill")
+        if isinstance(stk, (int, float)) and not isinstance(stk, bool) and stk > 0:
+            if stk < AIM_SPOT_TO_KILL_MS_STRONG:
+                points += AIM_SPOT_TO_KILL_POINTS[0]
+                reasons.append(f"Spot-to-kill {stk:.0f} мс (cstracker, недавні матчі)")
+            elif stk < AIM_SPOT_TO_KILL_MS_WEAK:
+                points += AIM_SPOT_TO_KILL_POINTS[1]
+                reasons.append(f"Швидкий spot-to-kill {stk:.0f} мс (cstracker, недавні матчі)")
+
+    return points, points >= AIM_ELITE_RECENT_POINTS, reasons
+
+
 def _compute_scores(
     player: Player, steam: SteamProfile
 ) -> tuple[float, str, float, str, float, dict[str, float], list[str]]:
@@ -1344,6 +1445,10 @@ def _compute_scores(
         if matches >= 400 and (winrate is None or winrate <= 57) and not lf_bans:
             ext_score -= 15.0
 
+    recent_pts, recent_elite, recent_reasons = _recent_aim_signals(lf, steam.extra_stats, high_elo)
+    ext_score += recent_pts
+    reasons.extend(recent_reasons)
+
     if faceit.get("found"):
         f_matches = faceit.get("matches") or 0
         f_kd = faceit.get("kd")
@@ -1433,6 +1538,10 @@ def _compute_scores(
 
         # Clean-ban bonus for smurf classification
         smurf_prob += 8.0
+
+        if recent_elite:
+            smurf_prob += AIM_ELITE_SMURF_BONUS
+            reasons.append("Смурф-сигнал: елітний аім у недавніх матчах (Leetify/cstracker)")
 
         if young_strong or young_mod:
             reasons.append("Смурф-сигнал: молодий акаунт + високий K/D")
