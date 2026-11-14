@@ -7,7 +7,7 @@ const state = {
   searchQuery: "",
   dateFilter: "",
   matchFilter: "",
-  riskFilter: "all",
+  riskFilter: "high-critical",
   onlyWithData: false,
   onlyHighRisk: false,
   expandedNicks: new Set(),
@@ -123,7 +123,7 @@ function formatDuration(sec) {
 }
 
 const LOBBY_PREFS_KEY = "cswatcher.lobbyFilters.v1";
-const RISK_FILTER_VALUES = ["all", "suspicious", "smurf", "critical", "banned"];
+const RISK_FILTER_VALUES = ["all", "suspicious", "smurf", "critical", "banned", "high-critical"];
 
 function hasDataObject(value) {
   return !!value && typeof value === "object" && Object.keys(value).length > 0;
@@ -221,6 +221,7 @@ function applyPlayerFilters(players) {
     const steam = p.steam || {};
     if (state.onlyWithData && !playerHasAnyData(p)) return false;
     if (state.onlyHighRisk && !playerIsHighRisk(p)) return false;
+    if (state.riskFilter === "high-critical" && p.cheat_probability < 55) return false;
     if (state.riskFilter === "suspicious" && p.cheat_probability < 55) return false;
     if (state.riskFilter === "smurf" && (p.smurf_probability || 0) < 55) return false;
     if (state.riskFilter === "critical" && p.cheat_probability < 75) return false;
@@ -274,6 +275,7 @@ function renderScan(scan) {
 
   els.statPlayers.textContent = String(players.length);
   els.statSuspects.textContent = String(suspects.length);
+  if (els.statSusLabel) els.statSusLabel.textContent = suspects.length ? "Ризик ⚠" : "Гравців";
   els.statTopSuspect.textContent = top ? `${top.nick} (${top.cheat_probability}%)` : "—";
   els.statLastScan.textContent = `${scan.created_at.replace("T", " ")} (${scan.duration_ms} мс)`;
 
@@ -441,12 +443,17 @@ function renderScan(scan) {
             <div class="reasons-text">${reasons}</div>
             ${aiBadge}
           </td>
-          <td data-label="Additional Data">
-            <div class="links-cell">
-              ${leetifyLink}
-              ${faceitLink}
-              <a class="link-btn link-btn-rip" href="${escapeHtml(ripUrl)}" target="_blank" rel="noopener noreferrer">rip</a>
-              ${steamLink}
+          <td data-label="Дані" class="sources-cell">
+            <div class="source-badges">
+              ${(() => {
+                const sources = playerDataSources(p);
+                let badges = '';
+                if (sources.leetify) badges += '<span class="source-badge source-leetify" title="Leetify">L</span>';
+                if (sources.cstracker) badges += '<span class="source-badge source-cstracker" title="CSTracker">C</span>';
+                if (sources.cs2) badges += '<span class="source-badge source-cs2" title="Steam CS2">S</span>';
+                if (!badges) badges = '<span class="source-badge source-none" title="Немає даних">—</span>';
+                return badges;
+              })()}
             </div>
           </td>
         </tr>`;
@@ -1374,12 +1381,12 @@ els.clearFiltersBtn.addEventListener("click", async () => {
   state.searchQuery = "";
   state.dateFilter = "";
   state.matchFilter = "";
-  state.riskFilter = "all";
+  state.riskFilter = "high-critical";
   state.onlyWithData = false;
   state.onlyHighRisk = false;
   els.searchInput.value = "";
   els.dateFilter.value = "";
-  els.riskFilter.value = "all";
+  els.riskFilter.value = "high-critical";
   els.onlyWithDataFilter.checked = false;
   els.onlyHighRiskFilter.checked = false;
   saveLobbyPrefs();
