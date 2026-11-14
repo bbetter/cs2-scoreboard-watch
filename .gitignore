@@ -6,5 +6,6 @@ __pycache__/
 screenshots/
 scans_history.json
 profile_cache.json
+config.json
 server.log
 .DS_Store

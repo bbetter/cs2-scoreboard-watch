@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from config_store import load_config
+
 DEFAULT_CONSOLE_LOG = Path(
     "/media/andrii/Entertainment/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log"
 )
@@ -29,6 +31,12 @@ class ConsoleStatus:
 
 
 def find_cs2_game_dir() -> Optional[Path]:
+    configured_dir = load_config().get("cs2_game_dir", "").strip()
+    if configured_dir:
+        p = Path(configured_dir).expanduser()
+        if p.is_dir():
+            return p
+
     candidates: list[Path] = []
     vdf_paths = [
         Path.home() / ".local/share/Steam/steamapps/libraryfolders.vdf",
@@ -75,6 +83,9 @@ def find_cs2_game_dir() -> Optional[Path]:
 
 
 def get_console_log_path() -> Path:
+    configured_log = load_config().get("console_log_path", "").strip()
+    if configured_log:
+        return Path(configured_log).expanduser()
     env_path = os.environ.get("CS2_CONSOLE_LOG", "").strip()
     if env_path:
         return Path(env_path)

@@ -21,9 +21,16 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-from console_parser import correct_nick_from_console, parse_latest_status, setup_autoexec
+from config_store import get_public_config, load_config, save_config
+from console_parser import (
+    correct_nick_from_console,
+    find_cs2_game_dir,
+    get_console_log_path,
+    parse_latest_status,
+    setup_autoexec,
+)
 from scoreboard_scan import scan as scan_scoreboard
-from steam_lookup import enrich_players, recheck_player_report
+from steam_lookup import _get_steam_api_key, enrich_players, recheck_player_report, reset_steam_api_key_cache
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_DIR = BASE_DIR / "web"
@@ -40,6 +47,30 @@ _LAST_TAB_TS = 0.0
 _TAB_COOLDOWN_SEC = 4.0
 _CS2_ONLY = True
 _TAB_DELAY_SEC = 0.5
+_NOTIFY_ENABLED = True
+
+
+def get_screenshot_dir() -> Path:
+    custom = str(load_config().get("screenshots_dir") or "").strip()
+    if custom:
+        p = Path(custom).expanduser()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+    return SCREENSHOT_DIR
+
+
+def _apply_runtime_config() -> dict:
+    global _TAB_DELAY_SEC, _TAB_COOLDOWN_SEC, _CS2_ONLY, _NOTIFY_ENABLED
+    cfg = load_config()
+    _TAB_DELAY_SEC = float(cfg.get("tab_delay_sec", 0.5))
+    _TAB_COOLDOWN_SEC = float(cfg.get("tab_cooldown_sec", 4.0))
+    _CS2_ONLY = bool(cfg.get("cs2_only", True))
+    _NOTIFY_ENABLED = bool(cfg.get("notify_enabled", True))
+    return cfg
+
+
+_apply_runtime_config()
 
 
 def configure_tab_watcher(delay_sec: float = 0.5, cooldown_sec: float = 4.0, cs2_only: bool = True) -> None:
@@ -188,7 +219,40 @@ def _capture_with_mss_or_pil(out_path: Path, center: Optional[tuple[int, int]] =
 
 def capture_screenshot() -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-    out_path = SCREENSHOT_DIR / f"cs2_{ts}.png"
+    out_path = get_screenshot_dir() / f"cs2_{ts}.png"
+    tool = str(load_config().get("screenshot_tool") or "auto").strip().lower()
+
+    if tool == "mss":
+        _capture_with_mss_or_pil(out_path)
+        if not out_path.exists():
+            raise RuntimeError("Screenshot failed using mss.")
+        return out_path
+    if tool == "pil":
+        from PIL import ImageGrab
+
+        ImageGrab.grab().save(out_path)
+        if not out_path.exists():
+            raise RuntimeError("Screenshot failed using PIL ImageGrab.")
+        return out_path
+    if tool == "screencapture":
+        cmd = ["screencapture", "-x", str(out_path)]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if res.returncode != 0 or not out_path.exists():
+            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
+        return out_path
+    if tool == "grim":
+        monitor_name = _get_cs2_monitor_name()
+        cmd = ["grim", "-o", monitor_name, str(out_path)] if monitor_name else ["grim", str(out_path)]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if res.returncode != 0 or not out_path.exists():
+            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
+        return out_path
+    if tool == "imagemagick":
+        cmd = ["import", "-window", "root", str(out_path)]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        if res.returncode != 0 or not out_path.exists():
+            raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
+        return out_path
 
     if sys.platform == "win32":
         _win32_enable_dpi_awareness()
@@ -329,7 +393,7 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
         "match_id": match_id,
         "map_name": map_name,
         "image_name": image_path.name,
-        "image_url": f"/screenshots/{image_path.name}" if image_path.parent == SCREENSHOT_DIR else None,
+        "image_url": f"/screenshots/{image_path.name}" if image_path.parent.resolve() == get_screenshot_dir().resolve() else None,
         "duration_ms": duration_ms,
         "player_count": len(reports),
         "players": [asdict(r) for r in reports],
@@ -386,6 +450,8 @@ def _is_cs2_active() -> bool:
 
 
 def _send_notification(title: str, msg: str) -> None:
+    if not _NOTIFY_ENABLED:
+        return
     try:
         if sys.platform.startswith("linux"):
             if shutil.which("notify-send"):
@@ -502,6 +568,16 @@ class CsWatchHandler(BaseHTTPRequestHandler):
             self._send_json({"latest": latest, "history": history, "matches": matches})
             return
 
+        if path == "/api/config":
+            cs2_dir = find_cs2_game_dir()
+            resolved = {
+                "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+                "console_log_path": str(get_console_log_path()),
+                "screenshots_dir": str(get_screenshot_dir()),
+            }
+            self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
+            return
+
         if path == "/api/matches":
             with _STATE_LOCK:
                 matches = _build_matches_locked()
@@ -520,10 +596,13 @@ class CsWatchHandler(BaseHTTPRequestHandler):
 
         if path.startswith("/screenshots/"):
             filename = Path(path.split("/screenshots/", 1)[1]).name
-            target = (SCREENSHOT_DIR / filename).resolve()
-            if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
-                self.send_error(HTTPStatus.NOT_FOUND)
-                return
+            sdir = get_screenshot_dir().resolve()
+            target = (sdir / filename).resolve()
+            if target.parent != sdir or not target.is_file():
+                target = (SCREENSHOT_DIR.resolve() / filename).resolve()
+                if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
+                    self.send_error(HTTPStatus.NOT_FOUND)
+                    return
             ctype = "image/jpeg" if target.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
             self._send_file(target, ctype)
             return
@@ -592,8 +671,11 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     if not scan_rec:
                         self._send_json({"error": "Scan not found"}, status=404)
                         return
-                    img_name = scan_rec.get("image_name")
-                img_path = (SCREENSHOT_DIR / Path(img_name).name).resolve()
+                img_name = scan_rec.get("image_name")
+                sdir = get_screenshot_dir().resolve()
+                img_path = (sdir / Path(img_name).name).resolve()
+                if not img_path.is_file():
+                    img_path = (SCREENSHOT_DIR.resolve() / Path(img_name).name).resolve()
                 if not img_path.is_file():
                     self._send_json({"error": "Screenshot file not found"}, status=404)
                     return
@@ -660,6 +742,27 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": str(exc)}, status=500)
             return
 
+        if path == "/api/config":
+            try:
+                raw = self._read_body()
+                payload = json.loads(raw.decode("utf-8")) if raw else {}
+                if not isinstance(payload, dict):
+                    self._send_json({"error": "Invalid config payload"}, status=400)
+                    return
+                save_config(payload)
+                _apply_runtime_config()
+                reset_steam_api_key_cache()
+                cs2_dir = find_cs2_game_dir()
+                resolved = {
+                    "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+                    "console_log_path": str(get_console_log_path()),
+                    "screenshots_dir": str(get_screenshot_dir()),
+                }
+                self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+            return
+
         if path == "/api/upload":
             try:
                 raw = self._read_body()
@@ -667,7 +770,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     self._send_json({"error": "Empty upload"}, status=400)
                     return
                 ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                out_path = SCREENSHOT_DIR / f"upload_{ts}.png"
+                out_path = get_screenshot_dir() / f"upload_{ts}.png"
                 out_path.write_bytes(raw)
                 result = run_scan(image_path=out_path, fetch_steam=True)
                 self._send_json(result)

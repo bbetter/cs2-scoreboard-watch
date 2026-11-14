@@ -61,10 +61,24 @@ def _save_profile_cache_locked() -> None:
 _load_profile_cache()
 
 
+def reset_steam_api_key_cache() -> None:
+    global _STEAM_API_KEY_CACHE
+    _STEAM_API_KEY_CACHE = None
+
+
 def _get_steam_api_key() -> Optional[str]:
     global _STEAM_API_KEY_CACHE
     if _STEAM_API_KEY_CACHE is not None:
         return _STEAM_API_KEY_CACHE or None
+    try:
+        from config_store import load_config
+
+        cfg_key = str(load_config().get("steam_api_key") or "").strip()
+        if cfg_key:
+            _STEAM_API_KEY_CACHE = cfg_key
+            return cfg_key
+    except Exception:
+        pass
     key = os.environ.get("STEAM_API_KEY", "").strip()
     if not key:
         for rc_path in (Path(__file__).resolve().parent / ".env", Path.home() / ".zshrc", Path.home() / ".bashrc"):

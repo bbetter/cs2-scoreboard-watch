@@ -44,6 +44,12 @@
             </button>
           </div>
         </details>
+        <button type="button" class="btn btn-secondary" id="settingsBtn" title="Налаштування шляхів і затримки">
+          ⚙ Налаштування
+        </button>
+        <button type="button" class="btn btn-secondary" id="helpBtn" title="Короткий мануал користувача">
+          ? Мануал
+        </button>
       </div>
     </header>
 
@@ -188,6 +194,128 @@
       <p class="subtitle">Вставте цей рядок у <strong>Steam → Counter-Strike 2 → Властивості → Параметри запуску</strong> і перезапустіть гру.</p>
       <div class="dialog-actions">
         <button type="button" id="closeSetupBtn" class="btn btn-secondary btn-sm">Закрити</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="settingsDialog" class="setup-dialog settings-dialog">
+    <form id="settingsForm" class="setup-dialog-body" method="dialog">
+      <div class="dialog-head">
+        <h2>Налаштування</h2>
+        <button type="button" id="closeSettingsXBtn" class="btn-icon" aria-label="Закрити">✕</button>
+      </div>
+      <p class="subtitle">Залиште поля шляхів порожніми для автоматичного визначення. Зміни застосовуються одразу.</p>
+
+      <div class="settings-section">
+        <h3>Тригер і таймінги</h3>
+        <div class="settings-grid">
+          <label class="field-group">
+            <span>Затримка перед скріншотом (сек)</span>
+            <input type="number" id="cfgTabDelay" min="0" max="5" step="0.1" class="filter-input" />
+          </label>
+          <label class="field-group">
+            <span>Cooldown між TAB-сканами (сек)</span>
+            <input type="number" id="cfgTabCooldown" min="0.5" max="30" step="0.5" class="filter-input" />
+          </label>
+        </div>
+        <div class="settings-checks">
+          <label class="check-row">
+            <input type="checkbox" id="cfgCs2Only" />
+            <span>Реагувати на TAB лише коли активне вікно CS2</span>
+          </label>
+          <label class="check-row">
+            <input type="checkbox" id="cfgNotifyEnabled" />
+            <span>Показувати системні сповіщення після скану</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-head-row">
+          <h3>Шляхи (порожньо = автовизначення)</h3>
+          <button type="button" id="resetPathsBtn" class="btn btn-secondary btn-sm">Скинути до авто</button>
+        </div>
+        <label class="field-group">
+          <span>Папка CS2 (<code>game/csgo</code>)</span>
+          <input type="text" id="cfgCs2Dir" class="filter-input" placeholder="Автовизначення..." />
+          <small class="field-hint" id="cfgCs2DirHint"></small>
+        </label>
+        <label class="field-group">
+          <span>Файл <code>console.log</code></span>
+          <input type="text" id="cfgConsoleLog" class="filter-input" placeholder="Автовизначення..." />
+          <small class="field-hint" id="cfgConsoleLogHint"></small>
+        </label>
+        <label class="field-group">
+          <span>Папка збереження скріншотів</span>
+          <input type="text" id="cfgScreenshotsDir" class="filter-input" placeholder="./screenshots" />
+          <small class="field-hint" id="cfgScreenshotsDirHint"></small>
+        </label>
+      </div>
+
+      <div class="settings-section">
+        <h3>Інструменти та Steam API</h3>
+        <div class="settings-grid">
+          <label class="field-group">
+            <span>Інструмент захоплення екрана</span>
+            <select id="cfgScreenshotTool" class="filter-input">
+              <option value="auto">Авто (за ОС)</option>
+              <option value="grim">grim (Linux Wayland)</option>
+              <option value="imagemagick">import (ImageMagick X11)</option>
+              <option value="mss">mss (Windows / macOS)</option>
+              <option value="screencapture">screencapture (macOS)</option>
+              <option value="pil">PIL ImageGrab</option>
+            </select>
+          </label>
+          <label class="field-group">
+            <span>Steam Web API Key <em id="cfgSteamKeyStatus" class="key-status"></em></span>
+            <div class="key-input-row">
+              <input type="password" id="cfgSteamApiKey" class="filter-input" placeholder="Введіть новий ключ (опціонально)" autocomplete="off" />
+              <button type="button" id="clearSteamKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="dialog-footer">
+        <span id="settingsSaveMsg" class="status-msg" role="status"></span>
+        <div class="dialog-actions">
+          <button type="button" id="cancelSettingsBtn" class="btn btn-secondary btn-sm">Скасувати</button>
+          <button type="submit" id="saveSettingsBtn" class="btn btn-primary btn-sm">Зберегти</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="helpDialog" class="setup-dialog help-dialog">
+    <div class="setup-dialog-body">
+      <div class="dialog-head">
+        <h2>Короткий мануал користувача</h2>
+        <button type="button" id="closeHelpXBtn" class="btn-icon" aria-label="Закрити">✕</button>
+      </div>
+      <div class="manual-list">
+        <article class="manual-step">
+          <h3>1. Автоматичний скан у грі по <code>TAB</code></h3>
+          <p>Запустіть <code>watch_cs2.py</code> та тримайте цю сторінку відкритою. Натисніть <code>TAB</code> у CS2 — через задану затримку (за замовчуванням <strong>0.5с</strong>) програма зробить скріншот, розпізнає гравців і покаже їх у таблиці.</p>
+        </article>
+        <article class="manual-step">
+          <h3>2. Точні ніки та групування матчів</h3>
+          <p>У меню <strong>Інструменти → Налаштувати CS2 (autoexec)</strong> програма автоматично знайде CS2 і додасть <code>bind "TAB" "+showscores; status"</code>. Додайте <code>-condebug +exec autoexec.cfg</code> у параметри запуску Steam, щоб отримувати точні ніки, карту та <strong>Match ID</strong>.</p>
+        </article>
+        <article class="manual-step">
+          <h3>3. Ручний скан і завантаження скріншота</h3>
+          <p>Ви можете натиснути <strong>Зробити скріншот і скан</strong>, перетягнути PNG/JPG прямо у вікно таблиці або обрати файл через <strong>Інструменти → Завантажити скріншот</strong>.</p>
+        </article>
+        <article class="manual-step">
+          <h3>4. Повторний аналіз і ручний вибір профілю</h3>
+          <p>Якщо Steam тимчасово обмежив пошук (429), натисніть <strong>Повторний аналіз</strong> — знайдені профілі кешуються на 24 години. Для ручного уточнення гравця натисніть <code>✎</code> біля ніка і вставте SteamID64 або посилання, або виберіть кандидата у вкладці <strong>Логи пошуку та кандидати</strong>.</p>
+        </article>
+        <article class="manual-step">
+          <h3>5. Налаштування шляхів і таймінгів</h3>
+          <p>У кнопці <strong>⚙ Налаштування</strong> можна змінити затримку перед скріншотом, cooldown, інструмент захоплення екрана, власні шляхи до CS2 / <code>console.log</code> / скріншотів та Steam API Key.</p>
+        </article>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="closeHelpBtn" class="btn btn-primary btn-sm">Зрозуміло</button>
       </div>
     </div>
   </dialog>

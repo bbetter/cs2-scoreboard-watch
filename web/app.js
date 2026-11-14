@@ -24,7 +24,33 @@ const els = {
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
   setupCs2Btn: document.getElementById("setupCs2Btn"),
   toolsMenu: document.getElementById("toolsMenu"),
+  settingsBtn: document.getElementById("settingsBtn"),
+  helpBtn: document.getElementById("helpBtn"),
   cs2SetupDialog: document.getElementById("cs2SetupDialog"),
+  settingsDialog: document.getElementById("settingsDialog"),
+  settingsForm: document.getElementById("settingsForm"),
+  closeSettingsXBtn: document.getElementById("closeSettingsXBtn"),
+  cancelSettingsBtn: document.getElementById("cancelSettingsBtn"),
+  saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+  settingsSaveMsg: document.getElementById("settingsSaveMsg"),
+  cfgTabDelay: document.getElementById("cfgTabDelay"),
+  cfgTabCooldown: document.getElementById("cfgTabCooldown"),
+  cfgCs2Only: document.getElementById("cfgCs2Only"),
+  cfgNotifyEnabled: document.getElementById("cfgNotifyEnabled"),
+  cfgCs2Dir: document.getElementById("cfgCs2Dir"),
+  cfgCs2DirHint: document.getElementById("cfgCs2DirHint"),
+  cfgConsoleLog: document.getElementById("cfgConsoleLog"),
+  cfgConsoleLogHint: document.getElementById("cfgConsoleLogHint"),
+  cfgScreenshotsDir: document.getElementById("cfgScreenshotsDir"),
+  cfgScreenshotsDirHint: document.getElementById("cfgScreenshotsDirHint"),
+  resetPathsBtn: document.getElementById("resetPathsBtn"),
+  cfgScreenshotTool: document.getElementById("cfgScreenshotTool"),
+  cfgSteamApiKey: document.getElementById("cfgSteamApiKey"),
+  cfgSteamKeyStatus: document.getElementById("cfgSteamKeyStatus"),
+  clearSteamKeyBtn: document.getElementById("clearSteamKeyBtn"),
+  helpDialog: document.getElementById("helpDialog"),
+  closeHelpBtn: document.getElementById("closeHelpBtn"),
+  closeHelpXBtn: document.getElementById("closeHelpXBtn"),
   setupStatusText: document.getElementById("setupStatusText"),
   launchOptionsCode: document.getElementById("launchOptionsCode"),
   copyLaunchBtn: document.getElementById("copyLaunchBtn"),
@@ -697,6 +723,116 @@ els.copyLaunchBtn.addEventListener("click", async () => {
 els.closeSetupBtn.addEventListener("click", () => {
   els.cs2SetupDialog.close();
 });
+
+let pendingClearSteamKey = false;
+
+function populateSettingsDialog(data) {
+  const cfg = data.config || {};
+  const resolved = data.resolved || {};
+  els.cfgTabDelay.value = cfg.tab_delay_sec ?? 0.5;
+  els.cfgTabCooldown.value = cfg.tab_cooldown_sec ?? 4.0;
+  els.cfgCs2Only.checked = cfg.cs2_only !== false;
+  els.cfgNotifyEnabled.checked = cfg.notify_enabled !== false;
+  els.cfgCs2Dir.value = cfg.cs2_game_dir || "";
+  els.cfgConsoleLog.value = cfg.console_log_path || "";
+  els.cfgScreenshotsDir.value = cfg.screenshots_dir || "";
+  els.cfgScreenshotTool.value = cfg.screenshot_tool || "auto";
+  els.cfgSteamApiKey.value = "";
+  pendingClearSteamKey = false;
+
+  els.cfgCs2DirHint.textContent = resolved.cs2_game_dir
+    ? `Зараз використовується: ${resolved.cs2_game_dir}`
+    : "Автовизначення: папку CS2 не знайдено";
+  els.cfgConsoleLogHint.textContent = resolved.console_log_path
+    ? `Зараз використовується: ${resolved.console_log_path}`
+    : "";
+  els.cfgScreenshotsDirHint.textContent = resolved.screenshots_dir
+    ? `Зараз використовується: ${resolved.screenshots_dir}`
+    : "";
+
+  if (data.steam_api_key_source === "config") {
+    els.cfgSteamKeyStatus.textContent = `(збережено в config.json: ${data.steam_api_key_masked})`;
+  } else if (data.steam_api_key_source === "env") {
+    els.cfgSteamKeyStatus.textContent = "(підключено зі змінної середовища)";
+  } else {
+    els.cfgSteamKeyStatus.textContent = "(не задано)";
+  }
+  els.settingsSaveMsg.textContent = "";
+  els.settingsSaveMsg.classList.remove("error");
+}
+
+els.settingsBtn?.addEventListener("click", async () => {
+  if (els.toolsMenu) els.toolsMenu.open = false;
+  try {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Не вдалося завантажити конфіг");
+    populateSettingsDialog(data);
+    els.settingsDialog.showModal();
+  } catch (err) {
+    setStatus(`Помилка відкриття налаштувань: ${err.message}`, true);
+  }
+});
+
+els.resetPathsBtn?.addEventListener("click", () => {
+  els.cfgCs2Dir.value = "";
+  els.cfgConsoleLog.value = "";
+  els.cfgScreenshotsDir.value = "";
+  els.settingsSaveMsg.textContent = "Поля шляхів очищено — натисніть «Зберегти» для автовизначення.";
+  els.settingsSaveMsg.classList.remove("error");
+});
+
+els.clearSteamKeyBtn?.addEventListener("click", () => {
+  els.cfgSteamApiKey.value = "";
+  pendingClearSteamKey = true;
+  els.cfgSteamKeyStatus.textContent = "(буде видалено з config.json після збереження)";
+});
+
+els.settingsForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  els.saveSettingsBtn.disabled = true;
+  els.settingsSaveMsg.textContent = "Збереження...";
+  els.settingsSaveMsg.classList.remove("error");
+  try {
+    const payload = {
+      tab_delay_sec: parseFloat(els.cfgTabDelay.value),
+      tab_cooldown_sec: parseFloat(els.cfgTabCooldown.value),
+      cs2_only: els.cfgCs2Only.checked,
+      notify_enabled: els.cfgNotifyEnabled.checked,
+      cs2_game_dir: els.cfgCs2Dir.value.trim(),
+      console_log_path: els.cfgConsoleLog.value.trim(),
+      screenshots_dir: els.cfgScreenshotsDir.value.trim(),
+      screenshot_tool: els.cfgScreenshotTool.value,
+      steam_api_key: els.cfgSteamApiKey.value.trim(),
+      clear_steam_api_key: pendingClearSteamKey,
+    };
+    const res = await fetch("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Помилка збереження");
+    populateSettingsDialog(data);
+    els.settingsSaveMsg.textContent = "Збережено і застосовано.";
+    setStatus(`Налаштування оновлено (затримка TAB: ${data.config.tab_delay_sec}с).`);
+  } catch (err) {
+    els.settingsSaveMsg.textContent = err.message;
+    els.settingsSaveMsg.classList.add("error");
+  } finally {
+    els.saveSettingsBtn.disabled = false;
+  }
+});
+
+els.closeSettingsXBtn?.addEventListener("click", () => els.settingsDialog.close());
+els.cancelSettingsBtn?.addEventListener("click", () => els.settingsDialog.close());
+
+els.helpBtn?.addEventListener("click", () => {
+  if (els.toolsMenu) els.toolsMenu.open = false;
+  els.helpDialog.showModal();
+});
+els.closeHelpBtn?.addEventListener("click", () => els.helpDialog.close());
+els.closeHelpXBtn?.addEventListener("click", () => els.helpDialog.close());
 
 fetchLatest();
 connectSSE();

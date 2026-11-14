@@ -12,6 +12,7 @@ import subprocess
 import sys
 from http.server import ThreadingHTTPServer
 
+from config_store import load_config
 from server import CsWatchHandler, _load_history, configure_tab_watcher, schedule_tab_scan
 
 
@@ -59,13 +60,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="CS2 TAB auto-scanner + Web UI")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
-    parser.add_argument("--delay", type=float, default=0.5, help="Затримка після TAB перед скріншотом (сек)")
-    parser.add_argument("--cooldown", type=float, default=4.0, help="Мін. пауза між сканами (сек)")
+    parser.add_argument("--delay", type=float, default=None, help="Затримка після TAB перед скріншотом (сек)")
+    parser.add_argument("--cooldown", type=float, default=None, help="Мін. пауза між сканами (сек)")
     parser.add_argument("--all-windows", action="store_true", help="Реагувати на TAB у будь-якому вікні (для тесту)")
     args = parser.parse_args()
 
+    cfg = load_config()
+    delay = args.delay if args.delay is not None else float(cfg.get("tab_delay_sec", 0.5))
+    cooldown = args.cooldown if args.cooldown is not None else float(cfg.get("tab_cooldown_sec", 4.0))
+    cs2_only = False if args.all_windows else bool(cfg.get("cs2_only", True))
+
     url = f"http://{args.host}:{args.port}"
-    configure_tab_watcher(delay_sec=args.delay, cooldown_sec=args.cooldown, cs2_only=not args.all_windows)
+    configure_tab_watcher(delay_sec=delay, cooldown_sec=cooldown, cs2_only=cs2_only)
     _load_history()
 
     httpd = ThreadingHTTPServer((args.host, args.port), CsWatchHandler)
@@ -96,7 +102,7 @@ def main() -> None:
         signal.signal(signal.SIGHUP, _handle_sig)
 
     print(f"Веб-інтерфейс: {url}")
-    print(f"Слухаю натискання TAB (затримка {args.delay:.1f}с, тільки CS2: {not args.all_windows}). Ctrl+C для виходу.")
+    print(f"Слухаю натискання TAB (затримка {delay:.1f}с, тільки CS2: {cs2_only}). Ctrl+C для виходу.")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
