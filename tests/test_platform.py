@@ -132,13 +132,22 @@ class NotifyCommandTests(unittest.TestCase):
     def test_linux_without_notify_send_builds_nothing(self):
         self.assertIsNone(notify.build_notification_command("T", "M", "linux", _which_from(set()), {}))
 
-    def test_macos_osascript_escapes_quotes_and_backslashes(self):
-        argv, kwargs = notify.build_notification_command(
-            'Ti"tle', 'a "b" \\c', "darwin", _which_from({"osascript"}), {}
-        )
-        self.assertEqual(argv[:2], ["osascript", "-e"])
-        self.assertEqual(argv[2], 'display notification "a \\"b\\" \\\\c" with title "Ti\\"tle"')
+    def test_macos_osascript_passes_text_as_arguments(self):
+        title, msg = 'Ti"tle', 'a "b" \\c'
+        argv, kwargs = notify.build_notification_command(title, msg, "darwin", _which_from({"osascript"}), {})
+        self.assertEqual(argv, [
+            "osascript",
+            "-e", "on run argv",
+            "-e", "display notification (item 1 of argv) with title (item 2 of argv)",
+            "-e", "end run",
+            msg,
+            title,
+        ])
         self.assertEqual(kwargs, {"check": False})
+        script_lines = [argv[i + 1] for i, a in enumerate(argv) if a == "-e"]
+        for line in script_lines:
+            self.assertNotIn(msg, line)
+            self.assertNotIn(title, line)
 
     def test_macos_without_osascript_builds_nothing(self):
         self.assertIsNone(notify.build_notification_command("T", "M", "darwin", _which_from(set()), {}))

@@ -300,7 +300,8 @@ value to `auto`. Auto mode uses `select_auto_tool`, so add a branch there only i
 automatically.
 
 Notifier (`cs2platform/notify.py`): add a platform branch in `build_notification_command`, returning
-`(argv, subprocess kwargs)` or `None`. `send_notification` runs it and swallows errors.
+`(argv, subprocess kwargs)` or `None`. `send_notification` runs it and swallows errors. Pass user text to notifier
+commands as separate argv items, never inside a script string (see the macOS branch).
 
 ### (d) Add a config setting
 
