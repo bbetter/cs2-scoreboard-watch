@@ -42,6 +42,10 @@
               <span>Налаштувати CS2 (autoexec)</span>
               <span class="tools-hint">Бінд</span>
             </button>
+            <button type="button" class="tools-item" id="aiAnalyzeScanBtn" role="menuitem">
+              <span>Запустити AI-аналіз (Claude)</span>
+              <span class="tools-hint">Усі гравці</span>
+            </button>
           </div>
         </details>
         <button type="button" class="btn btn-secondary" id="settingsBtn" title="Налаштування шляхів і затримки">
@@ -274,6 +278,59 @@
             </div>
           </label>
         </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="section-head-row">
+          <h3>AI-аналіз (фінальний етап)</h3>
+          <span id="cfgClaudeCliStatus" class="key-status"></span>
+        </div>
+        <label class="check-row">
+          <input type="checkbox" id="cfgAiEnabled" />
+          <span>Автоматично запускати AI-аналіз після кожного скану</span>
+        </label>
+        <div class="settings-grid">
+          <label class="field-group">
+            <span>Провайдер</span>
+            <select id="cfgAiProvider" class="filter-input">
+              <option value="claude_cli">Claude Code CLI (підписка Claude)</option>
+              <option value="anthropic_api">Anthropic API Key</option>
+            </select>
+          </label>
+          <label class="field-group">
+            <span>Модель Claude</span>
+            <select id="cfgAiModel" class="filter-input">
+              <option value="sonnet">sonnet (швидка й точна)</option>
+              <option value="haiku">haiku (найшвидша)</option>
+              <option value="opus">opus (найглибша)</option>
+            </select>
+          </label>
+        </div>
+        <div class="settings-grid settings-grid-3">
+          <label class="field-group">
+            <span>Вага: Рахунок у грі</span>
+            <input type="number" id="cfgWeightScoreboard" min="0" max="1" step="0.05" class="filter-input" />
+          </label>
+          <label class="field-group">
+            <span>Вага: Leetify</span>
+            <input type="number" id="cfgWeightLeetify" min="0" max="1" step="0.05" class="filter-input" />
+          </label>
+          <label class="field-group">
+            <span>Вага: Steam API</span>
+            <input type="number" id="cfgWeightSteam" min="0" max="1" step="0.05" class="filter-input" />
+          </label>
+        </div>
+        <label class="field-group">
+          <span>Системний промпт для AI</span>
+          <textarea id="cfgAiPrompt" rows="4" class="filter-input settings-textarea"></textarea>
+        </label>
+        <label class="field-group" id="cfgAnthropicKeyWrap">
+          <span>Anthropic API Key (лише для режиму API) <em id="cfgAnthropicKeyStatus" class="key-status"></em></span>
+          <div class="key-input-row">
+            <input type="password" id="cfgAnthropicApiKey" class="filter-input" placeholder="sk-ant-... (опціонально)" autocomplete="off" />
+            <button type="button" id="clearAnthropicKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
+          </div>
+        </label>
       </div>
 
       <div class="dialog-footer">

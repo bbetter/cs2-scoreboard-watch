@@ -8,6 +8,7 @@ const state = {
   dateFilter: "",
   matchFilter: "",
   riskFilter: "all",
+  expandedNicks: new Set(),
 };
 
 const els = {
@@ -23,6 +24,7 @@ const els = {
   riskFilter: document.getElementById("riskFilter"),
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
   setupCs2Btn: document.getElementById("setupCs2Btn"),
+  aiAnalyzeScanBtn: document.getElementById("aiAnalyzeScanBtn"),
   toolsMenu: document.getElementById("toolsMenu"),
   settingsBtn: document.getElementById("settingsBtn"),
   helpBtn: document.getElementById("helpBtn"),
@@ -48,6 +50,17 @@ const els = {
   cfgSteamApiKey: document.getElementById("cfgSteamApiKey"),
   cfgSteamKeyStatus: document.getElementById("cfgSteamKeyStatus"),
   clearSteamKeyBtn: document.getElementById("clearSteamKeyBtn"),
+  cfgAiEnabled: document.getElementById("cfgAiEnabled"),
+  cfgAiProvider: document.getElementById("cfgAiProvider"),
+  cfgAiModel: document.getElementById("cfgAiModel"),
+  cfgWeightScoreboard: document.getElementById("cfgWeightScoreboard"),
+  cfgWeightLeetify: document.getElementById("cfgWeightLeetify"),
+  cfgWeightSteam: document.getElementById("cfgWeightSteam"),
+  cfgAiPrompt: document.getElementById("cfgAiPrompt"),
+  cfgAnthropicApiKey: document.getElementById("cfgAnthropicApiKey"),
+  cfgAnthropicKeyStatus: document.getElementById("cfgAnthropicKeyStatus"),
+  clearAnthropicKeyBtn: document.getElementById("clearAnthropicKeyBtn"),
+  cfgClaudeCliStatus: document.getElementById("cfgClaudeCliStatus"),
   helpDialog: document.getElementById("helpDialog"),
   closeHelpBtn: document.getElementById("closeHelpBtn"),
   closeHelpXBtn: document.getElementById("closeHelpXBtn"),
@@ -238,10 +251,18 @@ function renderScan(scan) {
         ? `<a class="link-btn" href="${escapeHtml(lf.url)}" target="_blank" rel="noopener noreferrer">Leetify</a>`
         : "";
 
-      return `
-        <tr>
+      const ai = p.ai_analysis || null;
+      const aiClass = ai ? `ai-${String(ai.decision || "uncertain").toLowerCase()}` : "";
+      const aiBadge = ai
+        ? `<div><span class="ai-decision-badge ${escapeHtml(aiClass)}">AI-DECISION: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)</span></div>`
+        : "";
+      const isExpanded = state.expandedNicks.has(p.nick);
+
+      const mainRow = `
+        <tr class="player-row ${isExpanded ? "expanded" : ""}" data-nick="${escapeHtml(p.nick)}">
           <td data-label="Гравець">
             <div class="player-cell">
+              <span class="expand-caret" aria-hidden="true">▸</span>
               ${avatarHtml}
               <div class="player-names">
                 <div class="nick-row">
@@ -268,6 +289,7 @@ function renderScan(scan) {
               <div class="prob-fill fill-${escapeHtml(p.risk_level)}" style="width: ${Math.min(100, Math.max(0, p.cheat_probability))}%"></div>
             </div>
             <div class="reasons-text">${reasons}</div>
+            ${aiBadge}
           </td>
           <td data-label="Посилання">
             <div class="links-cell">
@@ -277,8 +299,77 @@ function renderScan(scan) {
             </div>
           </td>
         </tr>`;
+
+      if (!isExpanded) return mainRow;
+      return mainRow + renderPlayerDetailsRow(p);
     })
     .join("");
+}
+
+function renderPlayerDetailsRow(p) {
+  const steam = p.steam || {};
+  const lf = steam.leetify || {};
+  const ai = p.ai_analysis || null;
+  const allReasons = (p.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+
+  const aiCardBody = ai
+    ? `
+      <div class="detail-card-head">
+        <h4>AI-аналіз</h4>
+        <span class="ai-decision-badge ai-${escapeHtml(String(ai.decision || "uncertain").toLowerCase())}">
+          AI-DECISION: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)
+        </span>
+      </div>
+      <div class="ai-meta-note">Провайдер: ${escapeHtml(ai.provider || "claude_cli")} · Модель: ${escapeHtml(ai.model || "sonnet")} · ${escapeHtml((ai.analyzed_at || "").replace("T", " "))}</div>
+      <div>
+        <div class="ai-meta-note" style="margin-bottom:4px;">Chain of Thought:</div>
+        <div class="ai-cot-block">${escapeHtml(ai.chain_of_thought || "—")}</div>
+      </div>
+      <div>
+        <div class="ai-meta-note" style="margin-bottom:4px;">Висновок:</div>
+        <div class="ai-summary-block">${escapeHtml(ai.summary || "—")}</div>
+      </div>
+      <div>
+        <button type="button" class="btn btn-secondary btn-sm run-ai-player-btn" data-nick="${escapeHtml(p.nick)}">Перезапустити AI-аналіз</button>
+      </div>`
+    : `
+      <div class="detail-card-head">
+        <h4>AI-аналіз</h4>
+      </div>
+      <p class="ai-meta-note">AI-аналіз ще не виконувався для цього гравця (можна увімкнути автозапуск у Налаштуваннях або запустити вручну).</p>
+      <div>
+        <button type="button" class="btn btn-primary btn-sm run-ai-player-btn" data-nick="${escapeHtml(p.nick)}">Запустити AI-аналіз (Claude)</button>
+      </div>`;
+
+  return `
+    <tr class="player-details-row">
+      <td colspan="8">
+        <div class="player-details-box">
+          <div class="player-details-grid">
+            <div class="detail-card">
+              <div class="detail-card-head">
+                <h4>Детальний аналіз (Steam + Leetify + Рахунок)</h4>
+              </div>
+              <div class="detail-kv-list">
+                <div class="detail-kv"><span>SteamID64</span><strong>${escapeHtml(steam.steamid64 || "Не знайдено")}</strong></div>
+                <div class="detail-kv"><span>Метод пошуку</span><strong>${escapeHtml(steam.lookup_method || "—")}</strong></div>
+                <div class="detail-kv"><span>Вік акаунта</span><strong>${steam.account_age_years != null ? `${steam.account_age_years} р.` : "—"}</strong></div>
+                <div class="detail-kv"><span>Годин у CS2</span><strong>${steam.cs2_hours != null ? `${steam.cs2_hours} год` : "—"}</strong></div>
+                <div class="detail-kv"><span>Рівень Steam</span><strong>${steam.steam_level != null ? steam.steam_level : "—"}</strong></div>
+                <div class="detail-kv"><span>VAC / Game бани</span><strong>${steam.number_of_vac_bans || 0} VAC / ${steam.game_bans || 0} Game</strong></div>
+                <div class="detail-kv"><span>Leetify Aim / RT</span><strong>${lf.aim != null ? Number(lf.aim).toFixed(1) : "—"} / ${lf.reaction_time_ms != null ? `${lf.reaction_time_ms}ms` : "—"}</strong></div>
+                <div class="detail-kv"><span>Leetify Winrate</span><strong>${lf.winrate != null ? `${(lf.winrate <= 1 ? lf.winrate * 100 : lf.winrate).toFixed(0)}%` : "—"}</strong></div>
+                <div class="detail-kv"><span>Premier / Faceit</span><strong>${lf.premier_rank || "—"} / ${lf.faceit_level ? `Lvl ${lf.faceit_level}` : "—"}</strong></div>
+              </div>
+              ${allReasons ? `<ul class="detail-reasons">${allReasons}</ul>` : ""}
+            </div>
+            <div class="detail-card">
+              ${aiCardBody}
+            </div>
+          </div>
+        </div>
+      </td>
+    </tr>`;
 }
 
 function updateMatchAndHistorySelects() {
@@ -505,9 +596,45 @@ els.dropZone.addEventListener("drop", (e) => {
   if (file) uploadFile(file);
 });
 
-els.playersBody.addEventListener("click", (e) => {
+els.playersBody.addEventListener("click", async (e) => {
+  const aiBtn = e.target.closest(".run-ai-player-btn");
+  if (aiBtn && state.currentScan) {
+    const nick = aiBtn.dataset.nick;
+    aiBtn.disabled = true;
+    aiBtn.textContent = "Аналізую...";
+    setStatus(`Запускаю AI-аналіз для ${nick}...`);
+    try {
+      const res = await fetch("/api/ai-analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scan_id: state.currentScan.id, nick }),
+      });
+      const updated = await res.json();
+      if (!res.ok) throw new Error(updated.error || "AI analysis failed");
+      renderScan(updated);
+      setStatus(`AI-аналіз для ${nick} завершено.`);
+    } catch (err) {
+      setStatus(`Помилка AI-аналізу: ${err.message}`, true);
+      aiBtn.disabled = false;
+      aiBtn.textContent = "Запустити AI-аналіз (Claude)";
+    }
+    return;
+  }
+
   const btn = e.target.closest(".edit-nick-btn");
-  if (!btn || !state.currentScan) return;
+  if (!btn) {
+    if (!e.target.closest("a, button, input, form")) {
+      const row = e.target.closest("tr.player-row");
+      if (row && row.dataset.nick) {
+        const nick = row.dataset.nick;
+        if (state.expandedNicks.has(nick)) state.expandedNicks.delete(nick);
+        else state.expandedNicks.add(nick);
+        renderTable();
+      }
+    }
+    return;
+  }
+  if (!state.currentScan) return;
   const namesBox = btn.closest(".player-names");
   const existing = namesBox.querySelector(".recheck-form");
   if (existing) {
@@ -725,10 +852,12 @@ els.closeSetupBtn.addEventListener("click", () => {
 });
 
 let pendingClearSteamKey = false;
+let pendingClearAnthropicKey = false;
 
 function populateSettingsDialog(data) {
   const cfg = data.config || {};
   const resolved = data.resolved || {};
+  const weights = cfg.ai_weights || {};
   els.cfgTabDelay.value = cfg.tab_delay_sec ?? 0.5;
   els.cfgTabCooldown.value = cfg.tab_cooldown_sec ?? 4.0;
   els.cfgCs2Only.checked = cfg.cs2_only !== false;
@@ -739,6 +868,28 @@ function populateSettingsDialog(data) {
   els.cfgScreenshotTool.value = cfg.screenshot_tool || "auto";
   els.cfgSteamApiKey.value = "";
   pendingClearSteamKey = false;
+
+  els.cfgAiEnabled.checked = Boolean(cfg.ai_enabled);
+  els.cfgAiProvider.value = cfg.ai_provider || "claude_cli";
+  els.cfgAiModel.value = cfg.ai_model || "sonnet";
+  els.cfgWeightScoreboard.value = weights.scoreboard ?? 0.30;
+  els.cfgWeightLeetify.value = weights.leetify ?? 0.40;
+  els.cfgWeightSteam.value = weights.steam_account ?? 0.30;
+  els.cfgAiPrompt.value = cfg.ai_prompt || "";
+  els.cfgAnthropicApiKey.value = "";
+  pendingClearAnthropicKey = false;
+
+  els.cfgClaudeCliStatus.textContent = resolved.claude_cli_available
+    ? "Claude CLI знайдено"
+    : "Claude CLI не знайдено в PATH";
+
+  if (data.anthropic_api_key_source === "config") {
+    els.cfgAnthropicKeyStatus.textContent = `(збережено: ${data.anthropic_api_key_masked})`;
+  } else if (data.anthropic_api_key_source === "env") {
+    els.cfgAnthropicKeyStatus.textContent = "(зі змінної середовища)";
+  } else {
+    els.cfgAnthropicKeyStatus.textContent = "(не задано)";
+  }
 
   els.cfgCs2DirHint.textContent = resolved.cs2_game_dir
     ? `Зараз використовується: ${resolved.cs2_game_dir}`
@@ -788,6 +939,37 @@ els.clearSteamKeyBtn?.addEventListener("click", () => {
   els.cfgSteamKeyStatus.textContent = "(буде видалено з config.json після збереження)";
 });
 
+els.clearAnthropicKeyBtn?.addEventListener("click", () => {
+  els.cfgAnthropicApiKey.value = "";
+  pendingClearAnthropicKey = true;
+  els.cfgAnthropicKeyStatus.textContent = "(буде видалено з config.json після збереження)";
+});
+
+els.aiAnalyzeScanBtn?.addEventListener("click", async () => {
+  if (els.toolsMenu) els.toolsMenu.open = false;
+  if (!state.currentScan) {
+    setStatus("Спочатку зробіть або завантажте скан.", true);
+    return;
+  }
+  els.aiAnalyzeScanBtn.disabled = true;
+  setStatus("Запускаю AI-аналіз (Claude) для всіх гравців...");
+  try {
+    const res = await fetch("/api/ai-analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scan_id: state.currentScan.id }),
+    });
+    const updated = await res.json();
+    if (!res.ok) throw new Error(updated.error || "AI analysis failed");
+    renderScan(updated);
+    setStatus("AI-аналіз (Claude) завершено.");
+  } catch (err) {
+    setStatus(`Помилка AI-аналізу: ${err.message}`, true);
+  } finally {
+    els.aiAnalyzeScanBtn.disabled = false;
+  }
+});
+
 els.settingsForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   els.saveSettingsBtn.disabled = true;
@@ -805,6 +987,17 @@ els.settingsForm?.addEventListener("submit", async (e) => {
       screenshot_tool: els.cfgScreenshotTool.value,
       steam_api_key: els.cfgSteamApiKey.value.trim(),
       clear_steam_api_key: pendingClearSteamKey,
+      ai_enabled: els.cfgAiEnabled.checked,
+      ai_provider: els.cfgAiProvider.value,
+      ai_model: els.cfgAiModel.value,
+      ai_weights: {
+        scoreboard: parseFloat(els.cfgWeightScoreboard.value),
+        leetify: parseFloat(els.cfgWeightLeetify.value),
+        steam_account: parseFloat(els.cfgWeightSteam.value),
+      },
+      ai_prompt: els.cfgAiPrompt.value.trim(),
+      anthropic_api_key: els.cfgAnthropicApiKey.value.trim(),
+      clear_anthropic_api_key: pendingClearAnthropicKey,
     };
     const res = await fetch("/api/config", {
       method: "POST",

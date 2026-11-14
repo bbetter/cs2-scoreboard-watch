@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
+from ai_analyzer import analyze_players_with_ai
 from config_store import get_public_config, load_config, save_config
 from console_parser import (
     correct_nick_from_console,
@@ -382,6 +383,7 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
             p.nick = correct_nick_from_console(p.nick, console_status.nicks)
 
     reports = enrich_players(players, fetch_steam=fetch_steam)
+    player_dicts, ai_error = analyze_players_with_ai([asdict(r) for r in reports])
     duration_ms = round((time.time() - started) * 1000)
     now_dt = datetime.now()
     match_id, map_name = _resolve_match_meta(now_dt, console_status)
@@ -395,8 +397,9 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
         "image_name": image_path.name,
         "image_url": f"/screenshots/{image_path.name}" if image_path.parent.resolve() == get_screenshot_dir().resolve() else None,
         "duration_ms": duration_ms,
-        "player_count": len(reports),
-        "players": [asdict(r) for r in reports],
+        "player_count": len(player_dicts),
+        "players": player_dicts,
+        "ai_error": ai_error,
     }
 
     with _STATE_LOCK:
@@ -574,6 +577,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
                 "console_log_path": str(get_console_log_path()),
                 "screenshots_dir": str(get_screenshot_dir()),
+                "claude_cli_available": bool(shutil.which("claude")),
             }
             self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
             return
@@ -687,12 +691,14 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     for p in players:
                         p.nick = correct_nick_from_console(p.nick, console_status.nicks)
                 reports = enrich_players(players, fetch_steam=True)
+                player_dicts, ai_error = analyze_players_with_ai([asdict(r) for r in reports])
                 duration_ms = round((time.time() - started) * 1000)
 
                 with _STATE_LOCK:
-                    scan_rec["players"] = [asdict(r) for r in reports]
-                    scan_rec["player_count"] = len(reports)
+                    scan_rec["players"] = player_dicts
+                    scan_rec["player_count"] = len(player_dicts)
                     scan_rec["duration_ms"] = duration_ms
+                    scan_rec["ai_error"] = ai_error
                     _save_history_locked()
                     snapshot = dict(scan_rec)
                 self._send_json(snapshot)
@@ -730,10 +736,53 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     player_copy = dict(scan_rec["players"][idx])
 
                 updated_player = recheck_player_report(player_copy, query)
+                analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
+                updated_player = analyzed_list[0]
 
                 with _STATE_LOCK:
                     scan_rec["players"][idx] = updated_player
                     scan_rec["players"].sort(key=lambda r: r["cheat_probability"], reverse=True)
+                    _save_history_locked()
+                    snapshot = dict(scan_rec)
+
+                self._send_json(snapshot)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+            return
+
+        if path == "/api/ai-analyze":
+            try:
+                raw = self._read_body()
+                payload = json.loads(raw.decode("utf-8")) if raw else {}
+                scan_id = payload.get("scan_id")
+                target_nick = (payload.get("nick") or "").strip()
+                with _STATE_LOCK:
+                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+                    if not scan_rec:
+                        self._send_json({"error": "Scan not found"}, status=404)
+                        return
+                    players_copy = [dict(p) for p in scan_rec.get("players", [])]
+
+                if target_nick:
+                    subset = [p for p in players_copy if p.get("nick") == target_nick]
+                    if not subset:
+                        self._send_json({"error": "Player not found in scan"}, status=404)
+                        return
+                    analyzed, ai_error = analyze_players_with_ai(subset, force=True)
+                    if ai_error:
+                        self._send_json({"error": ai_error}, status=500)
+                        return
+                    updated_map = {p["nick"]: p for p in analyzed}
+                    new_players = [updated_map.get(p["nick"], p) for p in players_copy]
+                else:
+                    new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
+                    if ai_error:
+                        self._send_json({"error": ai_error}, status=500)
+                        return
+
+                with _STATE_LOCK:
+                    scan_rec["players"] = new_players
+                    scan_rec["ai_error"] = None
                     _save_history_locked()
                     snapshot = dict(scan_rec)
 
@@ -757,6 +806,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
                     "console_log_path": str(get_console_log_path()),
                     "screenshots_dir": str(get_screenshot_dir()),
+                    "claude_cli_available": bool(shutil.which("claude")),
                 }
                 self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
             except Exception as exc:
