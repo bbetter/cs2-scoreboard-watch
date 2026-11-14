@@ -3,6 +3,7 @@ id: T37
 title: Type-check storage, sources and scoring with mypy in CI
 wave: 9
 depends_on: [T36]
+chunk: H-hygiene-docs
 review: none
 size: M
 golden: []
@@ -13,7 +14,6 @@ files:
   - storage/*.py
   - sources/*.py
   - scoring/*.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T37 — mypy для `storage/`, `sources/`, `scoring/` у CI
@@ -57,5 +57,6 @@ files:
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md` → Testing: «Types: `mypy` checks storage, sources, scoring (config in pyproject.toml)».
-Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md` → Testing: «Types: `mypy` checks storage, sources, scoring (config in pyproject.toml)».

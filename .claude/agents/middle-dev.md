@@ -162,6 +162,69 @@ $TC set Txx Review --pr N --agent middle-lead --note "fix attempt k"
    Done: T22 #n, T23 #m, ...
    ```
 
+## Режим «Етап 2: чанки» (кілька задач на PR, кілька лідів паралельно)
+
+Вмикається повідомленням `CHUNKS START <чанк>[, <чанк> ...]`: тобі дають **свій** список чанків по порядку. Інші чанки
+виконують інші ліди одночасно з тобою, тому не чіпай задачі й гілки поза своїм списком. Чанк — це кілька задач з
+однаковим `chunk:` у front matter, один PR, **один коміт на задачу** (AGENTS.md). Мердж робить власник (фразу
+авто-мерджу не пишеш, `gh pr merge` не запускаєш, force-push не робиш).
+
+Для кожного свого чанка по черзі:
+
+1. **Чекай готовності.** `$TC sync`, потім `$TC ready`. Чанк готовий, коли в виводі є рядок `chunk <name>: ...`.
+   Нема → фонова команда з циклом `until`, яка раз на 3 хв повторює `$TC sync >/dev/null; $TC ready | grep -q "chunk <name>:"`
+   (без `sleep` на передньому плані). `G2 FAILED` (main червоний) довше 30 хв → стоп (крок 9).
+2. **Гілка.** `git fetch origin && git switch -c chunk/<name> origin/main`; `git status --short` порожній; базовий
+   прогін тестів (запам'ятай кількість).
+3. **Задачі по одній, у порядку з `$TC ready`.** Для кожної `Txx`:
+   - `$TC set Txx "In Progress" --agent middle-lead:<name> --note "chunk <name>, branch chunk/<name>"`;
+   - нативний сабагент **без** `isolation` (він працює в цьому ж worktree), на передньому плані:
+     ```
+     Agent(subagent_type="middle-dev", run_in_background=false, description="Txx <коротко>",
+           prompt="Implement task Txx (file <path>) on the CURRENT branch in the current directory. Follow 'Робота' "
+                  "and 'G4' of executor mode in .claude/agents/middle-dev.md, but: do NOT create a branch, do NOT push, "
+                  "do NOT open a PR, do NOT touch the board. Change only files from the task's `files:`. Make exactly "
+                  "one commit with headline '[Txx] <title from front matter>' and the body/trailer format of the "
+                  "executor mode. Final message, one line: 'Txx: COMMIT <sha>' or 'Txx: BLOCKED <reason>'.")
+     ```
+   - перевір сам: `git log --oneline origin/main..HEAD` став довшим рівно на 1; `git show --name-only --format= HEAD`
+     ⊆ `files:` задачі; повний набір тестів зелений. Ні → виправ сам і `git commit --amend --no-edit` (коміт ще не
+     запушено, це дозволено). Сабагент `BLOCKED` → `$TC set Txx Blocked ...` і стоп (крок 9).
+4. **PR.** `git push -u origin chunk/<name>`. Заголовок: `[T30+T38] <короткий опис чанка>` (id у порядку з `$TC ready`,
+   через `+`). Тіло (`/tmp/pr-<name>.md`): `## Summary` (підрозділ на задачу), `## Verification` (команди «Перевірка»
+   кожної задачі + повний прогін, тестів до/після), `## Docs delta` (підрозділ на задачу — текст для T39),
+   `## Golden diff` (якщо є), `## Follow-ups`, рядки `Closes #<issue>` для кожної задачі. Потім для кожної задачі
+   `$TC set Txx Review --pr <N> --agent middle-lead:<name>`.
+5. **CI.** Чекай, поки всі checks PR у стані COMPLETED (фоново, раз на 1–2 хв):
+   `gh pr view N --json statusCheckRollup -q '[.statusCheckRollup[] | select(.status != "COMPLETED")] | length'` → 0.
+6. **G5.** `$TC check-pr chunk:<name> N`. Не пройшов → новий PR без force-push:
+   ```bash
+   git fetch origin && git switch -c chunk/<name>-fix<k> origin/main
+   git cherry-pick <коміт задачі 1>          # по одному, у тому самому порядку
+   # дійшов до коміту, який треба виправити: cherry-pick, виправлення, тести, git commit --amend --no-edit
+   git cherry-pick <решта комітів>
+   git log --oneline origin/main..HEAD       # рівно стільки комітів, скільки задач
+   git push -u origin chunk/<name>-fix<k>
+   gh pr create ... (той самий заголовок і тіло)
+   gh pr close N --comment "Superseded by #<новий> (G5 fix, attempt <k>)."
+   ```
+   і `$TC set Txx Review --pr <новий>` для кожної задачі; далі кроки 5–6. Після 2 невдалих спроб → `Blocked`, стоп.
+   G5 падає через вимогу самого файлу задачі → не виправляй, `Blocked` з поясненням конфлікту.
+7. **Готово до мерджу.** `gh pr comment N --body "G5 OK (taskctl check-pr chunk:<name>). Ready to merge. Please use
+   **Rebase and merge** to keep one commit per task."` Чекай `MERGED` (фоново, раз на 2–3 хв, без ліміту часу).
+   `CLOSED` без мерджу → `Blocked` «closed by owner», стоп.
+8. **Done.** Дочекайся зеленого CI на `main`, `$TC sync`, перевір у `$TC status`, що всі задачі чанка `Done`.
+   Наступний чанк зі свого списку → крок 1.
+9. **Кінець.** Останнє повідомлення — рівно так:
+   ```
+   CHUNKS DONE <name>: PR #n[, <name>: PR #m]
+   ```
+   або
+   ```
+   CHUNKS BLOCKED <name> Txx: <причина>
+   Done: <name> PR #n, ...
+   ```
+
 ## Режим виконавця (одна задача)
 
 ### G3 — старт (до першої зміни)

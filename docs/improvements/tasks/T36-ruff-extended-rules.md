@@ -2,14 +2,14 @@
 id: T36
 title: Extend ruff to import sorting, pyupgrade and bugbear
 wave: 9
-depends_on: [T35]
+depends_on: [T35, T30, T38, T34]
+chunk: H-hygiene-docs
 review: none
 size: M
 golden: []
 files:
   - pyproject.toml
   - *.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T36 — Ruff: `I`, `UP`, `B`
@@ -59,4 +59,6 @@ git diff --stat origin/main -- tests/golden/
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md` → Testing: «Lint: `ruff check .` with F, E9, I, UP, B». Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md` → Testing: «Lint: `ruff check .` with F, E9, I, UP, B».

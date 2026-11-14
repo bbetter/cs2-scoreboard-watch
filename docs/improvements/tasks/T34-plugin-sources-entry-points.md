@@ -2,7 +2,8 @@
 id: T34
 title: Load third-party sources from the cs2watch.sources entry point group
 wave: 8
-depends_on: [T33]
+depends_on: [T32, T33]
+chunk: C-sources-scoring
 review: none
 size: M
 golden: []
@@ -11,7 +12,6 @@ files:
   - sources/registry.py
   - storage/config_schema.py
   - tests/test_source_plugins.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T34 — Сторонні джерела через entry points `cs2watch.sources`
@@ -65,5 +65,7 @@ files:
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: рецепт (a) — підрозділ «As a plugin package» з прикладом `[project.entry-points."cs2watch.sources"]`,
-правило про поля налаштувань і `CS2WATCH_DISABLE_PLUGINS`; «Security model» — довіра до плагінів. Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: рецепт (a) — підрозділ «As a plugin package» з прикладом `[project.entry-points."cs2watch.sources"]`,
+правило про поля налаштувань і `CS2WATCH_DISABLE_PLUGINS`; «Security model» — довіра до плагінів.
