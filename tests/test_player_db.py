@@ -22,8 +22,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import player_db  # noqa: E402
-from player_db import PlayerDB  # noqa: E402
+import storage.player_db as player_db  # noqa: E402
+from storage.player_db import PlayerDB  # noqa: E402
 
 SID_A = "76561198000000001"
 SID_B = "76561198000000002"
@@ -173,7 +173,7 @@ class DbFailureTests(_TempDBCase):
 
     def test_scan_finalization_survives_db_failure(self) -> None:
         """A broken DB must not stop the scan from reaching status 'done' and being broadcast."""
-        import server
+        import app.server as server
 
         self.db.close()  # every DB call now raises sqlite3.ProgrammingError
         scan_id = "failscan01"
@@ -208,7 +208,7 @@ class DbFailureTests(_TempDBCase):
 class HttpEndpointTests(_TempDBCase):
     @classmethod
     def setUpClass(cls) -> None:
-        import server
+        import app.server as server
 
         cls.server = server
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.CsWatchHandler)

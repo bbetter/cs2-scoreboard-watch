@@ -1,8 +1,8 @@
-"""Labelled feedback for scoring calibration: append-only feedback.json at the project root.
+"""Labelled feedback for scoring calibration: append-only data/feedback.json.
 
 Each entry records the operator's label for one player from one scan, together with the
 cheat/smurf probability the scorer gave at that moment and a small feature snapshot, so
-thresholds in steam_lookup.py can be checked against real labels later.
+thresholds in lookup/steam_lookup.py can be checked against real labels later.
 """
 
 from __future__ import annotations
@@ -13,11 +13,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from atomic_io import atomic_write_text
+from storage.atomic_io import atomic_write_text
 from sources import REGISTRY
 
-BASE_DIR = Path(__file__).resolve().parent
-FEEDBACK_FILE = BASE_DIR / "feedback.json"
+from storage.paths import DATA_DIR
+
+FEEDBACK_FILE = DATA_DIR / "feedback.json"
 VALID_LABELS = ("cheater", "legit", "unsure")
 MAX_NICK_LEN = 100
 

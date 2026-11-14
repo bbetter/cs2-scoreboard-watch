@@ -1,6 +1,6 @@
 """Unit tests for recent-window aim signals in steam_lookup._compute_scores (F4).
 
-Synthetic profiles only; no network. Thresholds are heuristics (see steam_lookup.py).
+Synthetic profiles only; no network. Thresholds are heuristics (see lookup/steam_lookup.py).
 Run: /home/andrii/fun/.venv/bin/python -m unittest discover -s tests -t . -v
 """
 
@@ -11,8 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scoreboard_scan import Player  # noqa: E402
-from steam_lookup import (  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
+from lookup.steam_lookup import (  # noqa: E402
     AIM_ELITE_RECENT_POINTS,
     SteamProfile,
     _compute_scores,

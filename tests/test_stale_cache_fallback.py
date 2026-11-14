@@ -1,6 +1,6 @@
 import sys, time, unittest
 sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.dirname(__import__("os").path.abspath(__file__))))
-import steam_lookup as sl
+import lookup.steam_lookup as sl
 
 class StaleFallback(unittest.TestCase):
     def setUp(self):

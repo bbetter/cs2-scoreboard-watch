@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from config_fields import Secret
+from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -23,13 +23,13 @@ class SteamStatsSource(LegacySlotSource):
     )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Any:
-        import steam_lookup
+        import lookup.steam_lookup as steam_lookup
 
         key = ctx.steam_api_key or steam_lookup._get_steam_api_key()
         return steam_lookup._fetch_steam_cs2_stats(steamid64, key)
 
     def is_enabled(self, ctx: SourceContext) -> bool:
-        import steam_lookup
+        import lookup.steam_lookup as steam_lookup
 
         return bool(ctx.steam_api_key or steam_lookup._get_steam_api_key())
 

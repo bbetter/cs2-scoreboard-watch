@@ -1,7 +1,7 @@
-"""Entry points: `python -m cs2watch --help` must work and list the same options as `python watch_cs2.py --help`.
+"""Entry points: `python -m cs2watch --help` must work and list the same options as `python -m app.watch_cs2 --help`.
 
 --help exits inside argparse, before any server, screenshot or config write. Importing the modules does open
-pton.logs in append mode (steam_lookup), so that file is the only one this test allows to change.
+data/logs/pton.logs in append mode (steam_lookup), so that file is the only one this test allows to change.
 Run: /home/andrii/fun/.venv/bin/python -m unittest discover -s tests -v
 """
 
@@ -36,7 +36,7 @@ class EntrypointHelpTests(unittest.TestCase):
 
     def test_module_and_script_list_the_same_options(self):
         mod = _help(["-m", "cs2watch"])
-        script = _help(["watch_cs2.py"])
+        script = _help(["-m", "app.watch_cs2"])
         self.assertEqual(script.returncode, 0, script.stderr[-2000:])
         mod_opts = set(OPTION.findall(mod.stdout))
         script_opts = set(OPTION.findall(script.stdout))
@@ -44,8 +44,8 @@ class EntrypointHelpTests(unittest.TestCase):
         self.assertEqual(script_opts, {"--help", "--host", "--port", "--delay", "--cooldown", "--all-windows"})
 
     def test_help_does_not_touch_screenshots_or_config(self):
-        shots = ROOT / "screenshots"
-        config = ROOT / "config.json"
+        shots = ROOT / "data" / "screenshots"
+        config = ROOT / "data" / "config.json"
         before_shots = _snapshot(shots)
         before_config = config.stat().st_mtime_ns if config.exists() else None
         res = _help(["-m", "cs2watch"])

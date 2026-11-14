@@ -17,7 +17,7 @@ class CsTrackerSource(LegacySlotSource):
     in_coverage = True
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
-        import steam_lookup
+        import lookup.steam_lookup as steam_lookup
 
         return steam_lookup._fetch_cstracker(steamid64)
 

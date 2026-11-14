@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Project root (this script lives in scripts/).
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Interpreter: CS2WATCH_PYTHON override, else the project venv, else system python3.
 if [[ -n "${CS2WATCH_PYTHON:-}" ]]; then
   VENV_PY="$CS2WATCH_PYTHON"
@@ -11,12 +12,13 @@ else
   VENV_PY="python3"
 fi
 SERVER_URL="http://127.0.0.1:8765"
-SCREENSHOT_DIR="$BASE_DIR/screenshots"
-mkdir -p "$SCREENSHOT_DIR"
+DATA_DIR="$BASE_DIR/data"
+SCREENSHOT_DIR="$DATA_DIR/screenshots"
+mkdir -p "$SCREENSHOT_DIR" "$DATA_DIR/logs"
 
 # Start web server if it is not running yet
 if ! curl -sf "$SERVER_URL/api/latest" >/dev/null 2>&1; then
-  nohup "$VENV_PY" "$BASE_DIR/server.py" --host 127.0.0.1 --port 8765 >"$BASE_DIR/server.log" 2>&1 &
+  (cd "$BASE_DIR" && nohup "$VENV_PY" -m app.server --host 127.0.0.1 --port 8765 >"$DATA_DIR/logs/server.log" 2>&1 &)
   for _ in $(seq 1 30); do
     if curl -sf "$SERVER_URL/api/latest" >/dev/null 2>&1; then
       break

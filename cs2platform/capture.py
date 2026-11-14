@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Mapping, Optional
 
-from config_store import load_config
+from storage.config_store import load_config
 from cs2platform.focus import (
     is_cs2_client,
     win32_enable_dpi_awareness,
@@ -24,8 +24,7 @@ from cs2platform.focus import (
     win32_get_window_center,
 )
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-SCREENSHOT_DIR = BASE_DIR / "screenshots"
+from storage.paths import SCREENSHOT_DIR
 
 Capturer = Callable[[Path], Path]
 

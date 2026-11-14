@@ -18,8 +18,8 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import steam_lookup as sl  # noqa: E402
-from scoreboard_scan import Player  # noqa: E402
+import lookup.steam_lookup as sl  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 SEARCH_MARK = "SearchCommunityAjax"
 SEARCH_OK = json.dumps(

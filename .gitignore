@@ -3,20 +3,22 @@ __pycache__/
 *.py[cod]
 .env
 .env.*
+# Runtime state: config, DB, caches, history, feedback, logs, screenshots (see storage/paths.py)
+data/
+
+# Legacy root-level runtime files (before the data/ move). Remove this block once they are in data/.
+config.json
 screenshots/
 scans_history.json
 profile_cache.json
-config.json
 server.log
-.DS_Store
-magic-legal.py
-profile.json
 pton.logs
-
-# Local SQLite player history (player_db.py)
 players.db
 players.db-wal
 players.db-shm
 feedback.json
 feedback.json.tmp
 feedback.json.corrupt
+profile.json
+
+.DS_Store

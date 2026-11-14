@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from sources._util import num_or_none
-from config_fields import Secret
+from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -25,7 +25,7 @@ class LeetifySource(LegacySlotSource):
     )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
-        import steam_lookup  # late import: keeps sources importable without the scanner stack
+        import lookup.steam_lookup as steam_lookup  # late import: keeps sources importable without the scanner stack
 
         return steam_lookup._fetch_leetify(steamid64)
 

@@ -9,7 +9,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from atomic_io import atomic_write_text  # noqa: E402
+from storage.atomic_io import atomic_write_text  # noqa: E402
 
 
 class AtomicWriteTextTests(unittest.TestCase):
@@ -48,7 +48,7 @@ class AtomicWriteTextTests(unittest.TestCase):
     def test_original_preserved_when_replace_fails(self):
         target = self.dir / "data.json"
         target.write_text("original", encoding="utf-8")
-        with mock.patch("atomic_io.os.replace", side_effect=OSError("boom")):
+        with mock.patch("storage.atomic_io.os.replace", side_effect=OSError("boom")):
             with self.assertRaises(OSError):
                 atomic_write_text(target, "new content")
         self.assertEqual(target.read_text(encoding="utf-8"), "original")

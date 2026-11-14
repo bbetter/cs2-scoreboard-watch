@@ -19,8 +19,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import server  # noqa: E402
-import steam_lookup  # noqa: E402
+import app.server as server  # noqa: E402
+import lookup.steam_lookup as steam_lookup  # noqa: E402
 
 
 def _make_scan(scan_id: str = "scan-1") -> dict:

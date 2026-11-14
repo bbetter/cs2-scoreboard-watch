@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import server  # noqa: E402
+import app.server as server  # noqa: E402
 
 
 class StaticRoutesKeepAliveTests(unittest.TestCase):

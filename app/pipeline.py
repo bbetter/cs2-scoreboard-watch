@@ -4,7 +4,7 @@
     (Steam/sources, then optional AI) -> final record.
 
 It owns no global state. The scan list, its lock and persistence come from a `ScanRepo`; progress is
-reported through an EventBus (topics in events.py); OCR/enrichment/AI are injected callables. server.py wires
+reported through an EventBus (topics in app/events.py); OCR/enrichment/AI are injected callables. app/server.py wires
 the real ones, tests wire fakes.
 """
 
@@ -19,7 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
-from events import EventBus
+from app.events import EventBus
 
 
 class ScanRepo(Protocol):
