@@ -1398,6 +1398,41 @@ tr.player-details-row td {
 /* ===== U1: компактний режим таблиці, вибір колонок, липкий заголовок ===== */
 
 .table-view-bar {
+/* U5: статус джерел, банер ліміту Steam, фокус клавіатури в таблиці */
+.source-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.source-chip-name {
+  color: var(--text);
+  font-weight: 600;
+}
+.source-chip.source-loaded { border-color: var(--low); }
+.source-chip.source-loaded .source-chip-state { color: var(--low); }
+.source-chip.source-none .source-chip-state { color: var(--muted); }
+.source-chip.source-blocked { border-color: var(--medium); }
+.source-chip.source-blocked .source-chip-state { color: var(--medium); }
+.source-chip.source-rate { border-color: var(--high); }
+.source-chip.source-rate .source-chip-state { color: var(--high); }
+.source-chip.source-error { border-color: var(--critical); }
+.source-chip.source-error .source-chip-state { color: var(--critical); }
+.source-chip .source-retry-btn {
+  padding: 1px 8px;
+  font-size: 11px;
+}
+.rate-limit-banner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1630,4 +1665,17 @@ tr.player-details-row td {
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  margin-bottom: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--high);
+  border-radius: var(--radius);
+  background: rgba(249, 115, 22, 0.08);
+  color: var(--text);
+}
+.rate-limit-banner[hidden] {
+  display: none;
+}
+tr.player-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }

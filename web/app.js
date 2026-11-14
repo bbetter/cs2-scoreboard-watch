@@ -268,6 +268,7 @@ function renderScan(scan) {
 
   const players = scan.players || [];
   renderLobbySummary(players);
+  updateRateLimitBanner(players);
   const suspects = players.filter((p) => p.cheat_probability >= 55);
   const top = [...players].sort((a, b) => b.cheat_probability - a.cheat_probability)[0];
 
@@ -649,6 +650,50 @@ function renderCstrackerSection(ct) {
   ]);
 }
 
+const SOURCE_STATE_LABELS = {
+  loaded: "завантажено",
+  none: "немає",
+  blocked: "заблоковано",
+  error: "помилка",
+  rate: "ліміт запитів",
+};
+
+// Maps the stored player record to one chip per external source.
+// Leetify has no separate error marker in the record: a failed request looks like "немає".
+function sourceChipsFor(p) {
+  const steam = p.steam || {};
+  const ct = (steam.extra_stats || {}).cstracker || {};
+  let steamState = "none";
+  if (steam.lookup_source === "rate_limited") steamState = "rate";
+  else if (steam.steamid64 || steam.profile_name) steamState = "loaded";
+  const ctState = { ok: "loaded", not_found: "none", blocked: "blocked", error: "error" }[ct.status] || "none";
+  const cs2State = steam.cs2_stats && Object.keys(steam.cs2_stats).length ? "loaded" : "none";
+  return [
+    { label: "Steam", state: steamState, retry: null },
+    { label: "Leetify", state: steam.leetify ? "loaded" : "none", retry: "leetify" },
+    { label: "CSTracker", state: ctState, retry: "cstracker" },
+    { label: "Steam CS2", state: cs2State, retry: null },
+  ];
+}
+
+function renderSourceStrip(p) {
+  const chips = sourceChipsFor(p)
+    .map((c) => {
+      const retry = c.retry
+        ? `<button type="button" class="btn btn-secondary btn-sm source-retry-btn" data-nick="${escapeHtml(p.nick)}" data-source="${c.retry}">Повторити</button>`
+        : "";
+      return `<div class="source-chip source-${c.state}"><span class="source-chip-name">${c.label}</span><span class="source-chip-state">${SOURCE_STATE_LABELS[c.state]}</span>${retry}</div>`;
+    })
+    .join("");
+  return `<div class="source-strip" role="group" aria-label="Статус джерел даних">${chips}</div>`;
+}
+
+function updateRateLimitBanner(players) {
+  const banner = document.getElementById("rateLimitBanner");
+  if (!banner) return;
+  banner.hidden = !players.some((p) => p.steam?.lookup_source === "rate_limited");
+}
+
 function players_ready_for_ai(p) {
   return Boolean(p && p.loading_stage !== "steam" && !p.loading);
 }
@@ -811,6 +856,7 @@ function renderPlayerDetailsRow(p) {
     <tr class="player-details-row">
       <td colspan="8">
         <div class="player-details-box">
+          ${renderSourceStrip(p)}
           ${renderPlayerTabs(p, panels)}
         </div>
       </td>
@@ -1105,6 +1151,12 @@ els.playersBody.addEventListener("click", async (e) => {
       aiBtn.disabled = false;
       aiBtn.textContent = "Запустити AI-аналіз (Claude)";
     }
+    return;
+  }
+
+  const retryBtn = e.target.closest(".source-retry-btn");
+  if (retryBtn && state.currentScan) {
+    retrySource(retryBtn);
     return;
   }
 
@@ -1568,5 +1620,94 @@ els.closeHelpBtn?.addEventListener("click", () => els.helpDialog.close());
 els.closeHelpXBtn?.addEventListener("click", () => els.helpDialog.close());
 
 loadLobbyPrefs();
+
+// Повтор одного зовнішнього джерела (Leetify / CSTracker) для одного гравця.
+async function retrySource(btn) {
+  const { nick, source } = btn.dataset;
+  const sourceLabel = source === "leetify" ? "Leetify" : "CSTracker";
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = "Повторюю...";
+  setStatus(`Повторно запитую ${sourceLabel} для ${nick}...`);
+  try {
+    const res = await fetch("/api/recheck-source", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scan_id: state.currentScan.id, nick, source }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    renderScan(data);
+    setStatus(`${sourceLabel} для ${nick} оновлено.`);
+  } catch (err) {
+    setStatus(`Помилка повтору (${sourceLabel}): ${err.message}`, true);
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+
+document.getElementById("rateLimitRescanBtn")?.addEventListener("click", () => els.rescanBtn.click());
+
+// Гарячі клавіші таблиці: j/k — рядок вниз/вгору, Enter — розгорнути, a — AI для рядка, ? — підказка.
+const SHORTCUT_HINT =
+  "Гарячі клавіші: j / k — рядок вниз / вгору · Enter — розгорнути / згорнути · a — AI-аналіз рядка · ? — ця підказка";
+
+function focusedPlayerRow() {
+  return document.activeElement?.closest?.("tr.player-row") || null;
+}
+
+function moveRowFocus(delta) {
+  const rows = Array.from(els.playersBody.querySelectorAll("tr.player-row"));
+  if (!rows.length) return;
+  const cur = rows.indexOf(focusedPlayerRow());
+  const next = cur < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, cur + delta));
+  rows[next].tabIndex = -1; // програмний фокус; порядок Tab не змінюємо
+  rows[next].focus();
+  rows[next].scrollIntoView({ block: "nearest" });
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector("dialog[open]")) return;
+  const target = e.target;
+  // Не перехоплюємо клавіші, коли користувач друкує у полі вводу.
+  if (target?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+  if (target?.isContentEditable) return;
+
+  if (e.key === "?") {
+    e.preventDefault();
+    setStatus(SHORTCUT_HINT);
+    return;
+  }
+  if (e.key === "j" || e.key === "k") {
+    if (!els.playersBody.querySelector("tr.player-row")) return;
+    e.preventDefault();
+    moveRowFocus(e.key === "j" ? 1 : -1);
+    return;
+  }
+  if (e.key === "Enter") {
+    // Enter на кнопці/посиланні має спрацьовувати нативно, не подвійно з рядком.
+    const row = focusedPlayerRow();
+    if (!row || target.closest("button, a")) return;
+    e.preventDefault();
+    row.click();
+    return;
+  }
+  if (e.key === "a") {
+    const row = focusedPlayerRow();
+    if (!row) {
+      setStatus("Спочатку виберіть рядок клавішами j / k.", true);
+      return;
+    }
+    const aiBtn = row.querySelector(".run-ai-player-btn");
+    if (!aiBtn || aiBtn.disabled) {
+      setStatus("AI-аналіз для цього гравця зараз недоступний (профіль ще завантажується).", true);
+      return;
+    }
+    e.preventDefault();
+    aiBtn.click();
+  }
+});
+
 fetchLatest();
 connectSSE();
