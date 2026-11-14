@@ -1,10 +1,23 @@
-import sys, time, unittest
+import sys, tempfile, time, unittest
+from pathlib import Path
+from unittest import mock
 sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.dirname(__import__("os").path.abspath(__file__))))
 import lookup.steam_lookup as sl
+from storage import config_store
 
 class StaleFallback(unittest.TestCase):
     def setUp(self):
         self._orig = (sl._search_steam_community, sl._leetify_cached_or_fetch, sl._save_profile_cache_locked)
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        # Patches are stopped via addCleanup so they cannot leak into later tests.
+        for p in (
+            mock.patch.object(sl, "PROFILE_CACHE_FILE", Path(self._tmp.name) / "profile_cache.json"),
+            mock.patch.object(config_store, "load_config", return_value=dict(config_store.DEFAULT_CONFIG)),
+            mock.patch.object(sl, "_get_steam_api_key", return_value="key"),
+        ):
+            p.start()
+            self.addCleanup(p.stop)
         sl._leetify_cached_or_fetch = lambda sid, ttl: None
         sl._save_profile_cache_locked = lambda: None
         sl._PROFILE_CACHE.clear()

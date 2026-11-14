@@ -8,6 +8,7 @@ import math
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -18,6 +19,21 @@ from lookup.steam_lookup import (  # noqa: E402
     _compute_scores,
     _recent_aim_signals,
 )
+from storage import config_store  # noqa: E402
+
+_config_patch = None
+
+
+def setUpModule() -> None:
+    # _compute_scores reads ai_weights via load_config(); use fresh-install defaults, not data/config.json.
+    global _config_patch
+    _config_patch = mock.patch.object(config_store, "load_config", return_value=dict(config_store.DEFAULT_CONFIG))
+    _config_patch.start()
+
+
+def tearDownModule() -> None:
+    if _config_patch is not None:
+        _config_patch.stop()
 
 
 def clean_player(**over) -> Player:
