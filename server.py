@@ -96,14 +96,26 @@ def _broadcast_event(event: str, payload: dict) -> None:
             _SUBSCRIBERS.remove(q)
 
 
+def _adapt_legacy_scan(scan: dict) -> None:
+    """In memory only: give player records written before `steam.sources` existed their uniform view."""
+    for player in scan.get("players") or []:
+        steam = player.get("steam") if isinstance(player, dict) else None
+        if isinstance(steam, dict) and "sources" not in steam:
+            steam["sources"] = REGISTRY.sources_view(steam)
+
+
 def _load_history() -> None:
     if not HISTORY_FILE.is_file():
         return
     try:
         data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
         if isinstance(data, list):
+            scans = data[:_MAX_HISTORY]
+            for scan in scans:
+                if isinstance(scan, dict):
+                    _adapt_legacy_scan(scan)
             with _STATE_LOCK:
-                _SCANS[:] = data[:_MAX_HISTORY]
+                _SCANS[:] = scans
     except Exception:
         pass
 
@@ -362,6 +374,20 @@ def _source_choices_text(ids: list[str]) -> str:
     return ", ".join(quoted[:-1]) + " або " + quoted[-1]
 
 
+def _refresh_source_entry(steam: dict, src) -> None:
+    """Update steam["sources"] for ONE source after its raw data was rewritten. Other entries and coverage stay as they are."""
+    if "sources" not in steam:
+        steam["sources"] = REGISTRY.sources_view(steam)
+        return
+    view = dict(steam.get("sources") or {})
+    res = src.result_from(steam)
+    if res is None:
+        view.pop(src.id, None)
+    else:
+        view[src.id] = res.to_dict()
+    steam["sources"] = view
+
+
 def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optional[str]) -> tuple[int, dict]:
     """Re-fetch ONE recheckable external source for one player of a scan.
 
@@ -398,6 +424,7 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
             return 404, {"error": "Scan or player was removed while refreshing"}
         steam = dict(player.get("steam") or {})
         src.write_raw(steam, fresh)  # copies the containers along the slot path; siblings are kept
+        _refresh_source_entry(steam, src)
         player["steam"] = steam
         _save_history_locked()
         snapshot = dict(scan_rec)

@@ -69,9 +69,13 @@ _FACEIT_API_KEY_CACHE: Optional[str] = None
 
 
 def _strip_leetify(data: dict) -> dict:
-    """Copy of a profile dict without Leetify data (Leetify guidelines: do not store API data)."""
+    """Copy of a profile dict without Leetify data (Leetify guidelines: do not store API data).
+
+    The derived `sources` view is dropped too: it would copy the Leetify payload. It is rebuilt on read.
+    """
     out = dict(data)
     out["leetify"] = None
+    out["sources"] = {}
     return out
 
 
@@ -237,11 +241,24 @@ class SteamProfile:
     candidates: list[dict] = field(default_factory=list)
     # Per-source flags: which sources returned data for this player (steam, leetify, faceit, cstracker).
     coverage: dict = field(default_factory=dict)
+    # Derived uniform view {source_id: {status, data, fetched_at}} (see _refresh_sources_view).
+    sources: dict = field(default_factory=dict)
 
 
 def _source_coverage(profile: "SteamProfile") -> dict:
     # Per-source flags come from the registry (sources/); "steam" is the SteamID64 presence flag.
     return {"steam": bool(profile.steamid64), **REGISTRY.coverage(asdict(profile))}
+
+
+def _refresh_sources_view(profile: "SteamProfile") -> None:
+    """Set profile.sources to the registry's uniform view of every source that has data."""
+    profile.sources = REGISTRY.sources_view(asdict(profile))
+
+
+def _finalize_source_views(profile: "SteamProfile") -> None:
+    """Single place that derives a profile's coverage flags and uniform sources view."""
+    profile.coverage = _source_coverage(profile)
+    _refresh_sources_view(profile)
 
 
 @dataclass
@@ -1188,7 +1205,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             entry["screenshot_avatar"] = screenshot_avatar
         entry["leetify"] = _leetify_cached_or_fetch(entry.get("steamid64"), lf_ttl)
         cached_profile = SteamProfile(**entry)
-        cached_profile.coverage = _source_coverage(cached_profile)
+        _finalize_source_views(cached_profile)
         return cached_profile
 
     hit: Optional[dict] = None
@@ -1276,7 +1293,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             candidates=candidates,
         )
 
-    profile.coverage = _source_coverage(profile)
+    _finalize_source_views(profile)
     if profile.lookup_source != "rate_limited":
         _leetify_mem_put(profile.steamid64, profile.leetify, lf_ttl)
         with _CACHE_LOCK:
@@ -1696,6 +1713,8 @@ def _compute_scores(
 
 
 def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
+    # Only the sources view here; coverage is set by the lookup/recheck paths that build the profile.
+    _refresh_sources_view(steam)
     prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
     anomaly = None if math.isnan(p.score) else round(p.score, 1)
     return PlayerReport(
@@ -1858,7 +1877,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
         )
     else:
         steam = lookup_steam_profile(q)
-    steam.coverage = _source_coverage(steam)
+    _finalize_source_views(steam)
 
     anomaly = player_dict.get("anomaly_score")
     p = Player(
