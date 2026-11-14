@@ -364,8 +364,11 @@ def recheck_source_for_player(
     if not steamid64:
         return 409, {"error": "У гравця немає SteamID64: спочатку виправте нік або вставте Steam URL"}
 
+    ctx = SourceContext(steam_api_key=_get_steam_api_key())
+    if not src.is_enabled(ctx):
+        return 409, {"error": f"Джерело {source} вимкнене: не задано потрібний ключ"}
     try:
-        fresh = src.fetch_raw(steamid64, SourceContext())
+        fresh = src.fetch_raw(steamid64, ctx)
     except Exception as exc:
         return 502, {"error": f"Запит до {source} не вдався: {exc}"}
 
@@ -632,17 +635,25 @@ def _post_recheck(h: CsWatchHandler) -> None:
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
-            idx = next((i for i, p in enumerate(scan_rec["players"]) if _player_matches(p, player_uid, old_nick)), None)
-            if idx is None:
+            player = next((p for p in scan_rec["players"] if _player_matches(p, player_uid, old_nick)), None)
+            if player is None:
                 h._send_json({"error": "Player not found in scan"}, status=404)
                 return
-            player_copy = dict(scan_rec["players"][idx])
+            player_copy = dict(player)
 
         updated_player = recheck_player_report(player_copy, query)
         analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
         updated_player = _mark_edited(analyzed_list[0])
 
         with STORE.lock:
+            # The index from above may be stale (rows can be reordered or removed meanwhile): find the row by uid again.
+            scan_rec = STORE.find_locked(scan_id)
+            uid = player_copy.get("player_uid")
+            idx = next((i for i, p in enumerate(scan_rec["players"]) if uid and p.get("player_uid") == uid),
+                       None) if scan_rec else None
+            if idx is None:
+                h._send_json({"error": "Player was removed while rechecking"}, status=409)
+                return
             scan_rec["players"][idx] = updated_player
             scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
             _save_history_locked()
@@ -670,7 +681,7 @@ def _post_feedback(h: CsWatchHandler) -> None:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
             player = next(
-                (dict(p) for p in scan_rec["players"] if _player_matches(p, payload.get("player_uid") or None, clean["nick"])),
+                (dict(p) for p in scan_rec["players"] if _player_matches(p, clean["player_uid"], clean["nick"])),
                 None,
             )
         if player is None:
@@ -725,21 +736,24 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
                 h._send_json({"error": "Player not found in scan"}, status=404)
                 return
             analyzed, ai_error = analyze_players_with_ai(subset, force=True)
-            if ai_error:
-                h._send_json({"error": ai_error}, status=500)
-                return
-            key = (lambda p: p.get("player_uid")) if target_uid else (lambda p: p["nick"])
-            updated_map = {key(p): _mark_edited(p) for p in analyzed}
-            new_players = [updated_map.get(key(p), p) for p in players_copy]
         else:
-            new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
-            if ai_error:
-                h._send_json({"error": ai_error}, status=500)
-                return
-            new_players = [_mark_edited(p) for p in new_players]
+            analyzed, ai_error = analyze_players_with_ai(players_copy, force=True)
+        if ai_error:
+            h._send_json({"error": ai_error}, status=500)
+            return
 
+        # Results are keyed by player_uid (never by nick, which duplicates), and only the analysed rows are replaced
+        # in the current rows, so rows changed in parallel by another route are not overwritten.
+        analyzed_by_uid = {p.get("player_uid"): _mark_edited(p) for p in analyzed}
         with STORE.lock:
-            scan_rec["players"] = new_players
+            scan_rec = STORE.find_locked(scan_rec["id"])
+            if scan_rec is None:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            for i, p in enumerate(scan_rec["players"]):
+                uid = p.get("player_uid")
+                if uid and uid in analyzed_by_uid:
+                    scan_rec["players"][i] = analyzed_by_uid[uid]
             scan_rec["ai_error"] = None
             _save_history_locked()
             snapshot = dict(scan_rec)

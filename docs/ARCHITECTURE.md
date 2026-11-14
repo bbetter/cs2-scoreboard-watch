@@ -161,7 +161,8 @@ Routes (from `app.server.router.routes()`; `tests/test_router.py::RouteTableTest
 | POST | `/api/players/{steamid:path}` | `_post_player` |
 
 `POST /api/recheck`, `/api/recheck-source`, `/api/feedback` and `/api/ai-analyze` accept `player_uid` (preferred,
-stable) or `nick` (first match, legacy). `/api/feedback` still requires `nick`; see Known limitations.
+stable) or `nick` (first match, legacy). `/api/feedback` accepts `player_uid` or `nick`, and at least one is required.
+`/api/recheck` and `/api/ai-analyze` write results back by `player_uid` only, under the lock, into the current rows.
 
 ## Data shapes
 
@@ -398,12 +399,6 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
   by a hand-edit route after the run started is kept by the enrichment writes (`ScanPipeline._merge_rows`). The AI
   stage analyzes a snapshot, so a row edited while the AI stage runs keeps the user's version and gets no AI fields
   for that run. Covered by `tests/test_enrichment_merge.py`.
-- **`/api/recheck` writes back by index.** The row index is found under one lock and used under another, so a
-  concurrent change can put the result in the wrong row. Reproduced by `tests/test_player_uid.py` (`expectedFailure`).
-- **`/api/ai-analyze` with only a nick and duplicate nicks** replaces the first duplicate row with the second
-  one's result. Reproduced by `tests/test_player_uid.py::AiAnalyzeUidTests` (`expectedFailure`). The `player_uid`
-  path is not affected.
-- **`/api/feedback` requires `nick`** even when `player_uid` is sent, unlike `/api/recheck-source`. Pinned by a test.
 - **The 68 damping cap can never bind with real inputs**, and the 99 cheat ceiling cannot be reached with the
   default weights (see `tests/test_scoring_rules.py`). Both are exercised only with mocked weights.
 - **argparse shows `__main__.py` as the program name** under `python -m cs2watch`. Cosmetic.
@@ -413,7 +408,6 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
 - **Python version.** The code parses with the 3.8 feature set (checked with `ast.parse(feature_version=...)`), but
   only Python 3.11.9 is available here, so `requires-python = ">=3.11"` is the tested floor. CI runs 3.11 and 3.12
   (required) and 3.13 (non-blocking).
-- **Recheck-source calls `fetch_raw` directly**, so it skips `is_enabled`. `DataSource.fetch` does check it.
 - **Tests can write to the real scan history.** `tests/test_player_db.py::DbFailureTests.test_scan_finalization_survives_db_failure`
   patches `server._save_history_locked` to stop the save. Since `app.server._ServerRepo.save_locked` calls
   `STORE.save_locked()` directly, the patch does not apply, and each run appends a `failscan01` record (no image name)

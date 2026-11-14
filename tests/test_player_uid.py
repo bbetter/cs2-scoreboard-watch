@@ -201,12 +201,18 @@ class FeedbackUidTests(_LiveServer):
         self.assertEqual((status, body), (404, {"error": "Player not found in scan"}))
         append.assert_not_called()
 
-    def test_uid_without_nick_is_rejected_by_validation(self):
-        # Documents current behaviour: the feedback validator still requires `nick` (unlike recheck-source).
+    def test_uid_only_feedback_is_accepted_and_names_the_right_player(self):
         with mock.patch.object(server, "append_feedback") as append:
             status, body = self.post("/api/feedback", {"scan_id": "scan-u1", "label": "legit",
                                                        "player_uid": "scan-u1-1"})
-        self.assertEqual((status, body), (400, {"error": "nick is required"}))
+        self.assertEqual(status, 200)
+        self.assertEqual(body["entry"]["steamid64"], SID1)
+        append.assert_called_once()
+
+    def test_neither_nick_nor_uid_is_rejected_by_validation(self):
+        with mock.patch.object(server, "append_feedback") as append:
+            status, body = self.post("/api/feedback", {"scan_id": "scan-u1", "label": "legit"})
+        self.assertEqual((status, body), (400, {"error": "nick or player_uid is required"}))
         append.assert_not_called()
 
 
@@ -249,10 +255,8 @@ class AiAnalyzeUidTests(_LiveServer):
         self.assertFalse(self.player("scan-u1-0").get("ai_marker"))
         self.assertFalse(self.player("scan-u1-2").get("ai_marker"))
 
-    @unittest.expectedFailure
     def test_nick_path_keeps_each_duplicate_its_own_row(self):
-        # KNOWN BUG: the nick path maps results by nick. The second "dup" result replaces the first "dup"
-        # row, so uid "-0" disappears and uid "-1" appears twice. Correct: both rows keep their identity.
+        # The nick path maps results by player_uid, so both "dup" rows keep their identity.
         def fake_ai(dicts, force=False):
             return [dict(d, analysed_kills=d["kills"]) for d in dicts], None
 
@@ -264,9 +268,8 @@ class AiAnalyzeUidTests(_LiveServer):
         self.assertEqual(self.player("scan-u1-1").get("analysed_kills"), 3)
 
 
-class RaceExpectedFailureTests(_LiveServer):
-    """Races reproduced deterministically. The stale-enrichment case is fixed by the run_id guard and runs as a
-    regular test; the remaining cases still document known bugs and are expected to fail."""
+class RaceRegressionTests(_LiveServer):
+    """Races reproduced deterministically. Each one used to lose or misplace a row; they now run as regular tests."""
 
     def test_stale_enrichment_of_an_old_run_does_not_overwrite_a_rescan(self):
         from app.events import EventBus
@@ -292,7 +295,6 @@ class RaceExpectedFailureTests(_LiveServer):
         self.assertEqual(rec["scan_status"], "loading_steam")   # run 2 is still in progress
         self.assertEqual(rec["players"][0]["kills"], 99)         # run 2's rows must not be overwritten
 
-    @unittest.expectedFailure
     def test_recheck_route_writes_back_to_the_right_row_after_a_concurrent_reorder(self):
         scan = make_scan("scan-race")
         def fake_recheck(player_dict, query):
