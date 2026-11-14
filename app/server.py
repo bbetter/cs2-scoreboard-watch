@@ -6,7 +6,7 @@ import argparse
 import json
 import queue
 import shutil
-import time
+import time  # noqa: F401  (tests/test_enrichment_merge.py patches server.time.time; mark_edited lives in app.player_ops)
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -28,7 +28,16 @@ from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screensh
 from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
 from app.events import EventBus
+from app.matches import build_matches
 from app.pipeline import ScanPipeline
+from app.player_ops import (
+    mark_edited,
+    player_matches,
+    recheck_source,
+    refresh_source_entry,
+    replace_player_by_uid,
+    source_choices_text,
+)
 from app.scan_store import ScanStore
 from app.sse import SseHub
 from app.tab_watcher import TabWatcher
@@ -124,45 +133,7 @@ def _resolve_match_meta(now_dt: datetime, console_status) -> tuple[str, Optional
 
 
 def _build_matches_locked() -> list[dict]:
-    groups: dict[str, list[dict]] = {}
-    for s in STORE.scans:
-        mid = s.get("match_id") or f"session_{s['created_at'][:10]}"
-        groups.setdefault(mid, []).append(s)
-
-    matches: list[dict] = []
-    for mid, scans in groups.items():
-        # scans are newest-first
-        newest = scans[0]
-        oldest = scans[-1]
-        try:
-            dur = max(0, round((datetime.fromisoformat(newest["created_at"]) - datetime.fromisoformat(oldest["created_at"])).total_seconds()))
-        except Exception:
-            dur = 0
-        max_risk = max(
-            (p.get("cheat_probability", 0) for s in scans for p in s.get("players", [])),
-            default=0.0,
-        )
-        map_name = next((s.get("map_name") for s in scans if s.get("map_name")), None)
-        matches.append({
-            "match_id": mid,
-            "map_name": map_name,
-            "date": newest.get("date") or newest["created_at"][:10],
-            "started_at": oldest["created_at"],
-            "ended_at": newest["created_at"],
-            "duration_sec": dur,
-            "scan_count": len(scans),
-            "max_risk": round(max_risk, 1),
-            "scans": [
-                {
-                    "id": s["id"],
-                    "created_at": s["created_at"],
-                    "player_count": s["player_count"],
-                    "image_name": s["image_name"],
-                }
-                for s in scans
-            ],
-        })
-    return matches
+    return build_matches(STORE.scans)
 
 
 class _ServerRepo:
@@ -259,90 +230,31 @@ def schedule_tab_scan() -> dict:
 
 
 def _source_choices_text(ids: list[str]) -> str:
-    """'a' або 'b' for two ids; 'a', 'b' або 'c' for more (matches the historical 400 text)."""
-    quoted = [f"'{i}'" for i in ids]
-    if len(quoted) <= 2:
-        return " або ".join(quoted)
-    return ", ".join(quoted[:-1]) + " або " + quoted[-1]
+    return source_choices_text(ids)
 
 
 def _refresh_source_entry(steam: dict, src) -> None:
-    """Update steam["sources"] for ONE source after its raw data was rewritten. Other entries and coverage stay as they are."""
-    if "sources" not in steam:
-        steam["sources"] = REGISTRY.sources_view(steam)
-        return
-    view = dict(steam.get("sources") or {})
-    res = src.result_from(steam)
-    if res is None:
-        view.pop(src.id, None)
-    else:
-        view[src.id] = res.to_dict()
-    steam["sources"] = view
+    refresh_source_entry(steam, src, REGISTRY)
 
 
 def _player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
-    """Match a stored player by its stable player_uid when the caller sent one, else by nick (legacy API)."""
-    if uid:
-        return p.get("player_uid") == uid
-    return p.get("nick") == nick
+    return player_matches(p, uid, nick)
 
 
 def _mark_edited(player: dict) -> dict:
-    """Stamp a row that a route just wrote by hand. A run whose enrichment started before this moment keeps the row
-    (see ScanPipeline._merge_rows)."""
-    player["edited_at"] = time.time()
-    return player
+    return mark_edited(player)
 
 
 def recheck_source_for_player(
     scan_id: Optional[str], nick: str, source: Optional[str], player_uid: Optional[str] = None
 ) -> tuple[int, dict]:
-    """Re-fetch ONE recheckable external source for one player of a scan.
-
-    Other sources and the scoring are left untouched. Returns (http_status, body):
-    the updated scan on success, {"error": ...} otherwise.
-    """
-    # `source` comes from JSON, so only strings can be registry keys.
-    src = REGISTRY.get(source) if isinstance(source, str) else None
-    if src is None or not src.recheckable:
-        return 400, {"error": f"source має бути {_source_choices_text(REGISTRY.recheckable_ids())}"}
-    if not scan_id or not (nick or player_uid):
-        return 400, {"error": "scan_id і nick є обов'язковими"}
-
-    with STORE.lock:
-        scan_rec = STORE.find_locked(scan_id)
-        if not scan_rec:
-            return 404, {"error": "Scan not found"}
-        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None)
-        if player is None:
-            return 404, {"error": "Player not found in scan"}
-        steamid64 = (player.get("steam") or {}).get("steamid64")
-    if not steamid64:
-        return 409, {"error": "У гравця немає SteamID64: спочатку виправте нік або вставте Steam URL"}
-
-    ctx = SourceContext(steam_api_key=_get_steam_api_key())
-    if not src.is_enabled(ctx):
-        return 409, {"error": f"Джерело {source} вимкнене: не задано потрібний ключ"}
-    try:
-        fresh = src.fetch_raw(steamid64, ctx)
-    except Exception as exc:
-        return 502, {"error": f"Запит до {source} не вдався: {exc}"}
-
-    with STORE.lock:
-        scan_rec = STORE.find_locked(scan_id)
-        player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None) if scan_rec else None
-        if scan_rec is None or player is None:
-            return 404, {"error": "Scan or player was removed while refreshing"}
-        steam = dict(player.get("steam") or {})
-        src.write_raw(steam, fresh)  # copies the containers along the slot path; siblings are kept
-        _refresh_source_entry(steam, src)
-        player["steam"] = steam
-        _mark_edited(player)
-        _save_history_locked()
-        snapshot = dict(scan_rec)
-
-    _broadcast_event("scan", snapshot)
-    return 200, snapshot
+    # Module names are read here, at call time, so tests can patch STORE, REGISTRY, _broadcast_event, ...
+    return recheck_source(
+        STORE, REGISTRY, scan_id, nick, source, player_uid,
+        make_ctx=lambda: SourceContext(steam_api_key=_get_steam_api_key()),
+        save_locked=lambda: _save_history_locked(),
+        broadcast=lambda event, payload: _broadcast_event(event, payload),
+    )
 
 
 # ---------------------------------------------------------------- HTTP routes
@@ -601,15 +513,11 @@ def _post_recheck(h: CsWatchHandler) -> None:
         updated_player = _mark_edited(analyzed_list[0])
 
         with STORE.lock:
-            # The index from above may be stale (rows can be reordered or removed meanwhile): find the row by uid again.
+            # The row may have moved or been removed meanwhile: replace it by uid, looked up again under the lock.
             scan_rec = STORE.find_locked(scan_id)
-            uid = player_copy.get("player_uid")
-            idx = next((i for i, p in enumerate(scan_rec["players"]) if uid and p.get("player_uid") == uid),
-                       None) if scan_rec else None
-            if idx is None:
+            if scan_rec is None or not replace_player_by_uid(scan_rec, updated_player):
                 h._send_json({"error": "Player was removed while rechecking"}, status=409)
                 return
-            scan_rec["players"][idx] = updated_player
             scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
             _save_history_locked()
             snapshot = dict(scan_rec)

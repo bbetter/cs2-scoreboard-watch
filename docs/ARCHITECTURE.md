@@ -34,6 +34,8 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `app/pipeline.py` | `ScanPipeline`: scan / rescan / enrichment flow, the only code that writes scan records |
 | `app/scan_store.py` | `ScanStore`: scan list (newest first), its lock and the history file `data/scans_history.json`. An unreadable file is moved to `.corrupt` and logged |
 | `app/events.py` | `EventBus`: in-process topics (`scan.created`, `scan.updated`, `player.enriched`, `scan.finished`) |
+| `app/player_ops.py` | Player-row operations without HTTP: `find_player`, `replace_player_by_uid`, `mark_edited`, `recheck_source` (one source for one player, returns `(status, body)`), source refresh. Takes the store, registry and callbacks as parameters; `app.server` wraps them with the live `STORE` / `REGISTRY` |
+| `app/matches.py` | `build_matches(scans)`: groups scan records into matches by `match_id` (fallback `session_<date>`), pure function |
 | `app/console_parser.py` | Reads CS2 `console.log` for match id, map, and exact nicknames |
 
 ### `storage/` (config, databases, runtime paths)
@@ -130,6 +132,8 @@ app.web_router.Router.dispatch(handler, method, path)
    ▼
 route function
    ├─ reads JSON with app.web_router.read_json_body, checks state under app.server.STORE.lock
+   ├─ row logic (find / replace by player_uid, single-source recheck) ──► app.player_ops; match listing ──► app.matches
+   │   (routes stay thin; `app.server` keeps the wrappers `_player_matches`, `recheck_source_for_player`, ...)
    ├─ scan work ──► app.pipeline.ScanPipeline
    │                 ├─ OCR (scoreboard_scan + console_parser)  ──► Player rows, player_uid assigned
    │                 ├─ lookup.steam_lookup.enrich_players (background thread unless spawn is synchronous)
