@@ -9,3 +9,5 @@ profile_cache.json
 config.json
 server.log
 .DS_Store
+magic-legal.py
+profile.json
