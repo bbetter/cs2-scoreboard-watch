@@ -153,6 +153,7 @@ class SteamProfile:
     leetify: Optional[dict] = None
     faceit: dict = field(default_factory=dict)
     cs2_stats: dict = field(default_factory=dict)
+    extra_stats: dict = field(default_factory=dict)
     search_log: list[str] = field(default_factory=list)
     candidates: list[dict] = field(default_factory=list)
 
@@ -915,8 +916,9 @@ def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[s
     has_faceit = bool(steam.faceit and steam.faceit.get("found"))
     has_leetify = bool(steam.leetify)
     has_cs2_stats = bool(steam.cs2_stats)
+    has_extra = bool(steam.extra_stats and (steam.extra_stats.get("cstracker") or steam.extra_stats.get("scope_gg")))
 
-    if has_leetify or has_faceit:
+    if has_leetify or has_faceit or has_extra:
         has_leetify_or_faceit = 1.0
     elif has_cs2_stats:
         has_leetify_or_faceit = 0.5
@@ -945,6 +947,8 @@ def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[s
         uncertainty -= 15.0
     if has_cs2_stats:
         uncertainty -= 15.0
+    if has_extra:
+        uncertainty -= 20.0
     uncertainty = round(max(0.0, min(100.0, uncertainty)), 1)
 
     return uncertainty, effective_weights
@@ -1193,6 +1197,38 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
         uncertainty=uncertainty,
         effective_weights=eff_weights,
     )
+
+
+def apply_multi_source_payload(profile: SteamProfile, payload: dict) -> SteamProfile:
+    """Merge normalized multi-source JSON telemetry (profile/steam/leetify/cstracker/scope_gg/medals) into SteamProfile."""
+    from external_parser import parse_multi_source_payload
+
+    parsed = parse_multi_source_payload(payload)
+    if not parsed:
+        return profile
+    if parsed.get("steamid64") and not profile.steamid64:
+        profile.steamid64 = parsed["steamid64"]
+    if parsed.get("profile_name") and not profile.profile_name:
+        profile.profile_name = parsed["profile_name"]
+    if parsed.get("profile_url") and not profile.profile_url:
+        profile.profile_url = parsed["profile_url"]
+    if parsed.get("vanity") and not profile.vanity:
+        profile.vanity = parsed["vanity"]
+    if parsed.get("account_age_years") is not None and profile.account_age_years is None:
+        profile.account_age_years = parsed["account_age_years"]
+    if parsed.get("leetify") and not profile.leetify:
+        profile.leetify = parsed["leetify"]
+    if parsed.get("faceit") and not (profile.faceit and profile.faceit.get("found")):
+        profile.faceit = parsed["faceit"]
+
+    profile.extra_stats = {
+        "xp_level": parsed.get("xp_level"),
+        "medals_count": parsed.get("medals_count"),
+        "has_veteran_coin": parsed.get("has_veteran_coin"),
+        "cstracker": parsed.get("cstracker") or {},
+        "scope_gg": parsed.get("scope_gg") or {},
+    }
+    return profile
 
 
 def enrich_players(

@@ -98,6 +98,9 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
     faceit = steam.get("faceit")
     if faceit:
         data["faceit"] = faceit
+    extra_stats = steam.get("extra_stats")
+    if extra_stats:
+        data["extra_stats"] = extra_stats
     return data
 
 
