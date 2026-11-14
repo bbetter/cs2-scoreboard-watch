@@ -19,7 +19,8 @@ sys.path.insert(0, str(ROOT))
 import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import app.server as server  # noqa: E402
 from app.scan_store import ScanStore  # noqa: E402
-import lookup.steam_lookup as steam_lookup  # noqa: E402
+import sources.cstracker as cstracker_source  # noqa: E402
+import sources.leetify as leetify_source  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 from sources import REGISTRY, DataSource, SourceRegistry, SourceResult  # noqa: E402
 from lookup.steam_lookup import SteamProfile, _build_player_report, _finalize_source_views, _strip_leetify  # noqa: E402
@@ -145,7 +146,7 @@ class RecheckRefreshTests(unittest.TestCase):
 
     def test_recheck_leetify_refreshes_only_leetify_in_sources(self):
         before = copy.deepcopy(self.scan["players"][0]["steam"])
-        with mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 99.0, "bans": []}):
+        with mock.patch.object(leetify_source, "fetch_leetify", return_value={"aim": 99.0, "bans": []}):
             status, _body = server.recheck_source_for_player("scan-1", "legacy", "leetify")
         self.assertEqual(status, 200)
         steam = self.scan["players"][0]["steam"]
@@ -159,7 +160,7 @@ class RecheckRefreshTests(unittest.TestCase):
 
     def test_recheck_cstracker_refreshes_only_cstracker_entry(self):
         before_leetify = copy.deepcopy(self.scan["players"][0]["steam"]["sources"]["leetify"])
-        with mock.patch.object(steam_lookup, "_fetch_cstracker", return_value={"status": "ok", "trust": 90}):
+        with mock.patch.object(cstracker_source, "fetch_cstracker", return_value={"status": "ok", "trust": 90}):
             status, _ = server.recheck_source_for_player("scan-1", "legacy", "cstracker")
         self.assertEqual(status, 200)
         sources = self.scan["players"][0]["steam"]["sources"]
@@ -170,7 +171,7 @@ class RecheckRefreshTests(unittest.TestCase):
     def test_refresh_entry_removes_source_when_it_has_no_data_anymore(self):
         steam = _legacy_steam()
         steam["sources"] = REGISTRY.sources_view(steam)
-        with mock.patch.object(steam_lookup, "_fetch_leetify", return_value=None):
+        with mock.patch.object(leetify_source, "fetch_leetify", return_value=None):
             src = REGISTRY.get("leetify")
             src.write_raw(steam, None)
             server._refresh_source_entry(steam, src)

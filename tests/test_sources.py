@@ -1,6 +1,6 @@
 """Contract tests for sources/: normalize mapping, storage slots, coverage parity, registry rules.
 
-Fetchers are mocked on steam_lookup; nothing touches the network.
+Fetchers are mocked on their sources/* modules and keys on storage.api_keys; nothing touches the network.
 Run: /home/andrii/fun/.venv/bin/python -m unittest discover -s tests -v
 """
 
@@ -17,6 +17,10 @@ sys.path.insert(0, str(ROOT))
 import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import storage.feedback_store as feedback_store  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
+import storage.api_keys as api_keys  # noqa: E402
+import sources.cstracker as cstracker_source  # noqa: E402
+import sources.leetify as leetify_source  # noqa: E402
+import sources.steam_stats as steam_stats_source  # noqa: E402
 from sources import REGISTRY, DataSource, SourceContext, SourceRegistry, SourceResult  # noqa: E402
 from sources.cstracker import CsTrackerSource  # noqa: E402
 from sources.faceit import FaceitSource  # noqa: E402
@@ -83,37 +87,37 @@ class NormalizeTests(unittest.TestCase):
 class FetchTests(unittest.TestCase):
     def test_leetify_fetch_calls_steam_lookup_at_call_time(self):
         payload = {"total_matches": 120, "aim": 77.0, "bans": []}
-        with mock.patch.object(steam_lookup, "_fetch_leetify", return_value=payload) as fetch:
+        with mock.patch.object(leetify_source, "fetch_leetify", return_value=payload) as fetch:
             res = LeetifySource().fetch(SID, SourceContext())
         fetch.assert_called_once_with(SID)
         self.assertEqual((res.status, res.data), ("ok", payload))
         self.assertTrue(res.fetched_at)
 
     def test_fetch_turns_exceptions_into_error(self):
-        with mock.patch.object(steam_lookup, "_fetch_cstracker", side_effect=RuntimeError("boom")):
+        with mock.patch.object(cstracker_source, "fetch_cstracker", side_effect=RuntimeError("boom")):
             res = CsTrackerSource().fetch(SID, SourceContext())
         self.assertEqual(res.status, "error")
 
     def test_cstracker_fetch_passes_through_blocked(self):
-        with mock.patch.object(steam_lookup, "_fetch_cstracker", return_value={"status": "blocked"}):
+        with mock.patch.object(cstracker_source, "fetch_cstracker", return_value={"status": "blocked"}):
             self.assertEqual(CsTrackerSource().fetch(SID, SourceContext()).status, "blocked")
 
     def test_faceit_is_enabled_follows_api_key(self):
-        with mock.patch.object(steam_lookup, "_get_faceit_api_key", return_value=None):
+        with mock.patch.object(api_keys, "_get_faceit_api_key", return_value=None):
             self.assertFalse(FaceitSource().is_enabled(SourceContext()))
-        with mock.patch.object(steam_lookup, "_get_faceit_api_key", return_value="k"):
+        with mock.patch.object(api_keys, "_get_faceit_api_key", return_value="k"):
             self.assertTrue(FaceitSource().is_enabled(SourceContext()))
 
     def test_steam_stats_fetch_uses_context_key_or_config_key(self):
-        with mock.patch.object(steam_lookup, "_fetch_steam_cs2_stats", return_value={"kd": 1.0}) as fetch, \
-                mock.patch.object(steam_lookup, "_get_steam_api_key", return_value="cfgkey"):
+        with mock.patch.object(steam_stats_source, "fetch_steam_cs2_stats", return_value={"kd": 1.0}) as fetch, \
+                mock.patch.object(api_keys, "_get_steam_api_key", return_value="cfgkey"):
             SteamStatsSource().fetch(SID, SourceContext(steam_api_key="ctxkey"))
             fetch.assert_called_with(SID, "ctxkey")
             SteamStatsSource().fetch(SID, SourceContext())
             fetch.assert_called_with(SID, "cfgkey")
 
     def test_steam_stats_is_enabled_needs_a_key(self):
-        with mock.patch.object(steam_lookup, "_get_steam_api_key", return_value=None):
+        with mock.patch.object(api_keys, "_get_steam_api_key", return_value=None):
             self.assertFalse(SteamStatsSource().is_enabled(SourceContext()))
             self.assertTrue(SteamStatsSource().is_enabled(SourceContext(steam_api_key="k")))
 

@@ -21,7 +21,8 @@ sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
 from app.scan_store import ScanStore  # noqa: E402
-import lookup.steam_lookup as steam_lookup  # noqa: E402
+import sources.cstracker as cstracker_source  # noqa: E402
+import sources.leetify as leetify_source  # noqa: E402
 
 
 def _make_scan(scan_id: str = "scan-1") -> dict:
@@ -64,8 +65,8 @@ class RecheckSourceTests(unittest.TestCase):
         ]
         for p in self._patches:
             p.start()
-        self.leetify = mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 99}).start()
-        self.cstracker = mock.patch.object(steam_lookup, "_fetch_cstracker", return_value={"status": "ok"}).start()
+        self.leetify = mock.patch.object(leetify_source, "fetch_leetify", return_value={"aim": 99}).start()
+        self.cstracker = mock.patch.object(cstracker_source, "fetch_cstracker", return_value={"status": "ok"}).start()
 
     def tearDown(self) -> None:
         mock.patch.stopall()
@@ -155,7 +156,7 @@ class RecheckSourceHttpTests(unittest.TestCase):
         self._patches = [
             mock.patch.object(server, "STORE", _store(Path(self._tmp.name) / "history.json", [_make_scan()])),
             mock.patch.object(server, "_broadcast_event"),
-            mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 42}),
+            mock.patch.object(leetify_source, "fetch_leetify", return_value={"aim": 42}),
         ]
         for p in self._patches:
             p.start()
