@@ -24,6 +24,7 @@ from atomic_io import atomic_write_text
 from nick_match import best_match_index
 from scoreboard_scan import Player
 from sources import REGISTRY
+from config_store import DEFAULT_AI_WEIGHTS
 
 _LOG = logging.getLogger("pton")
 
@@ -1315,7 +1316,7 @@ def _risk_level(prob: float) -> str:
 
 
 def _load_base_weights() -> dict[str, float]:
-    defaults = {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30}
+    defaults = dict(DEFAULT_AI_WEIGHTS)  # single source of truth: config_store / config_schema
     try:
         from config_store import load_config
 

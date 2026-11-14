@@ -33,6 +33,7 @@ from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
 from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
 from sources import REGISTRY, SourceContext
+from config_schema import describe_schema
 from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
@@ -481,6 +482,12 @@ def _get_config(h: CsWatchHandler) -> None:
             env_faceit_key_present=bool(_get_faceit_api_key()),
         )
     )
+
+
+@router.route("GET", "/api/config/schema")
+def _get_config_schema(h: CsWatchHandler) -> None:
+    # Descriptors only (names, types, limits, defaults, env var names). Never any stored value.
+    h._send_json(describe_schema())
 
 
 @router.route("GET", "/api/matches")

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from sources._util import num_or_none
+from config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -14,6 +15,14 @@ class LeetifySource(LegacySlotSource):
     slot = ("leetify",)
     recheckable = True
     in_coverage = True
+    # Raw key in config (not masked by the public view); an empty value clears it, as it always has.
+    settings = (
+        Secret(
+            name="leetify_api_key", type="text", default="", label="Leetify API key", group="api_keys",
+            help="Optional Leetify key; Leetify data is fetched without it when not set.",
+            keep_on_empty=False, masked=False,
+        ),
+    )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
         import steam_lookup  # late import: keeps sources importable without the scanner stack

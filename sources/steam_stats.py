@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -13,6 +14,13 @@ class SteamStatsSource(LegacySlotSource):
     slot = ("cs2_stats",)
     recheckable = False
     in_coverage = False  # the legacy steam.coverage map has no such key
+    # Steam Web API key: also used for profile lookups; declared here because the CS2-stats source needs it.
+    settings = (
+        Secret(
+            name="steam_api_key", type="text", default="", label="Steam Web API key", group="api_keys",
+            help="Steam Web API key. Also read from STEAM_API_KEY.", env=("STEAM_API_KEY",),
+        ),
+    )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Any:
         import steam_lookup

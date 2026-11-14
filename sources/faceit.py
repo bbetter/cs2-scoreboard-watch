@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -13,6 +14,12 @@ class FaceitSource(LegacySlotSource):
     slot = ("faceit",)
     recheckable = False
     in_coverage = True
+    settings = (
+        Secret(
+            name="faceit_api_key", type="text", default="", label="FACEIT API key", group="api_keys",
+            help="Needed for FACEIT stats. Also read from FACEIT_API_KEY.", env=("FACEIT_API_KEY",),
+        ),
+    )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
         import steam_lookup
