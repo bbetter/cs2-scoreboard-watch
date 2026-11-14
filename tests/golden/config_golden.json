@@ -49,7 +49,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -61,6 +60,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -128,7 +130,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -140,6 +141,9 @@
         "has_anthropic_api_key": true,
         "anthropic_api_key_source": "env",
         "anthropic_api_key_masked": "**** (з середовища)",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -183,7 +187,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -195,6 +198,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -262,7 +268,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -274,6 +279,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -341,7 +349,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -353,6 +360,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -424,7 +434,6 @@
             "leetify": 0.5,
             "steam_account": 0.3
           },
-          "leetify_api_key": "lf-TESTKEY-1234567890",
           "leetify_cache_ttl_sec": 600
         },
         "has_steam_api_key": true,
@@ -436,6 +445,9 @@
         "has_anthropic_api_key": true,
         "anthropic_api_key_source": "config",
         "anthropic_api_key_masked": "*****************7890",
+        "has_leetify_api_key": true,
+        "leetify_api_key_source": "config",
+        "leetify_api_key_masked": "*****************7890",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -799,7 +811,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -811,6 +822,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -882,7 +896,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -894,6 +907,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -965,7 +981,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -977,6 +992,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1049,7 +1067,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1061,6 +1078,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1195,7 +1215,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1207,6 +1226,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1340,7 +1362,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1352,6 +1373,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1427,10 +1451,10 @@
           "steam_account": 0.3
         },
         "anthropic_api_key": "",
-        "leetify_api_key": "lf-TESTKEY-1234567890",
+        "leetify_api_key": "",
         "leetify_cache_ttl_sec": 0
       },
-      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"lf-TESTKEY-1234567890\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"\",\n  \"console_log_path\": \"\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
     },
     {
       "op": "public",
@@ -1454,7 +1478,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "lf-TESTKEY-1234567890",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1466,6 +1489,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1535,7 +1561,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1547,6 +1572,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -1721,10 +1749,10 @@
           "steam_account": 0.3
         },
         "anthropic_api_key": "",
-        "leetify_api_key": "False",
+        "leetify_api_key": "",
         "leetify_cache_ttl_sec": 0
       },
-      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"0\",\n  \"console_log_path\": \"False\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"False\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
+      "file_after": "{\n  \"tab_delay_sec\": 0.5,\n  \"tab_cooldown_sec\": 4.0,\n  \"cs2_only\": true,\n  \"cs2_game_dir\": \"0\",\n  \"console_log_path\": \"False\",\n  \"screenshots_dir\": \"\",\n  \"screenshot_tool\": \"auto\",\n  \"notify_enabled\": true,\n  \"steam_api_key\": \"\",\n  \"faceit_api_key\": \"\",\n  \"ai_enabled\": false,\n  \"ai_provider\": \"claude_cli\",\n  \"ai_model\": \"sonnet\",\n  \"ai_prompt\": \"Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: 1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); 2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, medals_count, has_veteran_coin, xp_level). Крос-перевіряй метрики між Leetify і CSTracker. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT.\",\n  \"ai_weights\": {\n    \"scoreboard\": 0.3,\n    \"leetify\": 0.4,\n    \"steam_account\": 0.3\n  },\n  \"anthropic_api_key\": \"\",\n  \"leetify_api_key\": \"\",\n  \"leetify_cache_ttl_sec\": 0\n}\n"
     },
     {
       "op": "public",
@@ -1748,7 +1776,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "False",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": false,
@@ -1760,6 +1787,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2046,7 +2076,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2058,6 +2087,9 @@
         "has_anthropic_api_key": true,
         "anthropic_api_key_source": "env",
         "anthropic_api_key_masked": "**** (з середовища)",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2129,7 +2161,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2141,6 +2172,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2210,7 +2244,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2222,6 +2255,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2291,7 +2327,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2303,6 +2338,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2372,7 +2410,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2384,6 +2421,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
@@ -2519,7 +2559,6 @@
             "leetify": 0.4,
             "steam_account": 0.3
           },
-          "leetify_api_key": "",
           "leetify_cache_ttl_sec": 0
         },
         "has_steam_api_key": true,
@@ -2531,6 +2570,9 @@
         "has_anthropic_api_key": false,
         "anthropic_api_key_source": "none",
         "anthropic_api_key_masked": "",
+        "has_leetify_api_key": false,
+        "leetify_api_key_source": "none",
+        "leetify_api_key_masked": "",
         "allowed_screenshot_tools": [
           "auto",
           "grim",
