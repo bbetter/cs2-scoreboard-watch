@@ -38,3 +38,40 @@ jobs:
 
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+
+  # Squash-merges a PR once unittest passes, but only when the tested commit (head SHA) says so in its
+  # message: "AUTO_MERGE - approved by bbetter". The PR must come from this repo and be opened by bbetter.
+  # The commit text alone is not authentication; the PR author check and repo write access are the real gate.
+  auto-merge:
+    name: auto-merge (approved commit)
+    needs: unittest
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.user.login == 'bbetter'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      APPROVAL: "AUTO_MERGE - approved by bbetter"
+    steps:
+      - name: Check approval phrase in the tested commit
+        id: approval
+        run: |
+          msg="$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA" --jq .commit.message)"
+          # Whole phrase only: "approved by bbetter2" must not match.
+          if grep -qE "${APPROVAL}([^[:alnum:]_]|\$)" <<<"$msg"; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No approval phrase in commit $HEAD_SHA; PR stays open."
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Squash-merge the tested commit
+        if: steps.approval.outputs.approved == 'true'
+        run: gh pr merge "$PR_NUMBER" --squash --match-head-commit "$HEAD_SHA"
