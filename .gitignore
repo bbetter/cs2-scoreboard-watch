@@ -6,19 +6,4 @@ __pycache__/
 # Runtime state: config, DB, caches, history, feedback, logs, screenshots (see storage/paths.py)
 data/
 
-# Legacy root-level runtime files (before the data/ move). Remove this block once they are in data/.
-config.json
-screenshots/
-scans_history.json
-profile_cache.json
-server.log
-pton.logs
-players.db
-players.db-wal
-players.db-shm
-feedback.json
-feedback.json.tmp
-feedback.json.corrupt
-profile.json
-
 .DS_Store
