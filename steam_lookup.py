@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from nick_match import best_match_index
 from scoreboard_scan import Player
 
 _LOG = logging.getLogger("pton")
@@ -943,6 +944,22 @@ def _fetch_cs2_hours_web_api(steamid64: str, api_key: str) -> Optional[float]:
     return None
 
 
+def _prefer_unambiguous_name_match(enriched: list[dict], nick: str, log: list[str]) -> None:
+    """If no candidate's profile name equals the OCR nick, move the unique fuzzy
+    name match (nick_match) to the front. Otherwise keep the score order."""
+    if not enriched:
+        return
+    names = [d.get("profile_name") or "" for d in enriched]
+    if any(n.strip().lower() == nick.strip().lower() for n in names):
+        return
+    idx = best_match_index(nick, names)
+    if idx is None or idx == 0:
+        return
+    chosen = enriched.pop(idx)
+    enriched.insert(0, chosen)
+    log.append(f"Нечітке співпадіння імені: {names[idx]!r} обрано для OCR-ніка {nick!r}")
+
+
 def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Optional[dict], list[str], list[dict]]:
     log: list[str] = [f"OCR нік: {nick!r}"]
     variants = [nick]
@@ -1015,6 +1032,7 @@ def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Opt
     for d in enriched:
         d["match_score"] = round(_score_candidate(d, nick), 1)
     enriched.sort(key=lambda d: d["match_score"], reverse=True)
+    _prefer_unambiguous_name_match(enriched, nick, log)
 
     if api_key and enriched[0].get("steamid64") and enriched[0].get("cs2_hours") is None:
         hrs = _fetch_cs2_hours_web_api(enriched[0]["steamid64"], api_key)
