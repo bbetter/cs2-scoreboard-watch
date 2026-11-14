@@ -3,7 +3,7 @@
 Run from the repo root:
     python -m unittest discover -s tests -v
 
-All HTTP is mocked (steam_lookup._http_get_status); no network access is needed.
+All HTTP is mocked (steam_lookup._http_get_status and lookup.http_client.http_get_status); no network access is needed.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import lookup.http_client as http_client  # noqa: E402
 import lookup.steam_lookup as sl  # noqa: E402
 from storage import config_store  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
@@ -56,6 +57,8 @@ class SteamQueueTests(unittest.TestCase):
             mock.patch.object(sl, "_get_steam_api_key", return_value=None),
             mock.patch.object(sl, "_fetch_external_stats", return_value=(None, None, None)),
             mock.patch.object(sl, "_cstracker_extra", return_value={}),
+            # Lazy pton.logs handler would append to data/logs; these tests do not assert on logs.
+            mock.patch.object(sl, "_setup_pton_log", lambda: None),
             # Fast timings so the tests stay quick.
             mock.patch.object(sl, "STEAM_SEARCH_MIN_INTERVAL_SEC", 0.0),
             mock.patch.object(sl, "STEAM_COOLDOWN_BASE_SEC", 0.2),
@@ -81,10 +84,15 @@ class SteamQueueTests(unittest.TestCase):
             sl._PROFILE_CACHE.clear()
 
     def _http(self, statuses) -> FakeSteamHTTP:
+        # _search_candidates calls sl._http_get_status directly; the other lookups go through
+        # sl._http_get -> lookup.http_client.http_get -> http_client.http_get_status, so patch both.
         fake = FakeSteamHTTP(statuses)
-        patcher = mock.patch.object(sl, "_http_get_status", side_effect=fake)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        for patcher in (
+            mock.patch.object(sl, "_http_get_status", side_effect=fake),
+            mock.patch.object(http_client, "http_get_status", side_effect=fake),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
         return fake
 
     def test_429_starts_cooldown_and_blocks_next_search_without_network(self) -> None:

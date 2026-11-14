@@ -7,11 +7,14 @@ snapshot again and compare. Reads are not detected here; the modules were audite
 import io
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import lookup.steam_lookup as sl  # noqa: E402
 from storage.paths import DATA_DIR  # noqa: E402
 
 LEGACY_MODULES = [
@@ -21,9 +24,6 @@ LEGACY_MODULES = [
     "tests.test_stale_cache_fallback",
 ]
 
-# Created by the import of lookup.steam_lookup (log handler). Removed by T16; ignored until then.
-IGNORED = {DATA_DIR / "logs" / "pton.logs"}  # removed by T16
-
 
 def _snapshot() -> dict[str, tuple[int, int]]:
     out: dict[str, tuple[int, int]] = {}
@@ -32,8 +32,6 @@ def _snapshot() -> dict[str, tuple[int, int]]:
     for root, _dirs, files in os.walk(DATA_DIR):
         for name in files:
             path = Path(root) / name
-            if path in IGNORED:
-                continue
             st = path.stat()
             out[str(path)] = (st.st_mtime_ns, st.st_size)
     return out
@@ -46,7 +44,11 @@ class DataDirUntouchedTests(unittest.TestCase):
         suite = unittest.TestSuite()
         for name in LEGACY_MODULES:
             suite.addTests(unittest.defaultTestLoader.loadTestsFromName(name))
-        result = unittest.TextTestRunner(stream=io.StringIO()).run(suite)
+        # Production logging stays on: lookup calls write the pton.logs handler, but into a temp dir here,
+        # so the snapshot only sees real writes under DATA_DIR. (tests.test_stale_cache_fallback calls
+        # lookup_steam_profile without patching the logger.)
+        with tempfile.TemporaryDirectory() as log_tmp, mock.patch.object(sl, "LOG_DIR", Path(log_tmp)):
+            result = unittest.TextTestRunner(stream=io.StringIO()).run(suite)
         self.assertGreater(result.testsRun, 0, "legacy suite did not run any test")
 
         after = _snapshot()

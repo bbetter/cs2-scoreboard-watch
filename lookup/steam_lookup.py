@@ -22,6 +22,7 @@ from typing import Any, Optional
 
 from storage.atomic_io import atomic_write_text
 from lookup.nick_match import best_match_index
+from lookup.http_client import USER_AGENT, http_get as _http_get, http_get_status as _http_get_status  # noqa: F401
 from vision.scoreboard_scan import Player
 from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
 from sources import REGISTRY
@@ -46,9 +47,7 @@ def _setup_pton_log() -> None:
     _LOG.propagate = False
 
 
-_setup_pton_log()
 
-USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 STEAMID64_BASE = 76561197960265728
 CACHE_TTL_SEC = 86400
 PROFILE_CACHE_FILE = DATA_DIR / "profile_cache.json"
@@ -286,61 +285,6 @@ class PlayerReport:
     score_breakdown: list = field(default_factory=list)
     # Stable per-scan player id (see scoreboard_scan.Player.player_uid); "" for rows that predate it.
     player_uid: str = ""
-
-
-def _http_get_status(
-    url: str,
-    timeout: float = 4.0,
-    cookies: Optional[str] = None,
-    headers: Optional[dict[str, str]] = None,
-) -> tuple[int, Optional[bytes]]:
-    import shutil
-    import subprocess
-
-    if shutil.which("curl"):
-        cmd = ["curl", "-sL", "--max-time", str(timeout), "-w", "\n%{http_code}"]
-        if cookies:
-            cmd.extend(["-b", cookies])
-        if headers:
-            for k, v in headers.items():
-                cmd.extend(["-H", f"{k}: {v}"])
-        cmd.append(url)
-        try:
-            res = subprocess.run(cmd, capture_output=True, timeout=timeout + 2)
-            out = res.stdout
-            if b"\n" in out:
-                body, code_bytes = out.rsplit(b"\n", 1)
-                try:
-                    code = int(code_bytes.strip())
-                    return code, (body if code == 200 else None)
-                except ValueError:
-                    pass
-        except Exception:
-            pass
-
-    req_headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
-    if cookies:
-        req_headers["Cookie"] = cookies
-    if headers:
-        req_headers.update(headers)
-    req = urllib.request.Request(url, headers=req_headers)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, resp.read()
-    except urllib.error.HTTPError as exc:
-        return exc.code, None
-    except (urllib.error.URLError, TimeoutError, ValueError):
-        return 0, None
-
-
-def _http_get(
-    url: str,
-    timeout: float = 4.0,
-    cookies: Optional[str] = None,
-    headers: Optional[dict[str, str]] = None,
-) -> Optional[bytes]:
-    status, data = _http_get_status(url, timeout=timeout, cookies=cookies, headers=headers)
-    return data if status == 200 else None
 
 
 def _parse_member_age_years(member_since: Optional[str]) -> Optional[float]:
@@ -1201,6 +1145,7 @@ def _cache_entry_current(data: dict) -> bool:
 
 
 def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: Optional[str] = None) -> SteamProfile:
+    _setup_pton_log()
     clean_nick = nick.strip()
     cache_key = clean_nick.lower()
     now = time.time()
@@ -1410,6 +1355,7 @@ def enrich_players(
     fetch_steam: bool = True,
     on_player_ready=None,
 ) -> list[PlayerReport]:
+    _setup_pton_log()
     if not players:
         return []
 
@@ -1475,6 +1421,7 @@ def enrich_players(
 
 def recheck_player_report(player_dict: dict, query: str) -> dict:
     """Re-resolve a single player by corrected nickname, SteamID64, or Steam profile URL."""
+    _setup_pton_log()
     q = query.strip()
     data: Optional[dict] = None
 
