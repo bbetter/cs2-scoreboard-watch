@@ -19,6 +19,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import lookup.steam_lookup as sl  # noqa: E402
+from storage import config_store  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 
 SEARCH_MARK = "SearchCommunityAjax"
@@ -50,6 +51,8 @@ class SteamQueueTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.patches = [
             mock.patch.object(sl, "PROFILE_CACHE_FILE", Path(self._tmp.name) / "profile_cache.json"),
+            # Keep reads of data/config.json out of the tests: fresh-install defaults instead.
+            mock.patch.object(config_store, "load_config", return_value=dict(config_store.DEFAULT_CONFIG)),
             mock.patch.object(sl, "_get_steam_api_key", return_value=None),
             mock.patch.object(sl, "_fetch_external_stats", return_value=(None, None, None)),
             mock.patch.object(sl, "_cstracker_extra", return_value={}),
