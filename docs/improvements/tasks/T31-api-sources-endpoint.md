@@ -2,7 +2,8 @@
 id: T31
 title: GET /api/sources and frontend labels from the source registry
 wave: 8
-depends_on: [T30]
+depends_on: [T29]
+chunk: A-app
 review: none
 size: M
 golden: []
@@ -15,7 +16,6 @@ files:
   - tests/test_router.py
   - tests/test_sources_endpoint.py
   - tests/js/sources_test.mjs
-  - docs/ARCHITECTURE.md
 ---
 
 # T31 — `GET /api/sources`: фронтенд бере назви джерел з бекенду
@@ -70,5 +70,7 @@ node --import ./tests/js/register.mjs tests/js/sources_test.mjs
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: таблиця маршрутів (`GET /api/sources`); рецепт (a) «What updates automatically» — назва в
-UI; Known limitations про хардкод імен у фронтенді — уточнити, що лишилось. Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: таблиця маршрутів (`GET /api/sources`); рецепт (a) «What updates automatically» — назва в
+UI; Known limitations про хардкод імен у фронтенді — уточнити, що лишилось.

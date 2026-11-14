@@ -1,8 +1,9 @@
 ---
 id: T39
 title: Stage 2 docs consistency and end-to-end smoke test
-wave: 10
-depends_on: [T38]
+wave: 9
+depends_on: [T37]
+chunk: H-hygiene-docs
 review: none
 size: S
 golden: []
@@ -17,7 +18,7 @@ files:
 
 ## Мета
 
-Кожна задача етапу 2 оновлювала `docs/ARCHITECTURE.md` сама. Треба перевірити, що документ і README збігаються з
+Задачі T22–T29 оновлювали `docs/ARCHITECTURE.md` самі, а задачі чанків A, B, C (T30–T35, T38) і T36–T37 — ні: їхні зміни описано в розділі «Docs delta» тіл PR. Перенеси їх у документ (`gh pr view <n> --json body`). Треба перевірити, що документ і README збігаються з
 кодом, закрити застарілі пункти Known limitations і пройти smoke-тест живого сервера з окремим каталогом даних.
 
 ## Контекст

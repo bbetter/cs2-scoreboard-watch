@@ -2,7 +2,8 @@
 id: T35
 title: Version scan records and migrate them through an adapter chain
 wave: 8
-depends_on: [T34]
+depends_on: [T31]
+chunk: A-app
 review: none
 size: M
 golden: []
@@ -12,7 +13,6 @@ files:
   - app/pipeline.py
   - tests/test_scan_migrations.py
   - tests/test_pipeline.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T35 — Версія запису скану і ланцюжок міграцій
@@ -63,5 +63,7 @@ legacy-слотів у `steam.sources`) не матиме куди вбудув�
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: Scan record — `schema_version`; новий рядок `app/scan_migrations.py`; Known limitations
-про legacy-слоти — «a future v3 migration would move them». Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: Scan record — `schema_version`; новий рядок `app/scan_migrations.py`; Known limitations
+про legacy-слоти — «a future v3 migration would move them».

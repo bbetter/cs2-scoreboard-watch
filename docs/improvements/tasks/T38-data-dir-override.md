@@ -1,8 +1,9 @@
 ---
 id: T38
 title: CS2WATCH_DATA_DIR and CS2WATCH_WEB_DIR overrides for runtime paths
-wave: 9
-depends_on: [T37]
+wave: 8
+depends_on: [T29]
+chunk: B-lookup-paths
 review: none
 size: S
 golden: []
@@ -11,7 +12,6 @@ files:
   - scripts/cs_scan.sh
   - tests/test_paths.py
   - README.md
-  - docs/ARCHITECTURE.md
 ---
 
 # T38 — Перевизначення каталогів даних і UI змінними оточення
@@ -60,5 +60,7 @@ bash -n scripts/cs_scan.sh
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: рядок `paths.py` у таблиці `storage/`; Known limitations про `pip install` — «set
-CS2WATCH_WEB_DIR / CS2WATCH_DATA_DIR for an installed copy». Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: рядок `paths.py` у таблиці `storage/`; Known limitations про `pip install` — «set
+CS2WATCH_WEB_DIR / CS2WATCH_DATA_DIR for an installed copy».

@@ -12,6 +12,7 @@ Stdlib only. Run from the repository root with any Python >= 3.9:
     python3 scripts/agents/taskctl.py ready                    # G2: what may be dispatched now
     python3 scripts/agents/taskctl.py set T05 "In Progress" --agent middle-sub:T05 [--pr 12] [--note "..."]
     python3 scripts/agents/taskctl.py check-pr T05 12 [--no-tests]   # G5
+    python3 scripts/agents/taskctl.py check-pr chunk:B-lookup-paths 80   # G5 for a chunk PR (one commit per task)
     python3 scripts/agents/taskctl.py sync                     # G7: merged PRs -> Done, unblocked -> Ready
 
 Exit code 0 = gate passed / command succeeded, 1 = gate failed, 2 = usage or environment error.
@@ -41,7 +42,7 @@ LABEL = "improvement-plan"
 STATUSES = ["Todo", "Ready", "In Progress", "Review", "Done", "Blocked"]
 STATUS_COLORS = {"Todo": "GRAY", "Ready": "BLUE", "In Progress": "YELLOW", "Review": "PURPLE", "Done": "GREEN",
                  "Blocked": "RED"}
-TEXT_FIELDS = ["Task", "Agent", "Depends", "PR"]
+TEXT_FIELDS = ["Task", "Agent", "Depends", "PR", "Chunk"]
 NUMBER_FIELDS = ["Wave"]
 REQUIRED_KEYS = ["id", "title", "wave", "depends_on", "review", "size", "golden", "files"]
 APPROVAL_PHRASE = "AUTO_MERGE - approved by"
@@ -83,6 +84,7 @@ class Task:
     files: list[str]
     path: Path
     body: str = ""
+    chunk: str = ""
     deps_closure: set[str] = field(default_factory=set)
 
 
@@ -128,7 +130,8 @@ def parse_task(path: Path) -> Task:
             raise GateError(f"{path.name}: {k} must be a list")
     return Task(id=str(meta["id"]), title=str(meta["title"]), wave=int(meta["wave"]),
                 depends_on=list(meta["depends_on"]), review=str(meta["review"]), size=str(meta["size"]),
-                golden=list(meta["golden"]), files=list(meta["files"]), path=path, body=m.group(2))
+                golden=list(meta["golden"]), files=list(meta["files"]), path=path, body=m.group(2),
+                chunk=str(meta.get("chunk") or ""))
 
 
 def load_tasks() -> dict[str, Task]:
@@ -169,6 +172,39 @@ def _compute_closures(tasks: dict[str, Task]) -> None:
 
     for tid in tasks:
         visit(tid, [])
+
+
+def chunk_map(tasks: dict[str, Task]) -> dict[str, list[Task]]:
+    """chunk name -> member tasks in dependency order. A chunk is one PR with one commit per member task."""
+    out: dict[str, list[Task]] = {}
+    for t in tasks.values():
+        if t.chunk:
+            out.setdefault(t.chunk, []).append(t)
+    for members in out.values():
+        members.sort(key=lambda t: (len(t.deps_closure), t.id))  # a dependent always has a larger closure
+    return out
+
+
+def resolve_tasks(spec: str, tasks: dict[str, Task]) -> list[Task]:
+    """'T05', 'T05,T06' or 'chunk:<name>' -> tasks in dependency order."""
+    if spec.startswith("chunk:"):
+        members = chunk_map(tasks).get(spec[len("chunk:"):])
+        if not members:
+            raise GateError(f"unknown chunk {spec}")
+        return members
+    ids = [x.strip() for x in spec.split(",") if x.strip()]
+    unknown = [i for i in ids if i not in tasks]
+    if unknown or not ids:
+        raise GateError(f"unknown task(s) {unknown or spec!r}")
+    return sorted((tasks[i] for i in ids), key=lambda t: (len(t.deps_closure), t.id))
+
+
+_PR_TITLE_TASKS = re.compile(r"^\[(T\d+(?:\+T\d+)*)\] ")
+
+
+def pr_title_tasks(title: str) -> list[str]:
+    m = _PR_TITLE_TASKS.match(title or "")
+    return m.group(1).split("+") if m else []
 
 
 def _patterns_overlap(a: str, b: str) -> bool:
@@ -218,12 +254,23 @@ def cmd_validate(_args) -> int:
             shared = sorted({fa for fa in ta.files for fb in tb.files if _patterns_overlap(fa, fb)})
             if shared:
                 errors.append(f"{a} and {b} can run in parallel but share files: {shared}")
+    for name, members in chunk_map(tasks).items():
+        ids = {m.id for m in members}
+        waves = sorted({m.wave for m in members})
+        if len(waves) > 1:
+            errors.append(f"chunk {name}: members have different waves {waves}")
+        for m in members:
+            for d in sorted(m.deps_closure - ids):
+                between = sorted(tasks[d].deps_closure & ids)
+                if between:
+                    errors.append(f"chunk {name}: {d} depends on {between} and is needed by {m.id}; "
+                                  "it would have to land inside the chunk PR")
     if errors:
         print("G0 FAILED")
         for e in errors:
             print("  -", e)
         return 1
-    print(f"G0 OK: {len(tasks)} tasks, no cycles, parallel tasks have disjoint files")
+    print(f"G0 OK: {len(tasks)} tasks, {len(chunk_map(tasks))} chunks, no cycles, parallel tasks have disjoint files")
     return 0
 
 
@@ -231,7 +278,8 @@ def cmd_order(_args) -> int:
     tasks = load_tasks()
     for n, level in enumerate(topo_levels(tasks)):
         mode = "PARALLEL" if len(level) > 1 else "SEQUENTIAL"
-        items = ", ".join(f"{t.id}(wave {t.wave}, deps {','.join(t.depends_on) or '-'})" for t in level)
+        items = ", ".join(f"{t.id}(wave {t.wave}, deps {','.join(t.depends_on) or '-'}"
+                          f"{', chunk ' + t.chunk if t.chunk else ''})" for t in level)
         print(f"step {n}: [{mode}] {items}")
     return 0
 
@@ -461,7 +509,7 @@ def cmd_board_init(args) -> int:
     for t in order:
         item = board.items[t.id]
         vals = item["values"]
-        wanted = {"Task": t.id, "Wave": t.wave, "Depends": ",".join(t.depends_on) or "-"}
+        wanted = {"Task": t.id, "Wave": t.wave, "Depends": ",".join(t.depends_on) or "-", "Chunk": t.chunk or "-"}
         for name, value in wanted.items():
             if vals.get(name) != value and not (name == "Wave" and vals.get(name) == float(value)):
                 set_field(board, item["item_id"], name, value)
@@ -489,6 +537,8 @@ def cmd_board_check(_args) -> int:
             errors.append(f"{tid}: Wave is {v.get('Wave')!r}, expected {t.wave}")
         if (v.get("Depends") or "-") != (",".join(t.depends_on) or "-"):
             errors.append(f"{tid}: Depends is {v.get('Depends')!r}")
+        if (v.get("Chunk") or "-") != (t.chunk or "-"):
+            errors.append(f"{tid}: Chunk is {v.get('Chunk')!r}, expected {t.chunk or '-'!r}")
     extra = sorted(set(board.items) - set(tasks))
     if extra:
         errors.append(f"items without task file: {extra}")
@@ -555,10 +605,10 @@ def main_ci_green() -> tuple[bool, str]:
 
 
 def open_pr_for(tid: str) -> Optional[int]:
-    prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--search", f"[{tid}] in:title",
+    prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--search", f"{tid} in:title",
                   "--json", "number,title") or []
     for pr in prs:
-        if pr["title"].startswith(f"[{tid}]"):
+        if tid in pr_title_tasks(pr["title"]):
             return int(pr["number"])
     return None
 
@@ -568,32 +618,45 @@ def cmd_ready(_args) -> int:
     board = load_board()
     st = {tid: board.items.get(tid, {"values": {}})["values"].get(board.status_field) for tid in tasks}
     green, info = main_ci_green()
-    ready = []
+    chunks = chunk_map(tasks)
+    units: list[tuple[str, list[Task]]] = []
+    seen: set[str] = set()
     for tid, t in sorted(tasks.items()):
-        if st[tid] not in ("Todo", "Ready"):
+        if tid in seen:
             continue
-        blockers = [d for d in t.depends_on if st.get(d) != "Done"]
-        if blockers:
+        members = chunks[t.chunk] if t.chunk else [t]
+        ids = {m.id for m in members}
+        seen |= ids
+        if any(st[m.id] not in ("Todo", "Ready") for m in members):
             continue
-        pr = open_pr_for(tid)
+        if any(st.get(d) != "Done" for m in members for d in m.depends_on if d not in ids):
+            continue
+        pr = next((p for p in (open_pr_for(m.id) for m in members) if p), None)
         if pr:
-            print(f"  skip {tid}: open PR #{pr}")
+            print(f"  skip {t.chunk or tid}: open PR #{pr}")
             continue
-        ready.append(t)
+        units.append((t.chunk, members))
     print(f"main CI: {info}")
     if not green:
         print("G2 FAILED: main is not green — dispatch nothing, report to the user")
         return 1
-    if not ready:
+    if not units:
         print("G2: nothing ready (waiting for merges or all done)")
         return 0
     print("G2 OK — dispatch as follows:")
-    for t in ready:
-        print(f"  {t.id} {t.title}  ({t.path.relative_to(ROOT)})")
-    if len(ready) > 1:
-        print(f"PARALLEL: these {len(ready)} tasks are independent (validated by G0); use one sub-agent each.")
+    for chunk, members in units:
+        if chunk:
+            print(f"  chunk {chunk}: {'+'.join(m.id for m in members)}  "
+                  "(one PR, one commit per task, in this order)")
+            for m in members:
+                print(f"    {m.id} {m.title}  ({m.path.relative_to(ROOT)})")
+        else:
+            m = members[0]
+            print(f"  {m.id} {m.title}  ({m.path.relative_to(ROOT)})")
+    if len(units) > 1:
+        print(f"PARALLEL: these {len(units)} units are independent (validated by G0); one lead or sub-agent each.")
     else:
-        print("SEQUENTIAL: one task, the lead does it itself.")
+        print("SEQUENTIAL: one unit.")
     return 0
 
 
@@ -667,9 +730,10 @@ def _failed_checks(rollup: list[dict]) -> list[str]:
 
 def cmd_check_pr(args) -> int:
     tasks = load_tasks()
-    t = tasks.get(args.task)
-    if not t:
-        raise GateError(f"unknown task {args.task}")
+    members = resolve_tasks(args.task, tasks)
+    label = "+".join(m.id for m in members)
+    allowed_files = [p for m in members for p in m.files]
+    allowed_golden = [g for m in members for g in m.golden]
     pr = gh_json("pr", "view", str(args.pr), "--repo", REPO, "--json",
                  "title,body,baseRefName,headRefName,headRefOid,state,commits,files,statusCheckRollup")
     fails: list[str] = []
@@ -678,22 +742,28 @@ def cmd_check_pr(args) -> int:
     def check(cond: bool, good: str, bad: str) -> None:
         (ok if cond else fails).append(good if cond else bad)
 
-    check(pr["title"].startswith(f"[{t.id}] "), "title prefix", f"title must start with '[{t.id}] ': {pr['title']!r}")
+    check(pr["title"].startswith(f"[{label}] "), "title prefix", f"title must start with '[{label}] ': {pr['title']!r}")
     check(pr["baseRefName"] == "main", "base is main", f"base is {pr['baseRefName']}")
     check(pr["state"] == "OPEN", "PR open", f"PR state is {pr['state']}")
     commits = pr.get("commits") or []
-    check(len(commits) == 1, "exactly 1 commit", f"{len(commits)} commits (AGENTS.md: one dedicated commit per task)")
+    check(len(commits) == len(members), f"{len(members)} commit(s), one per task",
+          f"{len(commits)} commits for {len(members)} task(s) (AGENTS.md: one dedicated commit per task)")
+    heads = [(c.get("messageHeadline") or "") for c in commits]
+    commit_tasks = [m.group(1) for h in heads if (m := re.match(r"^\[(T\d+)\] ", h))]
+    check(sorted(commit_tasks) == sorted(m.id for m in members) and len(commit_tasks) == len(heads),
+          "each commit is '[Txx] ...' for a distinct task of the PR",
+          f"commit headlines must be '[Txx] ...', one per task {label}: {heads}")
     for c in commits:
         msg = (c.get("messageHeadline") or "") + "\n" + (c.get("messageBody") or "")
         check(APPROVAL_PHRASE not in msg, "no auto-merge phrase in commits",
               "commit message contains the auto-merge approval phrase — only the owner may write it")
     files = [f["path"] for f in pr.get("files") or []]
-    outside = [f for f in files if not _file_allowed(f, t.files)]
+    outside = [f for f in files if not _file_allowed(f, allowed_files)]
     check(not outside, f"{len(files)} files, all within task scope", f"files outside task scope: {outside}")
     forbidden = [f for f in files if _file_allowed(f, FORBIDDEN_PATHS)]
     check(not forbidden, "no data/ or .env", f"forbidden paths in PR: {forbidden}")
     golden_touched = [f for f in files if f.startswith("tests/golden/")]
-    bad_golden = [f for f in golden_touched if f not in t.golden]
+    bad_golden = [f for f in golden_touched if f not in allowed_golden]
     check(not bad_golden, "golden files within allowed list", f"golden files changed without permission: {bad_golden}")
     body = pr.get("body") or ""
     missing = [s for s in PR_BODY_SECTIONS if s not in body]
@@ -730,9 +800,10 @@ def cmd_check_pr(args) -> int:
     for line in fails:
         print("  FAIL", line)
     if fails:
-        print(f"G5 FAILED for {t.id} PR #{args.pr}")
+        print(f"G5 FAILED for {label} PR #{args.pr}")
         return 1
-    print(f"G5 OK for {t.id} PR #{args.pr}" + (" (lead review still required: review=lead)" if t.review == "lead" else ""))
+    lead_review = any(m.review == "lead" for m in members)
+    print(f"G5 OK for {label} PR #{args.pr}" + (" (lead review still required: review=lead)" if lead_review else ""))
     return 0
 
 
@@ -758,7 +829,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     p.add_argument("--note")
     p.set_defaults(fn=cmd_set)
     p = sub.add_parser("check-pr")
-    p.add_argument("task")
+    p.add_argument("task", help="Txx, Txx,Tyy or chunk:<name>")
     p.add_argument("pr", type=int)
     p.add_argument("--no-tests", action="store_true", help="skip running the suite locally (CI is still required)")
     p.set_defaults(fn=cmd_check_pr)

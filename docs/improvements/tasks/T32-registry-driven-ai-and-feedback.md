@@ -2,7 +2,8 @@
 id: T32
 title: Build the AI payload and feedback features from the source registry
 wave: 8
-depends_on: [T31]
+depends_on: [T29]
+chunk: C-sources-scoring
 review: none
 size: M
 golden: []
@@ -15,7 +16,6 @@ files:
   - lookup/ai_analyzer.py
   - storage/feedback_store.py
   - tests/test_registry_payloads.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T32 — AI-пейлоад і feedback будуються з реєстру джерел
@@ -76,5 +76,7 @@ git diff --stat origin/main -- tests/golden/   # порожньо
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: рецепт (a) — `payload_key` / `payload_always`; прибрати AI payload і feedback зі списку
-«does not update automatically». Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: рецепт (a) — `payload_key` / `payload_always`; прибрати AI payload і feedback зі списку
+«does not update automatically».

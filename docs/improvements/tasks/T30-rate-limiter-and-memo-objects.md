@@ -1,8 +1,9 @@
 ---
 id: T30
 title: Steam rate limiter and Leetify memo as objects instead of module state
-wave: 7
+wave: 8
 depends_on: [T29]
+chunk: B-lookup-paths
 review: none
 size: M
 golden: []
@@ -14,7 +15,6 @@ files:
   - tests/test_ttl_memo.py
   - tests/test_steam_queue.py
   - tests/test_stale_cache_fallback.py
-  - docs/ARCHITECTURE.md
 ---
 
 # T30 — Лімітер Steam і пам'ять Leetify як об'єкти
@@ -76,5 +76,7 @@ files:
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md`: `lookup/steam_search.py` — `SteamRateLimiter` / `RATE_LIMITER`; новий рядок
-`lookup/ttl_memo.py`. Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md`: `lookup/steam_search.py` — `SteamRateLimiter` / `RATE_LIMITER`; новий рядок
+`lookup/ttl_memo.py`.

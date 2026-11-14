@@ -2,7 +2,8 @@
 id: T33
 title: Score a low CSTracker trust rating and drop unknown fields from the AI prompt
 wave: 8
-depends_on: [T32]
+depends_on: [T29]
+chunk: C-sources-scoring
 review: none
 size: M
 golden:
@@ -15,7 +16,6 @@ files:
   - tests/test_scoring_rules.py
   - tests/golden/scoring_golden.json
   - tests/golden/config_golden.json
-  - docs/ARCHITECTURE.md
 ---
 
 # T33 — Правило для низького CSTracker trust; промпт без неіснуючих полів
@@ -79,5 +79,7 @@ git diff --stat -- tests/golden/
 
 ## Docs delta
 
-`docs/ARCHITECTURE.md` → Known limitations: пункт «Scoring pieces with no effect» оновити (trust тепер у скорингу;
-промпт не згадує неіснуючих полів). Онови в цьому ж PR.
+Не редагуй `docs/ARCHITECTURE.md` (його паралельно змінювали б інші чанки): опиши зміни для документа в розділі «Docs delta» тіла PR, підрозділ цієї задачі. T39 перенесе їх у документ.
+
+Що описати: `docs/ARCHITECTURE.md` → Known limitations: пункт «Scoring pieces with no effect» оновити (trust тепер у скорингу;
+промпт не згадує неіснуючих полів).
