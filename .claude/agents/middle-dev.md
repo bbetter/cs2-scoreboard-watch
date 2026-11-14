@@ -123,8 +123,22 @@ $TC set Txx Review --pr N --agent middle-lead --note "fix attempt k"
    ```bash
    gh pr view N --json statusCheckRollup -q '[.statusCheckRollup[] | select(.status != "COMPLETED")] | length'   # 0 = готово
    ```
-4. Гейт G5: `$TC check-pr Txx N`. Не пройшов → виправ сам за протоколом `FIX` з «Режиму ліда» (detached HEAD,
-   `--amend`, `--force-with-lease`), дочекайся CI і повтори G5. Після 2 невдалих спроб → `Blocked`, стоп.
+4. Гейт G5: `$TC check-pr Txx N`. Не пройшов → виправ сам **без force-push** (дозвільна система його
+   відхиляє): новий PR з одним комітом замість старого.
+   ```bash
+   OLD=$(gh pr view N --json headRefName -q .headRefName)
+   git fetch origin "$OLD" && git switch -c "$OLD-fix<k>" origin/main     # k = номер спроби
+   git cherry-pick "origin/$OLD"                                          # той самий один коміт
+   # … виправлення …, потім G4
+   git commit --amend --no-edit                       # локальний коміт ще не запушено: це дозволено
+   git log --oneline origin/main..HEAD               # рівно 1 рядок
+   git push -u origin "$OLD-fix<k>"
+   gh pr create --base main --head "$OLD-fix<k>" --title "[Txx] <title>" --body-file /tmp/pr-Txx.md
+   gh pr close N --comment "Superseded by #<новий номер> (G5 fix, attempt <k>)."
+   $TC set Txx Review --pr <новий номер> --agent middle-lead --note "fix attempt <k>, supersedes #N"
+   ```
+   Далі кроки 3–4 для нового PR. Після 2 невдалих спроб → `Blocked`, стоп. Якщо G5 падає через вимогу самого
+   файлу задачі (задача суперечить гейту) — не виправляй, а `Blocked` з поясненням конфлікту.
 5. Готово до мерджу. G5 пройшов →
    ```bash
    $TC set Txx Review --pr N --agent middle-lead --note "G5 OK, ready for the owner to merge"
