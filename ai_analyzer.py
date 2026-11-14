@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
+from sources import REGISTRY
 
 ALLOWED_DECISIONS = ("LEGIT", "UNCERTAIN", "SMURF", "SUSPICIOUS", "BLATANT")
 
@@ -52,7 +53,8 @@ _OUTPUT_SCHEMA = {
 
 def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
     steam = p.get("steam") or {}
-    leetify = steam.get("leetify") or {}
+    # Per-source blocks come from the registry; the rest of the payload is unchanged.
+    leetify_block = REGISTRY.get("leetify").ai_compact(REGISTRY.get("leetify").normalize(steam.get("leetify")))
     data: dict[str, Any] = {
         "nick": p.get("nick"),
         "scoreboard": {
@@ -85,24 +87,11 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
             "in_cs2": steam.get("in_cs2"),
             "cs2_stats": steam.get("cs2_stats"),
         },
-        "leetify": {
-            "found": bool(leetify),
-            "total_matches": leetify.get("total_matches"),
-            "aim": leetify.get("aim"),
-            "reaction_time_ms": leetify.get("reaction_time_ms"),
-            "preaim": leetify.get("preaim"),
-            "kd": leetify.get("kd"),
-            "hs_pct": leetify.get("hs_pct"),
-            "winrate": leetify.get("winrate"),
-            "leetify_rating": leetify.get("leetify_rating"),
-            "premier_rank": leetify.get("premier") if leetify.get("premier") is not None else leetify.get("premier_rank"),
-            "faceit_level": leetify.get("faceit") if leetify.get("faceit") is not None else leetify.get("faceit_level"),
-            "bans": leetify.get("bans") or [],
-        },
+        "leetify": leetify_block,
     }
-    faceit = steam.get("faceit")
-    if faceit:
-        data["faceit"] = faceit
+    faceit_block = REGISTRY.get("faceit").ai_compact(REGISTRY.get("faceit").normalize(steam.get("faceit")))
+    if faceit_block:
+        data["faceit"] = faceit_block
     extra_stats = steam.get("extra_stats")
     if extra_stats:
         data["extra_stats"] = extra_stats

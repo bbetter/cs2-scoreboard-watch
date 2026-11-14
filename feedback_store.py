@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from atomic_io import atomic_write_text
+from sources import REGISTRY
 
 BASE_DIR = Path(__file__).resolve().parent
 FEEDBACK_FILE = BASE_DIR / "feedback.json"
@@ -48,8 +49,9 @@ def _num_or_none(val: Any) -> Optional[float]:
 def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
     """Build one feedback record from a stored player dict (PlayerReport as dict)."""
     steam = player.get("steam") or {}
-    lf = steam.get("leetify") or {}
     cst = (steam.get("extra_stats") or {}).get("cstracker") or {}
+    leetify = REGISTRY.get("leetify")
+    lf_result = leetify.normalize(steam.get("leetify"))
     features = {
         "kd": _num_or_none(player.get("kd")),
         "hs": _num_or_none(player.get("hs")),
@@ -60,15 +62,7 @@ def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
         "cs2_hours": _num_or_none(steam.get("cs2_hours")),
         "vac_banned": bool(steam.get("vac_banned")),
         "privacy_state": steam.get("privacy_state"),
-        "leetify": {
-            "present": bool(lf),
-            "aim": _num_or_none(lf.get("aim")),
-            "reaction_time_ms": _num_or_none(lf.get("reaction_time_ms")),
-            "preaim": _num_or_none(lf.get("preaim")),
-            "accuracy_head": _num_or_none(lf.get("accuracy_head")),
-            "winrate": _num_or_none(lf.get("winrate")),
-            "total_matches": lf.get("total_matches"),
-        },
+        "leetify": {"present": lf_result.ok, **leetify.features(lf_result)},
         "cstracker_status": cst.get("status"),
     }
     return {

@@ -313,3 +313,29 @@ class RegistryRulesTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConsumerRegistryTests(unittest.TestCase):
+    """Behaviour of the registry-driven consumers that the golden files do not cover."""
+
+    def test_recheck_invalid_source_message_is_unchanged(self):
+        import server
+
+        status, body = server.recheck_source_for_player("scan-x", "nick", "faceit")
+        self.assertEqual(status, 400)
+        self.assertEqual(body, {"error": "source має бути 'leetify' або 'cstracker'"})
+
+    def test_recheck_non_string_source_is_400_not_crash(self):
+        import server
+
+        for bad in (["leetify"], {"a": 1}, 5, None, ""):
+            with self.subTest(source=bad):
+                status, body = server.recheck_source_for_player("scan-x", "nick", bad)
+                self.assertEqual(status, 400)
+                self.assertIn("source має бути", body["error"])
+
+    def test_choices_text_two_and_many(self):
+        import server
+
+        self.assertEqual(server._source_choices_text(["leetify", "cstracker"]), "'leetify' або 'cstracker'")
+        self.assertEqual(server._source_choices_text(["a", "b", "c"]), "'a', 'b' або 'c'")

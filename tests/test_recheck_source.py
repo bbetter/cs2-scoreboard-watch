@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import server  # noqa: E402
+import steam_lookup  # noqa: E402
 
 
 def _make_scan(scan_id: str = "scan-1") -> dict:
@@ -57,8 +58,8 @@ class RecheckSourceTests(unittest.TestCase):
         ]
         for p in self._patches:
             p.start()
-        self.leetify = mock.patch.object(server, "_fetch_leetify", return_value={"aim": 99}).start()
-        self.cstracker = mock.patch.object(server, "_fetch_cstracker", return_value={"status": "ok"}).start()
+        self.leetify = mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 99}).start()
+        self.cstracker = mock.patch.object(steam_lookup, "_fetch_cstracker", return_value={"status": "ok"}).start()
 
     def tearDown(self) -> None:
         mock.patch.stopall()
@@ -149,7 +150,7 @@ class RecheckSourceHttpTests(unittest.TestCase):
             mock.patch.object(server, "HISTORY_FILE", Path(self._tmp.name) / "history.json"),
             mock.patch.object(server, "_SCANS", [_make_scan()]),
             mock.patch.object(server, "_broadcast_event"),
-            mock.patch.object(server, "_fetch_leetify", return_value={"aim": 42}),
+            mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 42}),
         ]
         for p in self._patches:
             p.start()

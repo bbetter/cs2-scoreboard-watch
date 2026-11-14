@@ -1,0 +1,2104 @@
+{
+  "01_no_steam_profile": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 1.0,
+        "steam_account": 0.0
+      },
+      "heuristic_cheat_probability": 17.9,
+      "heuristic_reasons": [
+        "Steam-профіль не знайдено"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 100.0
+    },
+    "steam": {
+      "account_age_years": null,
+      "cs2_hours": null,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": false,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": null,
+      "steam_level": null,
+      "steamid64": null,
+      "vac_banned": false
+    }
+  },
+  "02_private_profile": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.69,
+        "steam_account": 0.31
+      },
+      "heuristic_cheat_probability": 21.6,
+      "heuristic_reasons": [
+        "Закритий профіль (private)"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 84.2
+    },
+    "steam": {
+      "account_age_years": 4.0,
+      "cs2_hours": 500.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "03_public_clean_veteran_no_external": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 11.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 9.0,
+      "cs2_hours": 3000.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "04_vac_banned": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 78.0,
+      "heuristic_reasons": [
+        "VAC-бан у Steam"
+      ],
+      "heuristic_risk": "critical",
+      "heuristic_smurf_probability": 10.0,
+      "hs_percent": 50.0,
+      "kd": 1.4,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 5.0,
+      "cs2_hours": 900.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": true
+    }
+  },
+  "05_trade_ban_community": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 22.9,
+      "heuristic_reasons": [
+        "Трейд-бан у Steam (banned)"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 5.0,
+      "cs2_hours": 900.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "06_limited_account_young": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 41.9,
+      "heuristic_reasons": [
+        "Обмежений акаунт Steam",
+        "Мало годин у CS2 (90 год)"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 3.0,
+      "cs2_hours": 90.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": true,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "07_leetify_platform_ban": {
+    "leetify": {
+      "aim": 70.0,
+      "bans": [
+        {
+          "platform": "faceit",
+          "type": "ban"
+        }
+      ],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 78.0,
+      "heuristic_reasons": [
+        "Бани на Leetify/платформах (1)"
+      ],
+      "heuristic_risk": "critical",
+      "heuristic_smurf_probability": 10.0,
+      "hs_percent": 42.0,
+      "kd": 1.2,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 6.0,
+      "cs2_hours": 1100.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "08_young_low_hours_smurf_ish": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 11,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 51.9,
+      "heuristic_reasons": [
+        "Низький рівень у грі (lvl 2)",
+        "Новий акаунт (0.6 р.)",
+        "Мало годин у CS2 (80 год)",
+        "Смурф-сигнал: молодий акаунт + високий K/D",
+        "Смурф-сигнал: мало годин у CS2 + сильна гра"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 99.0,
+      "hs_percent": 70.0,
+      "kd": 2.1,
+      "kills": 24,
+      "level": 2,
+      "smurf_risk": "critical",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 0.6,
+      "cs2_hours": 80.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "09_smurf_faceit_new_account": {
+    "faceit": {
+      "faceit_elo": 2050,
+      "found": true,
+      "hs_pct": 50.0,
+      "kd": 1.5,
+      "matches": 90,
+      "nickname": "sample",
+      "player_id": "fx-1",
+      "skill_level": 9,
+      "winrate": 50.0
+    },
+    "leetify": {
+      "aim": 76.0,
+      "bans": [],
+      "faceit_level": 9,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 40,
+      "winrate": 60.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 14,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 25.0,
+      "heuristic_reasons": [
+        "Молодий акаунт (1.2 р.)",
+        "Небагато годин у CS2 (200 год)",
+        "Смурф-сигнал: молодий акаунт + високий K/D",
+        "Смурф-сигнал: мало годин у CS2 + сильна гра",
+        "Смурф-сигнал: високий FACEIT (lvl 9) на новому акаунті"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 99.0,
+      "hs_percent": 48.0,
+      "kd": 1.6,
+      "kills": 22,
+      "level": 7,
+      "smurf_risk": "critical",
+      "uncertainty": 15.0
+    },
+    "steam": {
+      "account_age_years": 1.2,
+      "cs2_hours": 200.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "10_leetify_full_clean": {
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 11.1,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 7.0,
+      "cs2_hours": 1800.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "11_leetify_partial_aim_only": {
+    "leetify": {
+      "aim": 93.0,
+      "bans": [],
+      "faceit_level": null,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": 40,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 18.3,
+      "heuristic_reasons": [
+        "Дуже високий Aim (93.0)"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 7.0,
+      "cs2_hours": 1800.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "12_leetify_missing_steam_only": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 11.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 7.0,
+      "cs2_hours": 1800.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "13_leetify_superhuman_reaction": {
+    "leetify": {
+      "aim": 96.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 290,
+      "total_matches": 90,
+      "winrate": 74.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 50.1,
+      "heuristic_reasons": [
+        "Надлюдська реакція Leetify (290 мс)",
+        "Aim 96.0 при 90 матчах",
+        "Вінрейт 74.0% за 90 матчів",
+        "Смурф-сигнал: молодий акаунт + високий K/D",
+        "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 81.0,
+      "hs_percent": 58.0,
+      "kd": 1.9,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "critical",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 2.5,
+      "cs2_hours": 900.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "14_cstracker_ok_full": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "http_status": 200,
+        "matches": [],
+        "sections": {
+          "aim_reactions": {
+            "Counter-strafing": 96.0,
+            "Spot to kill": 290.0,
+            "Spray accuracy": 58.0
+          }
+        },
+        "status": "ok",
+        "trust": 88
+      }
+    },
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 11.1,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 10.0
+    },
+    "steam": {
+      "account_age_years": 6.0,
+      "cs2_hours": 1200.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "15_cstracker_blocked": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "http_status": 403,
+        "status": "blocked"
+      }
+    },
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 11.1,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 6.0,
+      "cs2_hours": 1200.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "16_cstracker_not_found": {
+    "extra_stats": {
+      "cstracker": {
+        "http_status": 200,
+        "status": "not_found"
+      }
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 11.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 6.0,
+      "cs2_hours": 1200.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "17_cstracker_error_no_leetify": {
+    "extra_stats": {
+      "cstracker": {
+        "http_status": 200,
+        "status": "error"
+      }
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 16.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 3.0,
+      "cs2_hours": 600.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "18_faceit_high_elo_no_leetify": {
+    "faceit": {
+      "faceit_elo": 2300,
+      "found": true,
+      "hs_pct": 42.0,
+      "kd": 1.15,
+      "matches": 700,
+      "nickname": "sample",
+      "player_id": "fx-1",
+      "skill_level": 10,
+      "winrate": 50.0
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 10.1,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 50.0,
+      "kd": 1.5,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 50.0
+    },
+    "steam": {
+      "account_age_years": 5.0,
+      "cs2_hours": 1400.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "19_faceit_absent_cs2_stats_only": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.25,
+        "scoreboard": 0.375,
+        "steam_account": 0.375
+      },
+      "heuristic_cheat_probability": 25.2,
+      "heuristic_reasons": [
+        "Високий загальний K/D у CS2 (2.45)",
+        "Високий загальний HS% у CS2 (74.0%)"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 55.0,
+      "kd": 1.3,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 50.0
+    },
+    "steam": {
+      "account_age_years": 4.0,
+      "cs2_hours": 800.0,
+      "cs2_stats": {
+        "hs_pct": 74.0,
+        "kd": 2.45,
+        "total_deaths": 8000,
+        "total_kills": 9000,
+        "total_kills_headshot": 4000,
+        "total_matches_played": 120,
+        "total_wins": 900
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "20_extra_medals_veteran_unused": {
+    "extra_stats": {
+      "has_veteran_coin": true,
+      "medals_count": 12,
+      "xp_level": 210
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 11.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 8.0,
+      "cs2_hours": 2000.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "21_recent_aim_elite_mix": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "http_status": 200,
+        "matches": [],
+        "sections": {
+          "aim_reactions": {
+            "Spot to kill": 200.0
+          }
+        },
+        "status": "ok",
+        "trust": null
+      }
+    },
+    "leetify": {
+      "aim": 80.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": 80,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 14,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 40.5,
+      "heuristic_reasons": [
+        "Молодий акаунт (1.8 р.)",
+        "Counter-strafing 97% (Leetify, недавні матчі)",
+        "Точність у голову 56% (Leetify, недавні матчі)",
+        "Точність спрею 61% (Leetify, недавні матчі)",
+        "Spot-to-kill 200 мс (cstracker, недавні матчі)",
+        "Смурф-сигнал: елітний аім у недавніх матчах (Leetify/cstracker)",
+        "Смурф-сигнал: молодий акаунт + високий K/D",
+        "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 89.0,
+      "hs_percent": 52.0,
+      "kd": 1.4,
+      "kills": 20,
+      "level": 18,
+      "smurf_risk": "critical",
+      "uncertainty": 10.0
+    },
+    "steam": {
+      "account_age_years": 1.8,
+      "cs2_hours": 400.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "22_stale_cached_rate_limited": {
+    "extra_stats": {
+      "_cs2_checked": false,
+      "cstracker": {
+        "http_status": 200,
+        "status": "not_found"
+      }
+    },
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 14.1,
+      "heuristic_reasons": [
+        "Смурф-сигнал: мало годин у CS2 + сильна гра",
+        "Смурф-сигнал: високий FACEIT (lvl 6) на новому акаунті"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 46.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "medium",
+      "uncertainty": 30.0
+    },
+    "steam": {
+      "account_age_years": 3.0,
+      "cs2_hours": 300.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "23_combo_cheater_like": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "http_status": 200,
+        "matches": [],
+        "sections": {
+          "aim_reactions": {
+            "Counter-strafing": 97.0
+          }
+        },
+        "status": "ok",
+        "trust": 18
+      }
+    },
+    "leetify": {
+      "aim": 96.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 3.2,
+      "premier_rank": null,
+      "reaction_time_ms": 300,
+      "total_matches": 120,
+      "winrate": 70.0
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 9,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 67.5,
+      "heuristic_reasons": [
+        "Високі цифри в цьому лобі (96%)",
+        "Надлюдська реакція Leetify (300 мс)",
+        "Aim 96.0 при 120 матчах",
+        "Counter-strafing 98% (Leetify, недавні матчі)",
+        "Точність у голову 62% (Leetify, недавні матчі)",
+        "Точність спрею 66% (Leetify, недавні матчі)"
+      ],
+      "heuristic_risk": "high",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 81.0,
+      "kd": 3.2,
+      "kills": 30,
+      "level": 12,
+      "smurf_risk": "low",
+      "uncertainty": 10.0
+    },
+    "steam": {
+      "account_age_years": 3.5,
+      "cs2_hours": 1100.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "24_combo_smurf_like": {
+    "faceit": {
+      "faceit_elo": 1950,
+      "found": true,
+      "hs_pct": 49.0,
+      "kd": 1.6,
+      "matches": 60,
+      "nickname": "sample",
+      "player_id": "fx-1",
+      "skill_level": 8,
+      "winrate": 50.0
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 10,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 38.2,
+      "heuristic_reasons": [
+        "Низький рівень у грі (lvl 1)",
+        "Новий акаунт (0.8 р.)",
+        "Мало годин у CS2 (90 год)",
+        "Смурф-сигнал: молодий акаунт + високий K/D",
+        "Смурф-сигнал: мало годин у CS2 + сильна гра",
+        "Смурф-сигнал: високий FACEIT (lvl 8) на новому акаунті"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 99.0,
+      "hs_percent": 55.0,
+      "kd": 2.4,
+      "kills": 24,
+      "level": 1,
+      "smurf_risk": "critical",
+      "uncertainty": 35.0
+    },
+    "steam": {
+      "account_age_years": 0.8,
+      "cs2_hours": 90.0,
+      "cs2_stats": {
+        "hs_pct": 50.0,
+        "kd": 1.6,
+        "total_deaths": 8000,
+        "total_kills": 9000,
+        "total_kills_headshot": 4000,
+        "total_matches_played": 80,
+        "total_wins": 900
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "25_extreme_rage_no_data": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 7,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 1.0,
+        "steam_account": 0.0
+      },
+      "heuristic_cheat_probability": 77.1,
+      "heuristic_reasons": [
+        "Низький рівень у грі (lvl 2)",
+        "Steam-профіль не знайдено"
+      ],
+      "heuristic_risk": "critical",
+      "heuristic_smurf_probability": 18.0,
+      "hs_percent": 80.0,
+      "kd": 3.5,
+      "kills": 25,
+      "level": 2,
+      "smurf_risk": "low",
+      "uncertainty": 100.0
+    },
+    "steam": {
+      "account_age_years": 8.0,
+      "cs2_hours": 2400.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": false,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": null,
+      "vac_banned": false
+    }
+  },
+  "26_nan_score_no_lobby_score": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 6.4,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 30.0,
+      "kd": 1.0,
+      "kills": 16,
+      "level": -1,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": 10.0,
+      "cs2_hours": 2500.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "27_private_limited_new_no_external": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "sample",
+    "scoreboard": {
+      "deaths": 18,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.69,
+        "steam_account": 0.31
+      },
+      "heuristic_cheat_probability": 41.8,
+      "heuristic_reasons": [
+        "Обмежений акаунт Steam",
+        "Новий акаунт (0.9 р.)",
+        "Мало годин у CS2 (30 год)",
+        "Закритий профіль (private)"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 42.0,
+      "kd": 0.89,
+      "kills": 16,
+      "level": 18,
+      "smurf_risk": "low",
+      "uncertainty": 84.2
+    },
+    "steam": {
+      "account_age_years": 0.9,
+      "cs2_hours": 30.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": true,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "R1_steam_url_vanity": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "http_status": 200,
+        "matches": [],
+        "sections": {
+          "aim_reactions": {
+            "Counter-strafing": 91.0
+          }
+        },
+        "status": "ok",
+        "trust": 75
+      }
+    },
+    "faceit": {
+      "faceit_elo": 1400,
+      "found": true,
+      "hs_pct": 45.0,
+      "kd": 1.1,
+      "matches": 200,
+      "nickname": "sample",
+      "player_id": "fx-1",
+      "skill_level": 5,
+      "winrate": 50.0
+    },
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "Zed",
+    "scoreboard": {
+      "deaths": 15,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 11.9,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 40.0,
+      "kd": 1.2,
+      "kills": 18,
+      "level": 9,
+      "smurf_risk": "low",
+      "uncertainty": 0.0
+    },
+    "steam": {
+      "account_age_years": null,
+      "cs2_hours": 1234.5,
+      "cs2_stats": {
+        "hs_pct": 44.4,
+        "kd": 1.12,
+        "total_deaths": 8000,
+        "total_kills": 9000,
+        "total_kills_headshot": 4000,
+        "total_matches_played": 1800,
+        "total_wins": 900
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "Zed Vanity",
+      "steam_level": null,
+      "steamid64": "76561198000000042",
+      "vac_banned": false
+    }
+  },
+  "R2_steamid64_banned": {
+    "extra_stats": {
+      "_cs2_checked": false,
+      "cstracker": {
+        "http_status": 403,
+        "status": "blocked"
+      }
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "Banned Guy",
+    "scoreboard": {
+      "deaths": 12,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 0.5,
+        "steam_account": 0.5
+      },
+      "heuristic_cheat_probability": 78.0,
+      "heuristic_reasons": [
+        "VAC-бан у Steam",
+        "Трейд-бан у Steam (banned)"
+      ],
+      "heuristic_risk": "critical",
+      "heuristic_smurf_probability": 10.0,
+      "hs_percent": 61.0,
+      "kd": 1.8,
+      "kills": 22,
+      "level": 4,
+      "smurf_risk": "low",
+      "uncertainty": 65.0
+    },
+    "steam": {
+      "account_age_years": null,
+      "cs2_hours": null,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "Banned Guy",
+      "steam_level": null,
+      "steamid64": "76561198000000099",
+      "vac_banned": true
+    }
+  },
+  "R3_nick_fallback_lookup": {
+    "faceit": {
+      "faceit_elo": 1650,
+      "found": true,
+      "hs_pct": 45.0,
+      "kd": 1.1,
+      "matches": 200,
+      "nickname": "sample",
+      "player_id": "fx-1",
+      "skill_level": 7,
+      "winrate": 50.0
+    },
+    "leetify": {
+      "aim": 88.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": 9.0,
+      "premier_rank": null,
+      "reaction_time_ms": 440,
+      "total_matches": 300,
+      "winrate": 52.0
+    },
+    "nick": "Nickname2",
+    "scoreboard": {
+      "deaths": 16,
+      "effective_weights": {
+        "leetify": 0.4,
+        "scoreboard": 0.3,
+        "steam_account": 0.3
+      },
+      "heuristic_cheat_probability": 10.2,
+      "heuristic_reasons": [
+        "Зовнішні та лобі-показники в нормі"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 15.0,
+      "hs_percent": 35.0,
+      "kd": 0.88,
+      "kills": 14,
+      "level": 20,
+      "smurf_risk": "low",
+      "uncertainty": 15.0
+    },
+    "steam": {
+      "account_age_years": 5.0,
+      "cs2_hours": 700.0,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "sample",
+      "steam_level": null,
+      "steamid64": "76561190000000001",
+      "vac_banned": false
+    }
+  },
+  "R4_url_unresolvable_falls_back": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "Ghost",
+    "scoreboard": {
+      "deaths": 20,
+      "effective_weights": {
+        "leetify": 0.0,
+        "scoreboard": 1.0,
+        "steam_account": 0.0
+      },
+      "heuristic_cheat_probability": 9.6,
+      "heuristic_reasons": [
+        "Steam-профіль не знайдено"
+      ],
+      "heuristic_risk": "low",
+      "heuristic_smurf_probability": 5.0,
+      "hs_percent": 22.0,
+      "kd": 0.45,
+      "kills": 9,
+      "level": -1,
+      "smurf_risk": "low",
+      "uncertainty": 100.0
+    },
+    "steam": {
+      "account_age_years": null,
+      "cs2_hours": null,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": false,
+      "game_bans": null,
+      "in_cs2": false,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": null,
+      "steam_level": null,
+      "steamid64": null,
+      "vac_banned": false
+    }
+  },
+  "syn_faceit_not_found_truthy": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "status": "ok"
+      }
+    },
+    "faceit": {
+      "found": false,
+      "skill_level": null
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "syn",
+    "scoreboard": {
+      "deaths": 12,
+      "effective_weights": {
+        "scoreboard": 0.5
+      },
+      "heuristic_cheat_probability": 33.3,
+      "heuristic_reasons": [
+        "r1"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 12.0,
+      "hs_percent": 48.0,
+      "kd": 1.67,
+      "kills": 20,
+      "level": 9,
+      "smurf_risk": "low",
+      "uncertainty": 42.0
+    },
+    "steam": {
+      "account_age_years": 2.0,
+      "cs2_hours": 300.0,
+      "cs2_stats": {
+        "kd": 1.3
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": true,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "syn",
+      "steam_level": 12,
+      "steamid64": "76561198000000042",
+      "vac_banned": false
+    }
+  },
+  "syn_full_leetify_and_faceit": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "status": "ok"
+      }
+    },
+    "faceit": {
+      "faceit_elo": 1700,
+      "found": true,
+      "matches": 80,
+      "skill_level": 7
+    },
+    "leetify": {
+      "aim": null,
+      "bans": [
+        {
+          "type": "x"
+        }
+      ],
+      "faceit_level": 8,
+      "found": true,
+      "hs_pct": 40.0,
+      "kd": 1.2,
+      "leetify_rating": 0.1,
+      "preaim": 4.1,
+      "premier_rank": 21000,
+      "reaction_time_ms": 330,
+      "total_matches": 300,
+      "winrate": 61.0
+    },
+    "nick": "syn",
+    "scoreboard": {
+      "deaths": 12,
+      "effective_weights": {
+        "scoreboard": 0.5
+      },
+      "heuristic_cheat_probability": 33.3,
+      "heuristic_reasons": [
+        "r1"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 12.0,
+      "hs_percent": 48.0,
+      "kd": 1.67,
+      "kills": 20,
+      "level": 9,
+      "smurf_risk": "low",
+      "uncertainty": 42.0
+    },
+    "steam": {
+      "account_age_years": 2.0,
+      "cs2_hours": 300.0,
+      "cs2_stats": {
+        "kd": 1.3
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": true,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "syn",
+      "steam_level": 12,
+      "steamid64": "76561198000000042",
+      "vac_banned": false
+    }
+  },
+  "syn_no_steam_empty_blocks": {
+    "leetify": {
+      "aim": null,
+      "bans": [],
+      "faceit_level": null,
+      "found": false,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": null,
+      "reaction_time_ms": null,
+      "total_matches": null,
+      "winrate": null
+    },
+    "nick": "syn",
+    "scoreboard": {
+      "deaths": 12,
+      "effective_weights": {
+        "scoreboard": 0.5
+      },
+      "heuristic_cheat_probability": 33.3,
+      "heuristic_reasons": [
+        "r1"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 12.0,
+      "hs_percent": 48.0,
+      "kd": 1.67,
+      "kills": 20,
+      "level": 9,
+      "smurf_risk": "low",
+      "uncertainty": 42.0
+    },
+    "steam": {
+      "account_age_years": null,
+      "cs2_hours": null,
+      "cs2_stats": {},
+      "days_since_last_ban": null,
+      "found": false,
+      "game_bans": null,
+      "in_cs2": null,
+      "is_limited": null,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": null,
+      "steam_level": null,
+      "steamid64": null,
+      "vac_banned": null
+    }
+  },
+  "syn_premier_rank_fallback": {
+    "extra_stats": {
+      "_cs2_checked": true,
+      "cstracker": {
+        "status": "ok"
+      }
+    },
+    "leetify": {
+      "aim": 70.0,
+      "bans": [],
+      "faceit_level": 6,
+      "found": true,
+      "hs_pct": null,
+      "kd": null,
+      "leetify_rating": null,
+      "preaim": null,
+      "premier_rank": 17000,
+      "reaction_time_ms": null,
+      "total_matches": 50,
+      "winrate": null
+    },
+    "nick": "syn",
+    "scoreboard": {
+      "deaths": 12,
+      "effective_weights": {
+        "scoreboard": 0.5
+      },
+      "heuristic_cheat_probability": 33.3,
+      "heuristic_reasons": [
+        "r1"
+      ],
+      "heuristic_risk": "medium",
+      "heuristic_smurf_probability": 12.0,
+      "hs_percent": 48.0,
+      "kd": 1.67,
+      "kills": 20,
+      "level": 9,
+      "smurf_risk": "low",
+      "uncertainty": 42.0
+    },
+    "steam": {
+      "account_age_years": 2.0,
+      "cs2_hours": 300.0,
+      "cs2_stats": {
+        "kd": 1.3
+      },
+      "days_since_last_ban": null,
+      "found": true,
+      "game_bans": null,
+      "in_cs2": true,
+      "is_limited": false,
+      "is_private": null,
+      "number_of_vac_bans": null,
+      "profile_name": "syn",
+      "steam_level": 12,
+      "steamid64": "76561198000000042",
+      "vac_banned": false
+    }
+  }
+}

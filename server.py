@@ -32,11 +32,10 @@ from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screensh
 from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
 from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
+from sources import REGISTRY, SourceContext
 from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
-    _fetch_cstracker,
-    _fetch_leetify,
     _get_faceit_api_key,
     _get_steam_api_key,
     enrich_players,
@@ -355,17 +354,24 @@ def _delayed_tab_scan() -> None:
         print(f"[tab-scan error] {exc}")
 
 
-_RECHECK_SOURCES = ("leetify", "cstracker")
+def _source_choices_text(ids: list[str]) -> str:
+    """'a' або 'b' for two ids; 'a', 'b' або 'c' for more (matches the historical 400 text)."""
+    quoted = [f"'{i}'" for i in ids]
+    if len(quoted) <= 2:
+        return " або ".join(quoted)
+    return ", ".join(quoted[:-1]) + " або " + quoted[-1]
 
 
 def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optional[str]) -> tuple[int, dict]:
-    """Re-fetch ONE external source (leetify or cstracker) for one player of a scan.
+    """Re-fetch ONE recheckable external source for one player of a scan.
 
     Other sources and the scoring are left untouched. Returns (http_status, body):
     the updated scan on success, {"error": ...} otherwise.
     """
-    if source not in _RECHECK_SOURCES:
-        return 400, {"error": "source має бути 'leetify' або 'cstracker'"}
+    # `source` comes from JSON, so only strings can be registry keys.
+    src = REGISTRY.get(source) if isinstance(source, str) else None
+    if src is None or not src.recheckable:
+        return 400, {"error": f"source має бути {_source_choices_text(REGISTRY.recheckable_ids())}"}
     if not scan_id or not nick:
         return 400, {"error": "scan_id і nick є обов'язковими"}
 
@@ -381,7 +387,7 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
         return 409, {"error": "У гравця немає SteamID64: спочатку виправте нік або вставте Steam URL"}
 
     try:
-        fresh = _fetch_leetify(steamid64) if source == "leetify" else _fetch_cstracker(steamid64)
+        fresh = src.fetch_raw(steamid64, SourceContext())
     except Exception as exc:
         return 502, {"error": f"Запит до {source} не вдався: {exc}"}
 
@@ -391,12 +397,7 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
         if scan_rec is None or player is None:
             return 404, {"error": "Scan or player was removed while refreshing"}
         steam = dict(player.get("steam") or {})
-        if source == "leetify":
-            steam["leetify"] = fresh
-        else:
-            extra = dict(steam.get("extra_stats") or {})
-            extra["cstracker"] = fresh
-            steam["extra_stats"] = extra
+        src.write_raw(steam, fresh)  # copies the containers along the slot path; siblings are kept
         player["steam"] = steam
         _save_history_locked()
         snapshot = dict(scan_rec)

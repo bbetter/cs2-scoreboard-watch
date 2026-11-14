@@ -23,6 +23,7 @@ from typing import Any, Optional
 from atomic_io import atomic_write_text
 from nick_match import best_match_index
 from scoreboard_scan import Player
+from sources import REGISTRY
 
 _LOG = logging.getLogger("pton")
 
@@ -239,13 +240,8 @@ class SteamProfile:
 
 
 def _source_coverage(profile: "SteamProfile") -> dict:
-    ct = (profile.extra_stats or {}).get("cstracker")
-    return {
-        "steam": bool(profile.steamid64),
-        "leetify": bool(profile.leetify),
-        "faceit": bool((profile.faceit or {}).get("found")),
-        "cstracker": bool(isinstance(ct, dict) and ct.get("status") == "ok"),
-    }
+    # Per-source flags come from the registry (sources/); "steam" is the SteamID64 presence flag.
+    return {"steam": bool(profile.steamid64), **REGISTRY.coverage(asdict(profile))}
 
 
 @dataclass
