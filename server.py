@@ -31,6 +31,7 @@ from console_parser import (
 from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
 from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
+from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
 from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
@@ -404,6 +405,438 @@ def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optiona
     return 200, snapshot
 
 
+# ---------------------------------------------------------------- HTTP routes
+# Each route receives the CsWatchHandler instance `h` and the captured path params.
+# Path params are the RAW (undecoded) URL segments, as the handler always received them.
+
+router = Router()
+
+
+@router.route("GET", "/api/steam-status")
+def _get_steam_status(h: CsWatchHandler) -> None:
+    h._send_json(get_steam_search_status())
+
+
+@router.route("GET", "/api/latest")
+def _get_latest(h: CsWatchHandler) -> None:
+    with _STATE_LOCK:
+        latest = _SCANS[0] if _SCANS else None
+        matches = _build_matches_locked()
+        history = [
+            {
+                "id": s["id"],
+                "created_at": s["created_at"],
+                "date": s.get("date") or s["created_at"][:10],
+                "match_id": s.get("match_id"),
+                "map_name": s.get("map_name"),
+                "player_count": s["player_count"],
+                "image_name": s["image_name"],
+            }
+            for s in _SCANS
+        ]
+    h._send_json({"latest": latest, "history": history, "matches": matches})
+
+
+@router.route("GET", "/api/config")
+def _get_config(h: CsWatchHandler) -> None:
+    cs2_dir = find_cs2_game_dir()
+    resolved = {
+        "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+        "console_log_path": str(get_console_log_path()),
+        "screenshots_dir": str(get_screenshot_dir()),
+        "claude_cli_available": bool(shutil.which("claude")),
+    }
+    h._send_json(
+        get_public_config(
+            resolved=resolved,
+            env_key_present=bool(_get_steam_api_key()),
+            env_faceit_key_present=bool(_get_faceit_api_key()),
+        )
+    )
+
+
+@router.route("GET", "/api/matches")
+def _get_matches(h: CsWatchHandler) -> None:
+    with _STATE_LOCK:
+        matches = _build_matches_locked()
+    h._send_json({"matches": matches})
+
+
+@router.route("GET", "/api/scan/{scan_id:path}")
+def _get_scan(h: CsWatchHandler, scan_id: str) -> None:
+    scan_id = scan_id.strip("/")
+    with _STATE_LOCK:
+        match = next((s for s in _SCANS if s["id"] == scan_id), None)
+    if not match:
+        h._send_json({"error": "Scan not found"}, status=404)
+    else:
+        h._send_json(match)
+
+
+@router.route("GET", "/api/players/{steamid:path}")
+def _get_player(h: CsWatchHandler, steamid: str) -> None:
+    steamid = steamid.strip("/")
+    if not player_db.is_valid_steamid64(steamid):
+        h._send_json({"error": "Invalid steamid64"}, status=400)
+        return
+    try:
+        limit = min(max(int(parse_qs(urlparse(h.path).query).get("limit", ["50"])[0]), 1), 500)
+    except ValueError:
+        h._send_json({"error": "limit must be an integer"}, status=400)
+        return
+    try:
+        profile = player_db.get_db().get_player(steamid, sightings_limit=limit)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+        return
+    if profile is None:
+        h._send_json({"error": "Player not found"}, status=404)
+    else:
+        h._send_json(profile)
+
+
+@router.route("GET", "/screenshots/{name:path}")
+def _get_screenshot(h: CsWatchHandler, name: str) -> None:
+    filename = Path(name).name
+    sdir = get_screenshot_dir().resolve()
+    target = (sdir / filename).resolve()
+    if target.parent != sdir or not target.is_file():
+        target = (SCREENSHOT_DIR.resolve() / filename).resolve()
+        if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
+            h.send_error(HTTPStatus.NOT_FOUND)
+            return
+    ctype = "image/jpeg" if target.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+    h._send_file(target, ctype)
+
+
+@router.route("GET", "/api/events")
+def _get_events(h: CsWatchHandler) -> None:
+    # Long-lived SSE stream: writes straight to the socket, so it must not be wrapped.
+    h.send_response(HTTPStatus.OK)
+    h.send_header("Content-Type", "text/event-stream")
+    h.send_header("Cache-Control", "no-cache")
+    h.send_header("Connection", "keep-alive")
+    h.end_headers()
+
+    q: queue.Queue[str] = queue.Queue(maxsize=20)
+    with _STATE_LOCK:
+        _SUBSCRIBERS.append(q)
+    try:
+        h.wfile.write(b": connected\n\n")
+        h.wfile.flush()
+        while True:
+            try:
+                msg = q.get(timeout=20)
+                h.wfile.write(msg.encode("utf-8"))
+                h.wfile.flush()
+            except queue.Empty:
+                h.wfile.write(b": ping\n\n")
+                h.wfile.flush()
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    finally:
+        with _STATE_LOCK:
+            if q in _SUBSCRIBERS:
+                _SUBSCRIBERS.remove(q)
+
+
+@router.fallback("GET")
+def _get_static(h: CsWatchHandler, path: str) -> bool:
+    target = resolve_static_file(WEB_DIR, path)
+    if target is None:
+        return False
+    h._send_file(target, static_content_type(target))
+    return True
+
+
+@router.route("POST", "/api/tab-pressed")
+def _post_tab_pressed(h: CsWatchHandler) -> None:
+    h._send_json(schedule_tab_scan())
+
+
+@router.route("POST", "/api/scan")
+def _post_scan(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        img_path = payload.get("image_path")
+        fetch_steam = payload.get("fetch_steam", True)
+        result = run_scan(
+            image_path=Path(img_path) if img_path else None,
+            fetch_steam=bool(fetch_steam),
+        )
+        h._send_json(result)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/rescan")
+def _post_rescan(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+        img_name = scan_rec.get("image_name")
+        sdir = get_screenshot_dir().resolve()
+        img_path = (sdir / Path(img_name).name).resolve()
+        if not img_path.is_file():
+            img_path = (SCREENSHOT_DIR.resolve() / Path(img_name).name).resolve()
+        if not img_path.is_file():
+            h._send_json({"error": "Screenshot file not found"}, status=404)
+            return
+
+        started = time.time()
+        console_status = parse_latest_status()
+        players = scan_scoreboard(str(img_path))
+        if console_status and console_status.nicks:
+            for p in players:
+                p.nick = correct_nick_from_console(p.nick, console_status.nicks)
+
+        initial_reports = enrich_players(players, fetch_steam=False)
+        initial_dicts = []
+        for r in initial_reports:
+            d = asdict(r)
+            d["loading"] = bool(players)
+            d["loading_stage"] = "steam" if players else "done"
+            initial_dicts.append(d)
+        duration_ms = round((time.time() - started) * 1000)
+
+        with _STATE_LOCK:
+            scan_rec["players"] = initial_dicts
+            scan_rec["player_count"] = len(initial_dicts)
+            scan_rec["duration_ms"] = duration_ms
+            scan_rec["ai_error"] = None
+            scan_rec["scan_status"] = "loading_steam" if players else "done"
+            scan_rec["progress"] = {"done": 0, "total": len(initial_dicts)}
+            _save_history_locked()
+            snapshot = dict(scan_rec)
+            target_scan_id = scan_rec["id"]
+
+        _broadcast_event("scan", snapshot)
+        if players:
+            threading.Thread(
+                target=_enrich_scan_async,
+                args=(target_scan_id, players, started),
+                daemon=True,
+            ).start()
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/setup-cs2")
+def _post_setup_cs2(h: CsWatchHandler) -> None:
+    try:
+        h._send_json(setup_autoexec())
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/recheck")
+def _post_recheck(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        old_nick = payload.get("old_nick")
+        query = (payload.get("query") or "").strip()
+        if not scan_id or not old_nick or not query:
+            h._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
+            return
+
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            idx = next((i for i, p in enumerate(scan_rec["players"]) if p["nick"] == old_nick), None)
+            if idx is None:
+                h._send_json({"error": "Player not found in scan"}, status=404)
+                return
+            player_copy = dict(scan_rec["players"][idx])
+
+        updated_player = recheck_player_report(player_copy, query)
+        analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
+        updated_player = analyzed_list[0]
+
+        with _STATE_LOCK:
+            scan_rec["players"][idx] = updated_player
+            scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
+            _save_history_locked()
+            snapshot = dict(scan_rec)
+
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/feedback")
+def _post_feedback(h: CsWatchHandler) -> None:
+    try:
+        try:
+            payload = read_json_body(h, empty_json=lambda: None)
+        except JsonBodyError:
+            payload = None  # validate_feedback_payload reports the 400
+        clean, err = validate_feedback_payload(payload)
+        if err:
+            h._send_json({"error": err}, status=400)
+            return
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == clean["scan_id"]), None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            player = next((dict(p) for p in scan_rec["players"] if p.get("nick") == clean["nick"]), None)
+        if player is None:
+            h._send_json({"error": "Player not found in scan"}, status=404)
+            return
+        entry = build_feedback_entry(clean["scan_id"], clean["label"], player)
+        append_feedback(entry)
+        h._send_json({"ok": True, "entry": entry})
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/recheck-source")
+def _post_recheck_source(h: CsWatchHandler) -> None:
+    try:
+        try:
+            payload = read_json_body(h)
+        except JsonBodyError:
+            h._send_json({"error": "Тіло запиту має бути JSON"}, status=400)
+            return
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Тіло запиту має бути JSON-об'єктом"}, status=400)
+            return
+        status, body = recheck_source_for_player(
+            payload.get("scan_id"),
+            str(payload.get("nick") or "").strip(),
+            payload.get("source"),
+        )
+        h._send_json(body, status=status)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/ai-analyze")
+def _post_ai_analyze(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        scan_id = payload.get("scan_id")
+        target_nick = (payload.get("nick") or "").strip()
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+            if not scan_rec:
+                h._send_json({"error": "Scan not found"}, status=404)
+                return
+            players_copy = [dict(p) for p in scan_rec.get("players", [])]
+
+        if target_nick:
+            subset = [p for p in players_copy if p.get("nick") == target_nick]
+            if not subset:
+                h._send_json({"error": "Player not found in scan"}, status=404)
+                return
+            analyzed, ai_error = analyze_players_with_ai(subset, force=True)
+            if ai_error:
+                h._send_json({"error": ai_error}, status=500)
+                return
+            updated_map = {p["nick"]: p for p in analyzed}
+            new_players = [updated_map.get(p["nick"], p) for p in players_copy]
+        else:
+            new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
+            if ai_error:
+                h._send_json({"error": ai_error}, status=500)
+                return
+
+        with _STATE_LOCK:
+            scan_rec["players"] = new_players
+            scan_rec["ai_error"] = None
+            _save_history_locked()
+            snapshot = dict(scan_rec)
+
+        h._send_json(snapshot)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/config")
+def _post_config(h: CsWatchHandler) -> None:
+    try:
+        payload = read_json_body(h)
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Invalid config payload"}, status=400)
+            return
+        save_config(payload)
+        _apply_runtime_config()
+        reset_steam_api_key_cache()
+        reset_faceit_api_key_cache()
+        cs2_dir = find_cs2_game_dir()
+        resolved = {
+            "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
+            "console_log_path": str(get_console_log_path()),
+            "screenshots_dir": str(get_screenshot_dir()),
+            "claude_cli_available": bool(shutil.which("claude")),
+        }
+        h._send_json(
+            get_public_config(
+                resolved=resolved,
+                env_key_present=bool(_get_steam_api_key()),
+                env_faceit_key_present=bool(_get_faceit_api_key()),
+            )
+        )
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/upload")
+def _post_upload(h: CsWatchHandler) -> None:
+    try:
+        raw = h._read_body()
+        if not raw:
+            h._send_json({"error": "Empty upload"}, status=400)
+            return
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        out_path = get_screenshot_dir() / f"upload_{ts}.png"
+        out_path.write_bytes(raw)
+        result = run_scan(image_path=out_path, fetch_steam=True)
+        h._send_json(result)
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
+@router.route("POST", "/api/players/{steamid:path}")
+def _post_player(h: CsWatchHandler, steamid: str) -> None:
+    steamid = steamid.strip("/")
+    if not player_db.is_valid_steamid64(steamid):
+        h._send_json({"error": "Invalid steamid64"}, status=400)
+        return
+    try:
+        payload = read_json_body(h)
+        if not isinstance(payload, dict):
+            h._send_json({"error": "Invalid player payload"}, status=400)
+            return
+        fields: dict[str, Optional[str]] = {}
+        for name, max_len in (("tag", player_db.TAG_MAX_LEN), ("notes", player_db.NOTES_MAX_LEN)):
+            if name in payload:
+                value = payload[name]
+                if value is not None and not isinstance(value, str):
+                    h._send_json({"error": f"{name} must be a string"}, status=400)
+                    return
+                if value and len(value) > max_len:
+                    h._send_json({"error": f"{name} is too long (max {max_len})"}, status=400)
+                    return
+                fields[name] = value or None
+        db = player_db.get_db()
+        if not db.set_player_meta(steamid, **fields):
+            h._send_json({"error": "Player not found"}, status=404)
+            return
+        h._send_json(db.get_player(steamid, sightings_limit=50))
+    except Exception as exc:
+        h._send_json({"error": str(exc)}, status=500)
+
+
 class CsWatchHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -440,433 +873,15 @@ class CsWatchHandler(BaseHTTPRequestHandler):
         return self.rfile.read(length)
 
     def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
-
-        if path == "/":
-            self._send_file(WEB_DIR / "index.html", "text/html; charset=utf-8")
-            return
-        if path == "/styles.css":
-            self._send_file(WEB_DIR / "styles.css", "text/css; charset=utf-8")
-            return
-        if path == "/app.js":
-            self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
-            return
-        if path == "/table-view.js":
-            self._send_file(WEB_DIR / "table-view.js", "application/javascript; charset=utf-8")
-            return
-
-        if path == "/api/steam-status":
-            self._send_json(get_steam_search_status())
-            return
-
-        if path == "/api/latest":
-            with _STATE_LOCK:
-                latest = _SCANS[0] if _SCANS else None
-                matches = _build_matches_locked()
-                history = [
-                    {
-                        "id": s["id"],
-                        "created_at": s["created_at"],
-                        "date": s.get("date") or s["created_at"][:10],
-                        "match_id": s.get("match_id"),
-                        "map_name": s.get("map_name"),
-                        "player_count": s["player_count"],
-                        "image_name": s["image_name"],
-                    }
-                    for s in _SCANS
-                ]
-            self._send_json({"latest": latest, "history": history, "matches": matches})
-            return
-
-        if path == "/api/config":
-            cs2_dir = find_cs2_game_dir()
-            resolved = {
-                "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
-                "console_log_path": str(get_console_log_path()),
-                "screenshots_dir": str(get_screenshot_dir()),
-                "claude_cli_available": bool(shutil.which("claude")),
-            }
-            self._send_json(
-                get_public_config(
-                    resolved=resolved,
-                    env_key_present=bool(_get_steam_api_key()),
-                    env_faceit_key_present=bool(_get_faceit_api_key()),
-                )
-            )
-            return
-
-        if path == "/api/matches":
-            with _STATE_LOCK:
-                matches = _build_matches_locked()
-            self._send_json({"matches": matches})
-            return
-
-        if path.startswith("/api/scan/"):
-            scan_id = path.split("/api/scan/", 1)[1].strip("/")
-            with _STATE_LOCK:
-                match = next((s for s in _SCANS if s["id"] == scan_id), None)
-            if not match:
-                self._send_json({"error": "Scan not found"}, status=404)
-            else:
-                self._send_json(match)
-            return
-
-        if path.startswith("/api/players/"):
-            steamid = path.split("/api/players/", 1)[1].strip("/")
-            if not player_db.is_valid_steamid64(steamid):
-                self._send_json({"error": "Invalid steamid64"}, status=400)
-                return
-            try:
-                limit = min(max(int(parse_qs(parsed.query).get("limit", ["50"])[0]), 1), 500)
-            except ValueError:
-                self._send_json({"error": "limit must be an integer"}, status=400)
-                return
-            try:
-                profile = player_db.get_db().get_player(steamid, sightings_limit=limit)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-                return
-            if profile is None:
-                self._send_json({"error": "Player not found"}, status=404)
-            else:
-                self._send_json(profile)
-            return
-
-        if path.startswith("/screenshots/"):
-            filename = Path(path.split("/screenshots/", 1)[1]).name
-            sdir = get_screenshot_dir().resolve()
-            target = (sdir / filename).resolve()
-            if target.parent != sdir or not target.is_file():
-                target = (SCREENSHOT_DIR.resolve() / filename).resolve()
-                if target.parent != SCREENSHOT_DIR.resolve() or not target.is_file():
-                    self.send_error(HTTPStatus.NOT_FOUND)
-                    return
-            ctype = "image/jpeg" if target.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
-            self._send_file(target, ctype)
-            return
-
-        if path == "/api/events":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-Type", "text/event-stream")
-            self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
-            self.end_headers()
-
-            q: queue.Queue[str] = queue.Queue(maxsize=20)
-            with _STATE_LOCK:
-                _SUBSCRIBERS.append(q)
-            try:
-                self.wfile.write(b": connected\n\n")
-                self.wfile.flush()
-                while True:
-                    try:
-                        msg = q.get(timeout=20)
-                        self.wfile.write(msg.encode("utf-8"))
-                        self.wfile.flush()
-                    except queue.Empty:
-                        self.wfile.write(b": ping\n\n")
-                        self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-            finally:
-                with _STATE_LOCK:
-                    if q in _SUBSCRIBERS:
-                        _SUBSCRIBERS.remove(q)
-            return
-
-        self.send_error(HTTPStatus.NOT_FOUND)
+        path = urlparse(self.path).path
+        if not router.dispatch(self, "GET", path):
+            self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
-        parsed = urlparse(self.path)
-        path = parsed.path
+        path = urlparse(self.path).path
+        if not router.dispatch(self, "POST", path):
+            self.send_error(HTTPStatus.NOT_FOUND)
 
-        if path == "/api/tab-pressed":
-            self._send_json(schedule_tab_scan())
-            return
-
-        if path == "/api/scan":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                img_path = payload.get("image_path")
-                fetch_steam = payload.get("fetch_steam", True)
-                result = run_scan(
-                    image_path=Path(img_path) if img_path else None,
-                    fetch_steam=bool(fetch_steam),
-                )
-                self._send_json(result)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/rescan":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                img_name = scan_rec.get("image_name")
-                sdir = get_screenshot_dir().resolve()
-                img_path = (sdir / Path(img_name).name).resolve()
-                if not img_path.is_file():
-                    img_path = (SCREENSHOT_DIR.resolve() / Path(img_name).name).resolve()
-                if not img_path.is_file():
-                    self._send_json({"error": "Screenshot file not found"}, status=404)
-                    return
-
-                started = time.time()
-                console_status = parse_latest_status()
-                players = scan_scoreboard(str(img_path))
-                if console_status and console_status.nicks:
-                    for p in players:
-                        p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-
-                initial_reports = enrich_players(players, fetch_steam=False)
-                initial_dicts = []
-                for r in initial_reports:
-                    d = asdict(r)
-                    d["loading"] = bool(players)
-                    d["loading_stage"] = "steam" if players else "done"
-                    initial_dicts.append(d)
-                duration_ms = round((time.time() - started) * 1000)
-
-                with _STATE_LOCK:
-                    scan_rec["players"] = initial_dicts
-                    scan_rec["player_count"] = len(initial_dicts)
-                    scan_rec["duration_ms"] = duration_ms
-                    scan_rec["ai_error"] = None
-                    scan_rec["scan_status"] = "loading_steam" if players else "done"
-                    scan_rec["progress"] = {"done": 0, "total": len(initial_dicts)}
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-                    target_scan_id = scan_rec["id"]
-
-                _broadcast_event("scan", snapshot)
-                if players:
-                    threading.Thread(
-                        target=_enrich_scan_async,
-                        args=(target_scan_id, players, started),
-                        daemon=True,
-                    ).start()
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/setup-cs2":
-            try:
-                self._send_json(setup_autoexec())
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/recheck":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                old_nick = payload.get("old_nick")
-                query = (payload.get("query") or "").strip()
-                if not scan_id or not old_nick or not query:
-                    self._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
-                    return
-
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                    idx = next((i for i, p in enumerate(scan_rec["players"]) if p["nick"] == old_nick), None)
-                    if idx is None:
-                        self._send_json({"error": "Player not found in scan"}, status=404)
-                        return
-                    player_copy = dict(scan_rec["players"][idx])
-
-                updated_player = recheck_player_report(player_copy, query)
-                analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
-                updated_player = analyzed_list[0]
-
-                with _STATE_LOCK:
-                    scan_rec["players"][idx] = updated_player
-                    scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/feedback":
-            try:
-                raw = self._read_body()
-                try:
-                    payload = json.loads(raw.decode("utf-8")) if raw else None
-                except (UnicodeDecodeError, json.JSONDecodeError):
-                    payload = None
-                clean, err = validate_feedback_payload(payload)
-                if err:
-                    self._send_json({"error": err}, status=400)
-                    return
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == clean["scan_id"]), None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                    player = next((dict(p) for p in scan_rec["players"] if p.get("nick") == clean["nick"]), None)
-                if player is None:
-                    self._send_json({"error": "Player not found in scan"}, status=404)
-                    return
-                entry = build_feedback_entry(clean["scan_id"], clean["label"], player)
-                append_feedback(entry)
-                self._send_json({"ok": True, "entry": entry})
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/recheck-source":
-            try:
-                raw = self._read_body()
-                try:
-                    payload = json.loads(raw.decode("utf-8")) if raw else {}
-                except (ValueError, UnicodeDecodeError):
-                    self._send_json({"error": "Тіло запиту має бути JSON"}, status=400)
-                    return
-                if not isinstance(payload, dict):
-                    self._send_json({"error": "Тіло запиту має бути JSON-об'єктом"}, status=400)
-                    return
-                status, body = recheck_source_for_player(
-                    payload.get("scan_id"),
-                    str(payload.get("nick") or "").strip(),
-                    payload.get("source"),
-                )
-                self._send_json(body, status=status)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/ai-analyze":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                scan_id = payload.get("scan_id")
-                target_nick = (payload.get("nick") or "").strip()
-                with _STATE_LOCK:
-                    scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
-                    if not scan_rec:
-                        self._send_json({"error": "Scan not found"}, status=404)
-                        return
-                    players_copy = [dict(p) for p in scan_rec.get("players", [])]
-
-                if target_nick:
-                    subset = [p for p in players_copy if p.get("nick") == target_nick]
-                    if not subset:
-                        self._send_json({"error": "Player not found in scan"}, status=404)
-                        return
-                    analyzed, ai_error = analyze_players_with_ai(subset, force=True)
-                    if ai_error:
-                        self._send_json({"error": ai_error}, status=500)
-                        return
-                    updated_map = {p["nick"]: p for p in analyzed}
-                    new_players = [updated_map.get(p["nick"], p) for p in players_copy]
-                else:
-                    new_players, ai_error = analyze_players_with_ai(players_copy, force=True)
-                    if ai_error:
-                        self._send_json({"error": ai_error}, status=500)
-                        return
-
-                with _STATE_LOCK:
-                    scan_rec["players"] = new_players
-                    scan_rec["ai_error"] = None
-                    _save_history_locked()
-                    snapshot = dict(scan_rec)
-
-                self._send_json(snapshot)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/config":
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                if not isinstance(payload, dict):
-                    self._send_json({"error": "Invalid config payload"}, status=400)
-                    return
-                save_config(payload)
-                _apply_runtime_config()
-                reset_steam_api_key_cache()
-                reset_faceit_api_key_cache()
-                cs2_dir = find_cs2_game_dir()
-                resolved = {
-                    "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
-                    "console_log_path": str(get_console_log_path()),
-                    "screenshots_dir": str(get_screenshot_dir()),
-                    "claude_cli_available": bool(shutil.which("claude")),
-                }
-                self._send_json(
-                    get_public_config(
-                        resolved=resolved,
-                        env_key_present=bool(_get_steam_api_key()),
-                        env_faceit_key_present=bool(_get_faceit_api_key()),
-                    )
-                )
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path == "/api/upload":
-            try:
-                raw = self._read_body()
-                if not raw:
-                    self._send_json({"error": "Empty upload"}, status=400)
-                    return
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-                out_path = get_screenshot_dir() / f"upload_{ts}.png"
-                out_path.write_bytes(raw)
-                result = run_scan(image_path=out_path, fetch_steam=True)
-                self._send_json(result)
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        if path.startswith("/api/players/"):
-            steamid = path.split("/api/players/", 1)[1].strip("/")
-            if not player_db.is_valid_steamid64(steamid):
-                self._send_json({"error": "Invalid steamid64"}, status=400)
-                return
-            try:
-                raw = self._read_body()
-                payload = json.loads(raw.decode("utf-8")) if raw else {}
-                if not isinstance(payload, dict):
-                    self._send_json({"error": "Invalid player payload"}, status=400)
-                    return
-                fields: dict[str, Optional[str]] = {}
-                for name, max_len in (("tag", player_db.TAG_MAX_LEN), ("notes", player_db.NOTES_MAX_LEN)):
-                    if name in payload:
-                        value = payload[name]
-                        if value is not None and not isinstance(value, str):
-                            self._send_json({"error": f"{name} must be a string"}, status=400)
-                            return
-                        if value and len(value) > max_len:
-                            self._send_json({"error": f"{name} is too long (max {max_len})"}, status=400)
-                            return
-                        fields[name] = value or None
-                db = player_db.get_db()
-                if not db.set_player_meta(steamid, **fields):
-                    self._send_json({"error": "Player not found"}, status=404)
-                    return
-                self._send_json(db.get_player(steamid, sightings_limit=50))
-            except Exception as exc:
-                self._send_json({"error": str(exc)}, status=500)
-            return
-
-        self.send_error(HTTPStatus.NOT_FOUND)
 
 
 def main() -> None:
