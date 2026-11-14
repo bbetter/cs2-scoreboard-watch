@@ -185,8 +185,8 @@ class DbFailureTests(_TempDBCase):
             "scan_status": "loading_steam",
             "progress": {"done": 0, "total": 0},
         }
-        with server._STATE_LOCK:
-            server._SCANS.insert(0, scan_rec)
+        with server.STORE.lock:
+            server.STORE.scans.insert(0, scan_rec)
 
         broadcasts: list[tuple[str, dict]] = []
         try:
@@ -197,8 +197,8 @@ class DbFailureTests(_TempDBCase):
                     mock.patch.object(server, "_broadcast_event", side_effect=lambda e, p: broadcasts.append((e, p))):
                 server._enrich_scan_async(scan_id, [], 0.0)
         finally:
-            with server._STATE_LOCK:
-                server._SCANS[:] = [s for s in server._SCANS if s["id"] != scan_id]
+            with server.STORE.lock:
+                server.STORE.scans[:] = [s for s in server.STORE.scans if s["id"] != scan_id]
 
         self.assertEqual(scan_rec["scan_status"], "done")
         self.assertEqual(broadcasts[-1][0], "scan")

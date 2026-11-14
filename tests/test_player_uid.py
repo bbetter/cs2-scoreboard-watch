@@ -1,6 +1,6 @@
 """Stable player_uid: assignment, legacy adoption, history round trip, and uid-aware API routes.
 
-Live server on an ephemeral port. _SCANS is a temp list, HISTORY_FILE a temp path, _broadcast_event
+Live server on an ephemeral port. STORE is a temp ScanStore, _broadcast_event
 is mocked, and every external fetch/AI/feedback call is mocked. Nothing real is read or written.
 Run: /home/andrii/fun/.venv/bin/python -m unittest discover -s tests -v
 """
@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 
 import app.pipeline as pipeline  # noqa: E402
 import app.server as server  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import PlayerReport, SteamProfile  # noqa: E402
@@ -86,7 +87,9 @@ class HistoryRoundTripTests(unittest.TestCase):
             row.pop("player_uid")
         history.write_text(json.dumps([legacy]), encoding="utf-8")
 
-        with mock.patch.object(server, "HISTORY_FILE", history), mock.patch.object(server, "_SCANS", []) as scans:
+        store = ScanStore(history)
+        with mock.patch.object(server, "STORE", store):
+            scans = store.scans
             server._load_history()
             self.assertEqual([p["player_uid"] for p in scans[0]["players"]],
                              ["legacy-1-0", "legacy-1-1", "legacy-1-2"])
@@ -95,14 +98,16 @@ class HistoryRoundTripTests(unittest.TestCase):
         saved = json.loads(history.read_text(encoding="utf-8"))
         self.assertEqual([p["player_uid"] for p in saved[0]["players"]], ["legacy-1-0", "legacy-1-1", "legacy-1-2"])
 
-        with mock.patch.object(server, "HISTORY_FILE", history), mock.patch.object(server, "_SCANS", []) as scans2:
+        store2 = ScanStore(history)
+        with mock.patch.object(server, "STORE", store2):
+            scans2 = store2.scans
             server._load_history()
             self.assertEqual([p["player_uid"] for p in scans2[0]["players"]],
                              ["legacy-1-0", "legacy-1-1", "legacy-1-2"])
 
 
 class _LiveServer(unittest.TestCase):
-    """Base: temp history, temp _SCANS, mocked broadcast, live handler on an ephemeral port."""
+    """Base: temp history, temp ScanStore, mocked broadcast, live handler on an ephemeral port."""
 
     @classmethod
     def setUpClass(cls):
@@ -120,10 +125,11 @@ class _LiveServer(unittest.TestCase):
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        self.scans = [make_scan()]
+        self.store = ScanStore(Path(tmp.name) / "history.json")
+        self.store.scans[:] = [make_scan()]
+        self.scans = self.store.scans
         patches = [
-            mock.patch.object(server, "_SCANS", self.scans),
-            mock.patch.object(server, "HISTORY_FILE", Path(tmp.name) / "history.json"),
+            mock.patch.object(server, "STORE", self.store),
             mock.patch.object(server, "_broadcast_event"),
         ]
         for p in patches:

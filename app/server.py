@@ -17,7 +17,6 @@ from urllib.parse import parse_qs, urlparse
 
 import storage.player_db as player_db
 from lookup.ai_analyzer import analyze_players_with_ai
-from storage.atomic_io import atomic_write_text
 from storage.config_store import get_public_config, load_config, save_config
 from app.console_parser import (
     correct_nick_from_console,
@@ -31,6 +30,7 @@ from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
 from app.events import EventBus
 from app.pipeline import ScanPipeline
+from app.scan_store import ScanStore
 from app.web_router import (
     JsonBodyError,
     Router,
@@ -57,10 +57,10 @@ from storage.paths import DATA_DIR, WEB_DIR
 
 HISTORY_FILE = DATA_DIR / "scans_history.json"
 
-_STATE_LOCK = threading.Lock()
-_SCANS: list[dict] = []
+_SUBSCRIBERS_LOCK = threading.Lock()
 _MAX_HISTORY = 100
 _SUBSCRIBERS: list[queue.Queue[str]] = []
+STORE = ScanStore(HISTORY_FILE, _MAX_HISTORY)
 _TAB_LOCK = threading.Lock()
 _LAST_TAB_TS = 0.0
 _TAB_COOLDOWN_SEC = 4.0
@@ -93,7 +93,7 @@ def configure_tab_watcher(delay_sec: float = 0.5, cooldown_sec: float = 4.0, cs2
 
 def _broadcast_event(event: str, payload: dict) -> None:
     msg = f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
-    with _STATE_LOCK:
+    with _SUBSCRIBERS_LOCK:
         dead: list[queue.Queue[str]] = []
         for q in _SUBSCRIBERS:
             try:
@@ -116,35 +116,20 @@ def _adapt_legacy_scan(scan: dict) -> None:
 
 
 def _load_history() -> None:
-    if not HISTORY_FILE.is_file():
-        return
-    try:
-        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            scans = data[:_MAX_HISTORY]
-            for scan in scans:
-                if isinstance(scan, dict):
-                    _adapt_legacy_scan(scan)
-            with _STATE_LOCK:
-                _SCANS[:] = scans
-    except Exception:
-        pass
+    STORE.load(adapt=_adapt_legacy_scan)
 
 
 def _save_history_locked() -> None:
-    try:
-        atomic_write_text(HISTORY_FILE, json.dumps(_SCANS, ensure_ascii=False))
-    except Exception:
-        pass
+    STORE.save_locked()
 
 
 def _resolve_match_meta(now_dt: datetime, console_status) -> tuple[str, Optional[str]]:
     if console_status and console_status.match_id:
         return console_status.match_id, console_status.map_name
     date_str = now_dt.strftime("%Y-%m-%d")
-    with _STATE_LOCK:
-        if _SCANS:
-            prev = _SCANS[0]
+    with STORE.lock:
+        prev = STORE.latest_locked()
+        if prev:
             try:
                 prev_dt = datetime.fromisoformat(prev["created_at"])
                 if prev.get("date", prev["created_at"][:10]) == date_str and (now_dt - prev_dt).total_seconds() <= 2400:
@@ -156,7 +141,7 @@ def _resolve_match_meta(now_dt: datetime, console_status) -> tuple[str, Optional
 
 def _build_matches_locked() -> list[dict]:
     groups: dict[str, list[dict]] = {}
-    for s in _SCANS:
+    for s in STORE.scans:
         mid = s.get("match_id") or f"session_{s['created_at'][:10]}"
         groups.setdefault(mid, []).append(s)
 
@@ -197,22 +182,22 @@ def _build_matches_locked() -> list[dict]:
 
 
 class _ServerRepo:
-    """ScanRepo over this module's globals. Names are resolved at call time so tests can patch them."""
+    """ScanRepo that delegates to the current module-level STORE (resolved at call time, so tests can patch it)."""
 
     @property
     def lock(self):
-        return _STATE_LOCK
+        return STORE.lock
 
     @property
     def scans(self) -> list:
-        return _SCANS
+        return STORE.scans
 
     @property
     def max_history(self) -> int:
-        return _MAX_HISTORY
+        return STORE.max_history
 
     def save_locked(self) -> None:
-        _save_history_locked()
+        STORE.save_locked()
 
 
 def _ocr_image(image_path: Path) -> tuple[list, object]:
@@ -361,8 +346,8 @@ def recheck_source_for_player(
     if not scan_id or not (nick or player_uid):
         return 400, {"error": "scan_id і nick є обов'язковими"}
 
-    with _STATE_LOCK:
-        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+    with STORE.lock:
+        scan_rec = STORE.find_locked(scan_id)
         if not scan_rec:
             return 404, {"error": "Scan not found"}
         player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None)
@@ -377,8 +362,8 @@ def recheck_source_for_player(
     except Exception as exc:
         return 502, {"error": f"Запит до {source} не вдався: {exc}"}
 
-    with _STATE_LOCK:
-        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+    with STORE.lock:
+        scan_rec = STORE.find_locked(scan_id)
         player = next((p for p in scan_rec.get("players", []) if _player_matches(p, player_uid, nick)), None) if scan_rec else None
         if scan_rec is None or player is None:
             return 404, {"error": "Scan or player was removed while refreshing"}
@@ -407,8 +392,8 @@ def _get_steam_status(h: CsWatchHandler) -> None:
 
 @router.route("GET", "/api/latest")
 def _get_latest(h: CsWatchHandler) -> None:
-    with _STATE_LOCK:
-        latest = _SCANS[0] if _SCANS else None
+    with STORE.lock:
+        latest = STORE.latest_locked()
         matches = _build_matches_locked()
         history = [
             {
@@ -420,7 +405,7 @@ def _get_latest(h: CsWatchHandler) -> None:
                 "player_count": s["player_count"],
                 "image_name": s["image_name"],
             }
-            for s in _SCANS
+            for s in STORE.scans
         ]
     h._send_json({"latest": latest, "history": history, "matches": matches})
 
@@ -451,7 +436,7 @@ def _get_config_schema(h: CsWatchHandler) -> None:
 
 @router.route("GET", "/api/matches")
 def _get_matches(h: CsWatchHandler) -> None:
-    with _STATE_LOCK:
+    with STORE.lock:
         matches = _build_matches_locked()
     h._send_json({"matches": matches})
 
@@ -459,8 +444,8 @@ def _get_matches(h: CsWatchHandler) -> None:
 @router.route("GET", "/api/scan/{scan_id:path}")
 def _get_scan(h: CsWatchHandler, scan_id: str) -> None:
     scan_id = scan_id.strip("/")
-    with _STATE_LOCK:
-        match = next((s for s in _SCANS if s["id"] == scan_id), None)
+    with STORE.lock:
+        match = STORE.find_locked(scan_id)
     if not match:
         h._send_json({"error": "Scan not found"}, status=404)
     else:
@@ -513,7 +498,7 @@ def _get_events(h: CsWatchHandler) -> None:
     h.end_headers()
 
     q: queue.Queue[str] = queue.Queue(maxsize=20)
-    with _STATE_LOCK:
+    with _SUBSCRIBERS_LOCK:
         _SUBSCRIBERS.append(q)
     try:
         h.wfile.write(b": connected\n\n")
@@ -529,7 +514,7 @@ def _get_events(h: CsWatchHandler) -> None:
     except (BrokenPipeError, ConnectionResetError):
         pass
     finally:
-        with _STATE_LOCK:
+        with _SUBSCRIBERS_LOCK:
             if q in _SUBSCRIBERS:
                 _SUBSCRIBERS.remove(q)
 
@@ -568,8 +553,8 @@ def _post_rescan(h: CsWatchHandler) -> None:
     try:
         payload = read_json_body(h)
         scan_id = payload.get("scan_id")
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+        with STORE.lock:
+            scan_rec = STORE.find_locked(scan_id) if scan_id else STORE.latest_locked()
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
@@ -608,8 +593,8 @@ def _post_recheck(h: CsWatchHandler) -> None:
             h._send_json({"error": "scan_id, old_nick, and query are required"}, status=400)
             return
 
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        with STORE.lock:
+            scan_rec = STORE.find_locked(scan_id)
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
@@ -623,7 +608,7 @@ def _post_recheck(h: CsWatchHandler) -> None:
         analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
         updated_player = analyzed_list[0]
 
-        with _STATE_LOCK:
+        with STORE.lock:
             scan_rec["players"][idx] = updated_player
             scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
             _save_history_locked()
@@ -645,8 +630,8 @@ def _post_feedback(h: CsWatchHandler) -> None:
         if err:
             h._send_json({"error": err}, status=400)
             return
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == clean["scan_id"]), None)
+        with STORE.lock:
+            scan_rec = STORE.find_locked(clean["scan_id"])
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
@@ -693,8 +678,8 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
         scan_id = payload.get("scan_id")
         target_nick = (payload.get("nick") or "").strip()
         target_uid = payload.get("player_uid") or None
-        with _STATE_LOCK:
-            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None) if scan_id else (_SCANS[0] if _SCANS else None)
+        with STORE.lock:
+            scan_rec = STORE.find_locked(scan_id) if scan_id else STORE.latest_locked()
             if not scan_rec:
                 h._send_json({"error": "Scan not found"}, status=404)
                 return
@@ -718,7 +703,7 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
                 h._send_json({"error": ai_error}, status=500)
                 return
 
-        with _STATE_LOCK:
+        with STORE.lock:
             scan_rec["players"] = new_players
             scan_rec["ai_error"] = None
             _save_history_locked()
