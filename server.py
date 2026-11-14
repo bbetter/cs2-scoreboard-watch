@@ -32,6 +32,8 @@ from console_parser import (
 )
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
+    _fetch_cstracker,
+    _fetch_leetify,
     _get_faceit_api_key,
     _get_steam_api_key,
     enrich_players,
@@ -607,6 +609,56 @@ def _delayed_tab_scan() -> None:
         print(f"[tab-scan error] {exc}")
 
 
+_RECHECK_SOURCES = ("leetify", "cstracker")
+
+
+def recheck_source_for_player(scan_id: Optional[str], nick: str, source: Optional[str]) -> tuple[int, dict]:
+    """Re-fetch ONE external source (leetify or cstracker) for one player of a scan.
+
+    Other sources and the scoring are left untouched. Returns (http_status, body):
+    the updated scan on success, {"error": ...} otherwise.
+    """
+    if source not in _RECHECK_SOURCES:
+        return 400, {"error": "source має бути 'leetify' або 'cstracker'"}
+    if not scan_id or not nick:
+        return 400, {"error": "scan_id і nick є обов'язковими"}
+
+    with _STATE_LOCK:
+        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        if not scan_rec:
+            return 404, {"error": "Scan not found"}
+        player = next((p for p in scan_rec.get("players", []) if p.get("nick") == nick), None)
+        if player is None:
+            return 404, {"error": "Player not found in scan"}
+        steamid64 = (player.get("steam") or {}).get("steamid64")
+    if not steamid64:
+        return 409, {"error": "У гравця немає SteamID64: спочатку виправте нік або вставте Steam URL"}
+
+    try:
+        fresh = _fetch_leetify(steamid64) if source == "leetify" else _fetch_cstracker(steamid64)
+    except Exception as exc:
+        return 502, {"error": f"Запит до {source} не вдався: {exc}"}
+
+    with _STATE_LOCK:
+        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        player = next((p for p in scan_rec.get("players", []) if p.get("nick") == nick), None) if scan_rec else None
+        if scan_rec is None or player is None:
+            return 404, {"error": "Scan or player was removed while refreshing"}
+        steam = dict(player.get("steam") or {})
+        if source == "leetify":
+            steam["leetify"] = fresh
+        else:
+            extra = dict(steam.get("extra_stats") or {})
+            extra["cstracker"] = fresh
+            steam["extra_stats"] = extra
+        player["steam"] = steam
+        _save_history_locked()
+        snapshot = dict(scan_rec)
+
+    _broadcast_event("scan", snapshot)
+    return 200, snapshot
+
+
 class CsWatchHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -873,6 +925,27 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     snapshot = dict(scan_rec)
 
                 self._send_json(snapshot)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+            return
+
+        if path == "/api/recheck-source":
+            try:
+                raw = self._read_body()
+                try:
+                    payload = json.loads(raw.decode("utf-8")) if raw else {}
+                except (ValueError, UnicodeDecodeError):
+                    self._send_json({"error": "Тіло запиту має бути JSON"}, status=400)
+                    return
+                if not isinstance(payload, dict):
+                    self._send_json({"error": "Тіло запиту має бути JSON-об'єктом"}, status=400)
+                    return
+                status, body = recheck_source_for_player(
+                    payload.get("scan_id"),
+                    str(payload.get("nick") or "").strip(),
+                    payload.get("source"),
+                )
+                self._send_json(body, status=status)
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=500)
             return
