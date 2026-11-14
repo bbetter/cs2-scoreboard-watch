@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CS2 Scoreboard Watch — Аналіз підозрілих гравців</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge" aria-hidden="true">CS2</div>
+        <div>
+          <h1>Scoreboard Watch</h1>
+          <p class="subtitle">OCR аналіз таблиці рахунку, пошук профілю Steam та оцінка ризику</p>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="live-pill" id="sseStatus" data-state="connecting">
+          <span class="dot" aria-hidden="true"></span>
+          <span id="sseLabel">Підключення...</span>
+        </div>
+        <button type="button" class="btn btn-primary" id="scanNowBtn">
+          Зробити скріншот і скан
+        </button>
+        <button type="button" class="btn btn-secondary" id="rescanBtn" disabled>
+          Повторний аналіз
+        </button>
+        <label class="btn btn-secondary file-btn">
+          Завантажити скріншот
+          <input type="file" id="fileInput" accept="image/*" hidden />
+        </label>
+        <button type="button" class="btn btn-secondary" id="setupCs2Btn">
+          Налаштувати CS2 (autoexec)
+        </button>
+      </div>
+    </header>
+
+    <section class="summary-grid" aria-label="Підсумок сканування">
+      <article class="stat-card">
+        <span class="stat-label">Гравців розпізнано</span>
+        <strong class="stat-value" id="statPlayers">—</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Високий ризик (&ge; 55%)</span>
+        <strong class="stat-value risk-high-text" id="statSuspects">—</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Найбільш підозрілий</span>
+        <strong class="stat-value" id="statTopSuspect">—</strong>
+      </article>
+      <article class="stat-card">
+        <span class="stat-label">Останній скан</span>
+        <strong class="stat-value stat-value-sm" id="statLastScan">Очікування...</strong>
+      </article>
+    </section>
+
+    <section class="filter-bar" aria-label="Фільтри та пошук">
+      <div class="filter-group">
+        <label for="searchInput">Пошук гравця:</label>
+        <input type="search" id="searchInput" class="filter-input" placeholder="Нік, Steam, ID64 або причина..." />
+      </div>
+      <div class="filter-group">
+        <label for="dateFilter">Дата:</label>
+        <input type="date" id="dateFilter" class="filter-input" />
+      </div>
+      <div class="filter-group">
+        <label for="matchSelect">Матч:</label>
+        <select id="matchSelect" disabled>
+          <option value="">Усі матчі</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="riskFilter">Ризик:</label>
+        <select id="riskFilter">
+          <option value="all">Усі гравці</option>
+          <option value="suspicious">Підозрілі (&ge; 55%)</option>
+          <option value="critical">Критичні (&ge; 75%)</option>
+          <option value="banned">З банами (VAC / Leetify)</option>
+        </select>
+      </div>
+      <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm">Скинути</button>
+    </section>
+
+    <section class="controls-bar">
+      <div class="tabs-bar" role="tablist" aria-label="Режими перегляду">
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="table">Таблиця гравців</button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="logs">Логи пошуку та кандидати</button>
+      </div>
+      <div class="history-wrap">
+        <label for="historySelect">Скріншот у матчі:</label>
+        <select id="historySelect" disabled>
+          <option value="">Немає сканів</option>
+        </select>
+      </div>
+      <div class="status-msg" id="statusMsg" role="status" aria-live="polite"></div>
+    </section>
+
+    <main class="main-panel" id="dropZone">
+      <div id="tabPanelTable" class="tab-panel">
+      <div tabindex="0" role="region" aria-labelledby="players-caption" class="table-wrapper">
+        <table id="playersTable">
+          <caption id="players-caption">Таблиця гравців останнього скану</caption>
+          <thead>
+            <tr>
+              <th scope="col" data-key="nick" data-type="text">
+                <button type="button">Гравець (OCR / Steam) <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="kills" data-type="number">
+                <button type="button">K <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="deaths" data-type="number">
+                <button type="button">D <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="kd" data-type="number">
+                <button type="button">K/D <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="hs" data-type="number">
+                <button type="button">HS% <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="level" data-type="number">
+                <button type="button">Lvl <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col" data-key="cheat_probability" data-type="number" aria-sort="descending">
+                <button type="button">Ймовірність чітера <span class="sort-icon" aria-hidden="true"></span></button>
+              </th>
+              <th scope="col">Leetify / Steam / rip</th>
+            </tr>
+          </thead>
+          <tbody id="playersBody">
+            <tr class="empty-row">
+              <td colspan="8">
+                Натисніть гарячу клавішу в грі (<code>cs_scan.sh</code>), кнопку «Зробити скріншот і скан» або перетягніть зображення сюди.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details class="preview-details" id="previewDetails" hidden>
+        <summary>Показати останній скріншот</summary>
+        <div class="preview-frame">
+          <img id="screenshotPreview" alt="Останній скріншот таблиці рахунку" />
+        </div>
+      </details>
+      </div>
+
+      <div id="tabPanelLogs" class="tab-panel logs-panel" hidden>
+        <div id="logsContainer" class="logs-grid">
+          <p class="logs-empty">Немає даних сканування.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer-note">
+      Оцінка ймовірності базується на статистичному відхиленні (HS%, K/D, рівень) та публічних сигналах Steam (VAC, обмеження акаунта, приватність) і не є остаточним доказом чітерства.
+      Посилання <code>steamcommunity.rip/id/&lt;nickname&gt;/</code> відкриваються безпосередньо в браузері (сайт перенаправляє на <code>csst.at</code> із захистом Cloudflare).
+    </footer>
+  </div>
+
+  <dialog id="cs2SetupDialog" class="setup-dialog">
+    <div class="setup-dialog-body">
+      <h2>Налаштування CS2 (autoexec.cfg)</h2>
+      <p id="setupStatusText" class="subtitle"></p>
+      <div class="copy-box">
+        <code id="launchOptionsCode">-condebug +exec autoexec.cfg</code>
+        <button type="button" id="copyLaunchBtn" class="btn btn-primary btn-sm">Копіювати</button>
+      </div>
+      <p class="subtitle">Вставте цей рядок у <strong>Steam → Counter-Strike 2 → Властивості → Параметри запуску</strong> і перезапустіть гру.</p>
+      <div class="dialog-actions">
+        <button type="button" id="closeSetupBtn" class="btn btn-secondary btn-sm">Закрити</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>

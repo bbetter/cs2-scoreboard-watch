@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_DIR="/home/andrii/fun"
+VENV_PY="$BASE_DIR/.venv/bin/python"
+SERVER_URL="http://127.0.0.1:8765"
+SCREENSHOT_DIR="$BASE_DIR/screenshots"
+mkdir -p "$SCREENSHOT_DIR"
+
+# Start web server if it is not running yet
+if ! curl -sf "$SERVER_URL/api/latest" >/dev/null 2>&1; then
+  nohup "$VENV_PY" "$BASE_DIR/server.py" --host 127.0.0.1 --port 8765 >"$BASE_DIR/server.log" 2>&1 &
+  for _ in $(seq 1 30); do
+    if curl -sf "$SERVER_URL/api/latest" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.2
+  done
+fi
+
+TS="$(date +%Y%m%d_%H%M%S)"
+IMG_PATH="$SCREENSHOT_DIR/cs2_${TS}.png"
+
+if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v grim >/dev/null 2>&1; then
+  grim "$IMG_PATH"
+elif command -v import >/dev/null 2>&1; then
+  import -window root "$IMG_PATH"
+else
+  notify-send "CS2 Watch" "Не знайдено grim або import для скріншоту"
+  exit 1
+fi
+
+RESP="$(curl -sf -X POST "$SERVER_URL/api/scan" \
+  -H "Content-Type: application/json" \
+  -d "{\"image_path\": \"$IMG_PATH\"}")"
+
+SUMMARY="$("$VENV_PY" -c '
+import json, sys
+data = json.loads(sys.stdin.read())
+players = data.get("players", [])
+if not players:
+    print("Гравців не знайдено на скріншоті")
+else:
+    top = players[0]
+    print(f"Знайдено {len(players)} гравців. Топ: {top[\"nick\"]} ({top[\"cheat_probability\"]}%)")
+' <<<"$RESP")"
+
+if command -v notify-send >/dev/null 2>&1; then
+  notify-send "CS2 Scoreboard Watch" "$SUMMARY\n$SERVER_URL"
+fi

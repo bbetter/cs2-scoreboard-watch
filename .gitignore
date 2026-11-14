@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+screenshots/
+scans_history.json
+profile_cache.json
+server.log
+.DS_Store
