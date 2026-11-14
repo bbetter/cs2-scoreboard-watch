@@ -90,6 +90,64 @@ $TC set Txx Review --pr N --agent middle-lead --note "fix attempt k"
 ```
 Відповідь: `REPORT fix Txx` + рядок `Txx: PR #N`.
 
+## Режим «Етап 2» (послідовно, мердж робить власник)
+
+Вмикається, коли тобі пишуть `STAGE2 START`. Оркестратора немає: ти сам береш задачі, проганяєш G5 і чекаєш мерджу.
+План і перелік задач — `docs/improvements/PLAN.md`, розділ 6. Задачі етапу: T22–T25, T11–T13, T26–T39.
+
+**Мердж.** Ти не мерджиш PR і не пишеш фразу авто-мерджу: це лишається правом власника (bbetter). Після G5 ти
+позначаєш PR готовим і чекаєш, поки власник змерджить його сам або своїм комітом з фразою авто-мерджу.
+
+Цикл (по одній задачі, нічого паралельно):
+
+1. Свіжий стан і вибір задачі:
+   ```bash
+   git fetch origin && git switch --detach origin/main
+   $TC sync
+   $TC ready          # бери ПЕРШУ задачу зі списку G2 OK
+   ```
+   - `G2 FAILED` (main не зелений): почекай до 20 хв (`gh run list --branch main --workflow tests.yml --limit 1`),
+     потім повтори. Не зеленіє → стоп (крок 8).
+   - `nothing ready` і `$TC status` показує всі задачі етапу 2 `Done` → фінальний звіт (крок 8).
+2. Реалізація — нативний сабагент, на передньому плані, одна задача:
+   ```
+   Agent(subagent_type="middle-dev", isolation="worktree", run_in_background=false,
+         description="Txx <коротко>",
+         prompt="Execute task Txx in executor mode of .claude/agents/middle-dev.md. Task file: <file>. "
+                "AGENT=middle-sub:Txx. You are authorized to create branch task/Txx-<slug>, make exactly one commit, "
+                "push it and open a PR to main. You are NOT authorized to merge or to write the auto-merge phrase. "
+                "Your final message must be exactly one line: 'Txx: PR #<n>' or 'Txx: BLOCKED <reason>'.")
+   ```
+   Відповідь `BLOCKED` або без рядка → `$TC set Txx Blocked --agent middle-lead --note "..."` і стоп (крок 8).
+3. Чекай завершення CI на PR (до 30 хв, перевіряй кожні 30–60 с):
+   ```bash
+   gh pr view N --json statusCheckRollup -q '[.statusCheckRollup[] | select(.status != "COMPLETED")] | length'   # 0 = готово
+   ```
+4. Гейт G5: `$TC check-pr Txx N`. Не пройшов → виправ сам за протоколом `FIX` з «Режиму ліда» (detached HEAD,
+   `--amend`, `--force-with-lease`), дочекайся CI і повтори G5. Після 2 невдалих спроб → `Blocked`, стоп.
+5. Готово до мерджу. G5 пройшов →
+   ```bash
+   $TC set Txx Review --pr N --agent middle-lead --note "G5 OK, ready for the owner to merge"
+   gh pr comment N --body "G5 OK (taskctl check-pr). Ready to merge."
+   ```
+6. Чекай мерджу без обмеження часу: `gh pr view N --json state -q .state` → `MERGED`. Не використовуй `sleep` на
+   передньому плані: запусти фонову команду з циклом `until`, яка завершується на `MERGED` або `CLOSED`, і
+   перевіряй не частіше ніж раз на 2 хв. `CLOSED` без мерджу → `Blocked` з причиною «closed by owner», стоп.
+   Нові коміти від власника в гілці PR (`headRefOid` змінився) → повтори кроки 3–5.
+7. Після мерджу дочекайся зеленого CI на `main` для merge-коміту, потім `$TC sync` (картка → `Done`, issue закрито).
+   Перевір `$TC status`, що задача `Done`. Переходь до кроку 1.
+8. Стоп або кінець. Останнє повідомлення — тільки так:
+   ```
+   STAGE2 DONE
+   T22: PR #n
+   ...
+   ```
+   або
+   ```
+   STAGE2 BLOCKED Txx: <причина>
+   Done: T22 #n, T23 #m, ...
+   ```
+
 ## Режим виконавця (одна задача)
 
 ### G3 — старт (до першої зміни)

@@ -1,9 +1,9 @@
 ---
 id: T13
 title: Endpoints address players by player_uid
-wave: 2
+wave: 6
 depends_on: [T12]
-review: lead
+review: none
 size: M
 golden: []
 files:
@@ -13,6 +13,7 @@ files:
   - tests/test_recheck_source.py
   - tests/test_feedback_f4.py
   - tests/test_server_uid_endpoints.py
+  - docs/ARCHITECTURE.md
 ---
 
 # T13 — Ендпоінти адресують гравця за `player_uid`
@@ -31,7 +32,7 @@ files:
 - Тести-специфікації (зараз `@unittest.expectedFailure`) у `tests/test_player_uid.py`:
   `AiAnalyzeUidTests::test_nick_path_keeps_each_duplicate_its_own_row` і
   `RaceExpectedFailureTests::test_recheck_route_writes_back_to_the_right_row_after_a_concurrent_reorder`.
-- Пін старої поведінки feedback: `tests/test_player_uid.py:202` очікує `(400, {"error": "nick is required"})`.
+- Пін старої поведінки feedback: `tests/test_player_uid.py:209` очікує `(400, {"error": "nick is required"})`.
 - `storage/feedback_store.validate_feedback_payload` перевіряє `nick` (`MAX_NICK_LEN`); `build_feedback_entry` і
   `tests/golden/feedback_golden.json` **не змінюються**.
 - Після T09–T12 у сервері є `STORE`, `_mark_edited`, а кожен рядок має `player_uid` (легасі-рядки отримують його в
@@ -52,7 +53,7 @@ files:
    альтернативу `nick`: валідно, якщо є хоча б одне з двох. `clean` повертає `{"scan_id", "nick" (може бути ""),
    "player_uid" (або None), "label"}`. Помилку при відсутності обох зроби `"nick or player_uid is required"`.
    У `_post_feedback` шукай гравця через `_player_matches(p, clean["player_uid"], clean["nick"])`.
-   Онови пін у `tests/test_player_uid.py:202` на новий текст помилки (для запиту без обох полів) і додай кейс, що
+   Онови пін у `tests/test_player_uid.py:209` на новий текст помилки (для запиту без обох полів) і додай кейс, що
    запит **лише** з `player_uid` дає 200. Перевір `tests/test_feedback_f4.py` на тексти помилок валідації і онови
    так само (лише текст `"nick is required"` → новий; кейси з невалідним `nick` при відсутньому uid лишаються 400).
 4. **`/api/recheck-source`** (`recheck_source_for_player`): створи `ctx = SourceContext(steam_api_key=_get_steam_api_key())`;
@@ -85,6 +86,6 @@ files:
 
 ## Docs delta
 
-`ARCHITECTURE.md` → Request flow: «`/api/feedback` accepts `player_uid` or `nick`»; Known limitations: прибрати
+Онови `docs/ARCHITECTURE.md` у цьому ж PR. Request flow: «`/api/feedback` accepts `player_uid` or `nick`»; Known limitations: прибрати
 пункти про `/api/recheck` by index, `/api/ai-analyze` duplicates, `/api/feedback requires nick`,
 «Recheck-source calls fetch_raw directly».
