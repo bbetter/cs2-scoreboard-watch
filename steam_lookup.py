@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import math
 import os
 import re
@@ -17,9 +18,28 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from scoreboard_scan import Player
+
+_LOG = logging.getLogger("pton")
+
+
+def _setup_pton_log() -> None:
+    """Append INFO+ records to pton.logs next to this file, once per process."""
+    if any(isinstance(h, logging.FileHandler) for h in _LOG.handlers):
+        return
+    try:
+        handler = logging.FileHandler(Path(__file__).resolve().parent / "pton.logs", encoding="utf-8")
+    except OSError:
+        return
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    _LOG.addHandler(handler)
+    _LOG.setLevel(logging.INFO)
+    _LOG.propagate = False
+
+
+_setup_pton_log()
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 STEAMID64_BASE = 76561197960265728
@@ -307,41 +327,277 @@ def _parse_steam_xml(xml_bytes: bytes, vanity: Optional[str] = None, source: str
     }
 
 
-def _fetch_leetify(steamid64: str) -> Optional[dict]:
-    url = f"https://api-public.cs-prod.leetify.com/v3/profile?steam64_id={urllib.parse.quote(steamid64)}"
-    raw = _http_get(url, timeout=4.5)
-    if not raw:
-        return None
+LEETIFY_API_BASE = "https://api-public.cs-prod.leetify.com"
+LEETIFY_PROFILE_URL = "https://leetify.com/app/profile/{}"
+LEETIFY_TIMEOUT_SEC = 8.0
+
+
+def _leetify_api_key() -> str:
     try:
-        d = json.loads(raw.decode("utf-8", errors="replace"))
+        from config_store import load_config
+
+        return str(load_config().get("leetify_api_key") or "").strip()
+    except Exception:
+        return ""
+
+
+def _leetify_get(path: str, steamid64: str, api_key: str) -> tuple[int, Any]:
+    """GET a Leetify public API path. Returns (http_status, parsed_json_or_None)."""
+    url = f"{LEETIFY_API_BASE}{path}?steam64_id={urllib.parse.quote(steamid64)}"
+    headers = {"Accept": "application/json"}
+    if api_key:
+        headers["_leetify_key"] = api_key
+    status, raw = _http_get_status(url, timeout=LEETIFY_TIMEOUT_SEC, headers=headers)
+    if status != 200 or not raw:
+        return status, None
+    try:
+        return status, json.loads(raw.decode("utf-8", errors="replace"))
     except json.JSONDecodeError:
+        return status, None
+
+
+def _num(val: Any, nd: Optional[int] = None) -> Optional[Any]:
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
         return None
+    if nd == 0:
+        return int(round(val))
+    return round(float(val), nd) if nd is not None else float(val)
+
+
+def _round_stats(d: dict) -> dict:
+    out: dict = {}
+    for k, v in d.items():
+        out[k] = round(float(v), 4) if isinstance(v, (int, float)) and not isinstance(v, bool) else v
+    return out
+
+
+def _fetch_leetify(steamid64: str) -> Optional[dict]:
+    """Fetch the full Leetify picture: profile, stats, ranks, and per-match history.
+
+    Uses the API key from config.json (leetify_api_key) when set. Without a key the
+    API still answers, under lower rate limits. Returns None when Leetify has no profile.
+    """
+    if not steamid64:
+        return None
+    api_key = _leetify_api_key()
+    started = time.monotonic()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_profile = pool.submit(_leetify_get, "/v3/profile", steamid64, api_key)
+        f_matches = pool.submit(_leetify_get, "/v3/profile/matches", steamid64, api_key)
+        p_status, d = f_profile.result()
+        m_status, matches_raw = f_matches.result()
+    elapsed = time.monotonic() - started
+
     if not isinstance(d, dict) or not d.get("steam64_id"):
+        _LOG.info("leetify steamid64=%s no profile (status=%s key=%s) in %.2fs",
+                  steamid64, p_status, bool(api_key), elapsed)
         return None
 
     ranks = d.get("ranks") or {}
     rating = d.get("rating") or {}
     stats = d.get("stats") or {}
     winrate_raw = d.get("winrate")
-    winrate = round(float(winrate_raw) * 100.0, 1) if isinstance(winrate_raw, (int, float)) else None
+    winrate = _num(winrate_raw, 3)
+    winrate = round(winrate * 100.0, 1) if winrate is not None else None
 
-    return {
-        "url": f"https://leetify.com/app/profile/{steamid64}",
+    matches: list[dict] = []
+    if isinstance(matches_raw, list):
+        for m in matches_raw:
+            if not isinstance(m, dict):
+                continue
+            mine = next(
+                (x for x in (m.get("stats") or []) if isinstance(x, dict) and x.get("steam64_id") == steamid64),
+                None,
+            )
+            matches.append({
+                "id": m.get("id"),
+                "finished_at": m.get("finished_at"),
+                "data_source": m.get("data_source"),
+                "data_source_match_id": m.get("data_source_match_id"),
+                "map_name": m.get("map_name"),
+                "has_banned_player": m.get("has_banned_player"),
+                "team_scores": m.get("team_scores") or [],
+                "player": _round_stats(mine) if mine else None,
+            })
+
+    def _sum(key: str) -> float:
+        return sum(_num(m["player"].get(key)) or 0 for m in matches if m["player"])
+
+    kills = int(_sum("total_kills"))
+    deaths = int(_sum("total_deaths"))
+    assists = int(_sum("total_assists"))
+    hs_kills = int(_sum("total_hs_kills"))
+    kd = round(kills / deaths, 2) if deaths else None
+    hs_pct = round(hs_kills / kills * 100.0, 1) if kills else None
+
+    result: dict = {
+        "url": LEETIFY_PROFILE_URL.format(steamid64),
         "privacy_mode": d.get("privacy_mode"),
+        "name": d.get("name"),
         "total_matches": d.get("total_matches"),
         "winrate": winrate,
         "first_match_date": (d.get("first_match_date") or "")[:10] or None,
         "bans": d.get("bans") or [],
+        "ranks": {k: ranks.get(k) for k in ("leetify", "premier", "faceit", "faceit_elo", "wingman", "renown", "competitive")},
+        "rating": {k: _num(rating.get(k), 2) for k in ("aim", "positioning", "utility", "clutch", "opening", "ct_leetify", "t_leetify")},
+        "stats": _round_stats(stats),
+        "recent_teammates": d.get("recent_teammates") or [],
+        "matches": matches,
+        "aggregate": {
+            "kills": kills, "deaths": deaths, "assists": assists, "hs_kills": hs_kills,
+            "kd": kd, "hs_pct": hs_pct,
+        },
+        # Flat keys read by scoring and ai_analyzer.
+        "leetify_rating": _num(ranks.get("leetify"), 2),
         "premier": ranks.get("premier"),
         "faceit": ranks.get("faceit"),
         "faceit_elo": ranks.get("faceit_elo"),
-        "leetify_rating": round(float(ranks["leetify"]), 2) if isinstance(ranks.get("leetify"), (int, float)) else None,
-        "aim": round(float(rating["aim"]), 1) if isinstance(rating.get("aim"), (int, float)) else None,
-        "positioning": round(float(rating["positioning"]), 1) if isinstance(rating.get("positioning"), (int, float)) else None,
-        "reaction_time_ms": round(float(stats["reaction_time_ms"])) if isinstance(stats.get("reaction_time_ms"), (int, float)) else None,
-        "preaim": round(float(stats["preaim"]), 1) if isinstance(stats.get("preaim"), (int, float)) else None,
-        "accuracy_head": round(float(stats["accuracy_head"]), 1) if isinstance(stats.get("accuracy_head"), (int, float)) else None,
+        "aim": _num(rating.get("aim"), 1),
+        "positioning": _num(rating.get("positioning"), 1),
+        "reaction_time_ms": _num(stats.get("reaction_time_ms"), 0),
+        "preaim": _num(stats.get("preaim"), 1),
+        "accuracy_head": _num(stats.get("accuracy_head"), 1),
+        "kd": kd,
+        "hs_pct": hs_pct,
+        # full: profile + match history + stats; partial: profile without them.
+        "coverage": "full" if (matches and stats) else "partial",
+        "fetch": {
+            "profile_status": p_status,
+            "matches_status": m_status,
+            "matches_count": len(matches),
+            "key_used": bool(api_key),
+        },
     }
+    _LOG.info("leetify steamid64=%s ok matches=%d key=%s in %.2fs",
+              steamid64, len(matches), bool(api_key), elapsed)
+    return result
+
+
+CSTRACKER_BASE = "https://cstracker.gg/players/{}"
+CSTRACKER_MIN_INTERVAL_SEC = 1.0  # cstracker.gg robots.txt: Crawl-delay: 1
+CSTRACKER_USER_AGENT = "pton-cs2-lookup/1.0 (personal analysis, low rate)"
+_CSTRACKER_LOCK = threading.Lock()
+_CSTRACKER_LAST_REQUEST = [0.0]
+
+
+def _cstracker_throttle() -> None:
+    """Serialize cstracker.gg requests and keep at least CSTRACKER_MIN_INTERVAL_SEC between them."""
+    with _CSTRACKER_LOCK:
+        wait = CSTRACKER_MIN_INTERVAL_SEC - (time.monotonic() - _CSTRACKER_LAST_REQUEST[0])
+        if wait > 0:
+            time.sleep(wait)
+        _CSTRACKER_LAST_REQUEST[0] = time.monotonic()
+
+
+def _num_or_raw(text: str) -> Any:
+    """'16.1%' -> 16.1, '3.5°' -> 3.5, '1,132ms' -> 1132.0; anything else is returned as-is."""
+    cleaned = text.replace(",", "").strip()
+    m = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)\s*(%|°|ms|s)?", cleaned)
+    return float(m.group(1)) if m else text
+
+
+def _norm_text(text: Optional[str]) -> str:
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", _norm_text(text).lower()).strip("_")
+
+
+def _parse_cstracker_html(html_text: str) -> dict:
+    """Parse a cstracker.gg player page into trust, aim/utility/behaviour metrics and recent matches."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html_text, "html.parser")
+    title = _norm_text(soup.title.get_text()) if soup.title else ""
+    if "Just a moment" in title or soup.select_one("#challenge-form, .cf-challenge"):
+        return {"status": "blocked"}
+
+    trust = None
+    label = soup.find(string=re.compile(r"^\s*trust rating\s*$", re.I))
+    if label is not None:
+        value_box = label.parent.find_next_sibling()
+        span = value_box.find("span") if value_box is not None else None
+        if span is not None:
+            trust = _num_or_raw(_norm_text(span.get_text()))
+
+    sections: dict[str, dict] = {}
+    for eyebrow in soup.select(".eyebrow"):
+        name = _slug(eyebrow.get_text()).replace("_and_", "_")
+        rows: dict[str, Any] = {}
+        for row in eyebrow.parent.find_all("div"):
+            if "justify-between" not in (row.get("class") or []):
+                continue
+            spans = row.find_all("span", recursive=False)
+            if len(spans) == 2:
+                rows[_norm_text(spans[0].get_text())] = _num_or_raw(_norm_text(spans[1].get_text()))
+        if rows:
+            sections[name] = rows
+
+    matches: list[dict] = []
+    header_cell = soup.find("th", string=re.compile(r"K\s*/\s*D\s*/\s*A"))
+    table = header_cell.find_parent("table") if header_cell is not None else None
+    if table is not None:
+        headers = [_norm_text(th.get_text()) for th in table.select("thead th")]
+        for tr in table.select("tbody tr"):
+            cells = [_norm_text(td.get_text(" ")) for td in tr.find_all("td")]
+            if len(cells) != len(headers) or not cells:
+                continue
+            rec = dict(zip(headers, cells))
+            kda = [int(x) for x in re.findall(r"\d+", rec.get("K / D / A", ""))[:3]]
+            kills, deaths, assists = (kda + [None, None, None])[:3]
+            matches.append({
+                "match": rec.get("Match"),
+                "rank": rec.get("Rank"),
+                "kills": kills,
+                "deaths": deaths,
+                "assists": assists,
+                "kd": _num_or_raw(rec.get("K/D", "")),
+                "adr": _num_or_raw(rec.get("ADR", "")),
+                "rating": _num_or_raw(rec.get("Rating", "")),
+                "kast": _num_or_raw(rec.get("KAST", "")),
+                "acc": _num_or_raw(rec.get("ACC", "")),
+                "preaim": _num_or_raw(rec.get("Preaim", "")),
+                "ttd": _num_or_raw(rec.get("TTD", "")),
+                "when": rec.get("When"),
+            })
+        matches = matches[:10]
+
+    status = "ok" if (trust is not None or sections or matches) else "not_found"
+    return {"status": status, "trust": trust, "sections": sections, "matches": matches}
+
+
+def _fetch_cstracker(steamid64: str) -> dict:
+    """Fetch cstracker.gg player data. One request per player, throttled, honest user agent.
+
+    Never bypasses a Cloudflare challenge: a 403/429/503 or challenge page is reported as
+    status 'blocked' and cached like any other result.
+    """
+    if not steamid64:
+        return {}
+    url = CSTRACKER_BASE.format(steamid64)
+    _cstracker_throttle()
+    started = time.monotonic()
+    status_code, raw = _http_get_status(url, timeout=10.0, headers={"User-Agent": CSTRACKER_USER_AGENT})
+    elapsed = time.monotonic() - started
+    if status_code == 404:
+        result = {"status": "not_found"}
+    elif raw is None:
+        result = {"status": "blocked" if status_code in (403, 429, 503) else "error"}
+    else:
+        try:
+            result = _parse_cstracker_html(raw.decode("utf-8", errors="replace"))
+        except Exception:
+            _LOG.exception("cstracker steamid64=%s parse failed", steamid64)
+            result = {"status": "error"}
+    result["url"] = url
+    result["http_status"] = status_code
+    _LOG.info("cstracker steamid64=%s status=%s http=%s in %.2fs", steamid64, result["status"], status_code, elapsed)
+    return result
+
+
+def _cstracker_extra(steamid64: Optional[str]) -> dict:
+    return {"cstracker": _fetch_cstracker(steamid64)} if steamid64 else {}
 
 
 def _safe_float(val: object) -> Optional[float]:
@@ -789,6 +1045,23 @@ def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Opt
     return enriched[0], log, cand_summaries
 
 
+def _cache_entry_current(data: dict) -> bool:
+    """Refetch when Leetify data is missing or predates the full fetch.
+
+    An entry with a SteamID64 but no Leetify block was cached while Leetify had no
+    profile (or before the key was in use). Refetching is cheap, so do it.
+    """
+    if data.get("steamid64") and not data.get("cs2_stats") and _get_steam_api_key():
+        return False  # Steam CS2 stats were not fetched while no key was configured
+    ct = (data.get("extra_stats") or {}).get("cstracker")
+    if data.get("steamid64") and (not isinstance(ct, dict) or ct.get("status") == "error"):
+        return False  # cstracker data missing or failed; 'blocked'/'not_found' stay cached
+    lf = data.get("leetify")
+    if not isinstance(lf, dict):
+        return not data.get("steamid64")
+    return "fetch" in lf
+
+
 def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: Optional[str] = None) -> SteamProfile:
     clean_nick = nick.strip()
     cache_key = clean_nick.lower()
@@ -798,7 +1071,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
         cached = _PROFILE_CACHE.get(cache_key)
         if cached:
             ttl = CACHE_TTL_SEC if cached[1].get("lookup_source") != "not_found" else 30
-            if (now - cached[0]) < ttl:
+            if (now - cached[0]) < ttl and _cache_entry_current(cached[1]):
                 data = dict(cached[1])
                 if screenshot_avatar:
                     data["screenshot_avatar"] = screenshot_avatar
@@ -866,19 +1139,10 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             leetify=leetify_data,
             faceit=faceit_data,
             cs2_stats=cs2_stats,
-            extra_stats={},
+            extra_stats=_cstracker_extra(steamid64),
             search_log=search_log,
             candidates=candidates,
         )
-        if steamid64:
-            try:
-                from api_fetcher import fetch_player_telemetry
-
-                custom_payload = fetch_player_telemetry(steamid64)
-                if isinstance(custom_payload, dict) and custom_payload:
-                    apply_multi_source_payload(profile, custom_payload)
-            except Exception:
-                pass
 
     if profile.lookup_source != "rate_limited":
         with _CACHE_LOCK:
@@ -927,7 +1191,7 @@ def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[s
     has_faceit = bool(steam.faceit and steam.faceit.get("found"))
     has_leetify = bool(steam.leetify)
     has_cs2_stats = bool(steam.cs2_stats)
-    has_extra = bool(steam.extra_stats and (steam.extra_stats.get("cstracker") or steam.extra_stats.get("scope_gg")))
+    has_extra = bool(((steam.extra_stats or {}).get("cstracker") or {}).get("status") == "ok")
 
     if has_leetify or has_faceit or has_extra:
         has_leetify_or_faceit = 1.0
@@ -1210,38 +1474,6 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
     )
 
 
-def apply_multi_source_payload(profile: SteamProfile, payload: dict) -> SteamProfile:
-    """Merge normalized multi-source JSON telemetry (profile/steam/leetify/cstracker/scope_gg/medals) into SteamProfile."""
-    from external_parser import parse_multi_source_payload
-
-    parsed = parse_multi_source_payload(payload)
-    if not parsed:
-        return profile
-    if parsed.get("steamid64") and not profile.steamid64:
-        profile.steamid64 = parsed["steamid64"]
-    if parsed.get("profile_name") and not profile.profile_name:
-        profile.profile_name = parsed["profile_name"]
-    if parsed.get("profile_url") and not profile.profile_url:
-        profile.profile_url = parsed["profile_url"]
-    if parsed.get("vanity") and not profile.vanity:
-        profile.vanity = parsed["vanity"]
-    if parsed.get("account_age_years") is not None and profile.account_age_years is None:
-        profile.account_age_years = parsed["account_age_years"]
-    if parsed.get("leetify") and not profile.leetify:
-        profile.leetify = parsed["leetify"]
-    if parsed.get("faceit") and not (profile.faceit and profile.faceit.get("found")):
-        profile.faceit = parsed["faceit"]
-
-    profile.extra_stats = {
-        "xp_level": parsed.get("xp_level"),
-        "medals_count": parsed.get("medals_count"),
-        "has_veteran_coin": parsed.get("has_veteran_coin"),
-        "cstracker": parsed.get("cstracker") or {},
-        "scope_gg": parsed.get("scope_gg") or {},
-    }
-    return profile
-
-
 def enrich_players(
     players: list[Player],
     fetch_steam: bool = True,
@@ -1340,6 +1572,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             leetify=leetify_data,
             faceit=faceit_data,
             cs2_stats=cs2_stats,
+            extra_stats=_cstracker_extra(steamid64),
         )
     else:
         steam = lookup_steam_profile(q)

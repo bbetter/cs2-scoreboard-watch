@@ -49,6 +49,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "ai_prompt": DEFAULT_AI_PROMPT,
     "ai_weights": dict(DEFAULT_AI_WEIGHTS),
     "anthropic_api_key": "",
+    "leetify_api_key": "",
 }
 
 _CONFIG_LOCK = threading.Lock()
@@ -68,7 +69,7 @@ def _normalize_config(raw: dict[str, Any]) -> dict[str, Any]:
     cfg["tab_cooldown_sec"] = _clamp_float(raw.get("tab_cooldown_sec"), 4.0, 0.5, 30.0)
     cfg["cs2_only"] = bool(raw.get("cs2_only", True))
     cfg["notify_enabled"] = bool(raw.get("notify_enabled", True))
-    for key in ("cs2_game_dir", "console_log_path", "screenshots_dir", "steam_api_key", "faceit_api_key"):
+    for key in ("cs2_game_dir", "console_log_path", "screenshots_dir", "steam_api_key", "faceit_api_key", "leetify_api_key"):
         val = raw.get(key, "")
         cfg[key] = str(val).strip() if val is not None else ""
     tool = str(raw.get("screenshot_tool", "auto") or "auto").strip().lower()

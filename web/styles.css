@@ -1282,6 +1282,18 @@ tr.player-details-row td {
   font-weight: 600;
 }
 
+.detail-section {
+  margin-top: 10px;
+}
+
+.detail-section h5 {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .detail-reasons {
   margin: 0;
   padding-left: 16px;
@@ -1364,4 +1376,12 @@ tr.player-details-row td {
   color: var(--accent);
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.28);
+}
+
+.ai-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
 }
