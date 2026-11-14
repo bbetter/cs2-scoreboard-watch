@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import lookup.http_client as http_client  # noqa: E402
 import lookup.steam_lookup as sl  # noqa: E402
 from storage import config_store  # noqa: E402
+from storage.profile_cache import ProfileCache  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 
 SEARCH_MARK = "SearchCommunityAjax"
@@ -51,7 +52,10 @@ class SteamQueueTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.patches = [
-            mock.patch.object(sl, "PROFILE_CACHE_FILE", Path(self._tmp.name) / "profile_cache.json"),
+            # Isolated cache object: its saves go to the temp dir, never to data/profile_cache.json.
+            mock.patch.object(
+                sl, "PROFILE_CACHE", ProfileCache(Path(self._tmp.name) / "profile_cache.json", strip=sl._strip_leetify)
+            ),
             # Keep reads of data/config.json out of the tests: fresh-install defaults instead.
             mock.patch.object(config_store, "load_config", return_value=dict(config_store.DEFAULT_CONFIG)),
             mock.patch.object(sl, "_get_steam_api_key", return_value=None),
@@ -80,8 +84,8 @@ class SteamQueueTests(unittest.TestCase):
         with sl._STEAM_RL_LOCK:
             sl._STEAM_RL_STATE.update({"until": 0.0, "streak": 0.0})
         sl._LAST_SEARCH_TS = 0.0
-        with sl._CACHE_LOCK:
-            sl._PROFILE_CACHE.clear()
+        with sl.PROFILE_CACHE.lock:
+            sl.PROFILE_CACHE.clear()
 
     def _http(self, statuses) -> FakeSteamHTTP:
         # _search_candidates calls sl._http_get_status directly; the other lookups go through
@@ -159,7 +163,7 @@ class SteamQueueTests(unittest.TestCase):
         self.assertEqual(reports[0].steam["lookup_source"], "rate_limited")
         self.assertEqual(len(reported), 1)
         self.assertLessEqual(len(fake.search_calls), 1 + sl.STEAM_RETRY_ROUNDS)
-        self.assertNotIn("Nick".lower(), sl._PROFILE_CACHE, "rate_limited results must not be cached")
+        self.assertNotIn("Nick".lower(), sl.PROFILE_CACHE.entries(), "rate_limited results must not be cached")
 
     def test_enrich_without_rate_limit_makes_single_request_per_player(self) -> None:
         fake = self._http([200])
