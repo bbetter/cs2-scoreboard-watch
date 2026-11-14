@@ -999,7 +999,6 @@ def _fetch_batch_via_web_api(
 
     by_id = {p.get("steamid"): p for p in players_json if p.get("steamid")}
     now_ts = time.time()
-    out: list[dict] = []
 
     def _build(cand):
         profile_url, vanity, sid, found_name = cand

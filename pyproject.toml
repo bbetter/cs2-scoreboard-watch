@@ -26,3 +26,13 @@ cs2watch = "cs2watch.__main__:main"
 [tool.setuptools]
 # Explicit package list so that tests/, web/, scripts/ and the runtime data/ dir are not picked up.
 packages = ["app", "cs2watch", "cs2platform", "lookup", "scoring", "sources", "storage", "vision"]
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["F", "E9"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/__init__.py" = ["F401"]
