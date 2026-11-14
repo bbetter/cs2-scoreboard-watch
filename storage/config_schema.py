@@ -7,6 +7,7 @@ normalize / apply_updates / public_view are generic and driven by SCHEMA; config
 
 from __future__ import annotations
 
+import math
 import os
 from typing import Any, Mapping, Optional
 
@@ -89,10 +90,18 @@ def default_config() -> dict[str, Any]:
     return {f.name: (dict(f.default) if isinstance(f.default, dict) else f.default) for f in SCHEMA}
 
 
-def clamp_float(val: Any, default: float, min_val: float, max_val: float) -> float:
+def _finite_number(val: Any) -> Optional[float]:
+    """`val` as a float when it is a finite number or a numeric string; None otherwise (inf, nan, text, None...)."""
     try:
         num = float(val)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return num if math.isfinite(num) else None
+
+
+def clamp_float(val: Any, default: float, min_val: float, max_val: float) -> float:
+    num = _finite_number(val)
+    if num is None:
         return default
     return round(max(min_val, min(max_val, num)), 2)
 
@@ -101,10 +110,12 @@ def _normalize_field(f: Field, raw: Mapping) -> Any:
     if f.type == "float":
         return clamp_float(raw.get(f.name), f.default, f.min, f.max)
     if f.type == "int":
-        try:
-            return max(int(f.min), min(int(f.max), int(raw.get(f.name) or 0)))
-        except (TypeError, ValueError):
+        # A missing/empty value still means 0 (historical behaviour); only non-numeric or non-finite values
+        # fall back to the field default.
+        num = _finite_number(raw.get(f.name) or 0)
+        if num is None:
             return f.default
+        return max(int(f.min), min(int(f.max), int(num)))
     if f.type == "bool":
         return bool(raw.get(f.name, f.default))
     if f.type == "text":
