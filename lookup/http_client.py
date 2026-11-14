@@ -12,6 +12,26 @@ from typing import Optional
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 
+def _curl_config(url: str, cookies: Optional[str], headers: Optional[dict[str, str]]) -> str:
+    """Render URL, cookie and headers as a curl config file (read via `curl -K -`).
+
+    Keeping secrets out of argv: other local processes can read /proc/<pid>/cmdline, but not stdin.
+    Raises ValueError if any value contains a line break, which would break the config syntax.
+    """
+
+    def quote(value: str) -> str:
+        if "\r" in value or "\n" in value:
+            raise ValueError("line break in curl config value")
+        return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+    lines = [f"url = {quote(url)}"]
+    if cookies:
+        lines.append(f"cookie = {quote(cookies)}")
+    for k, v in (headers or {}).items():
+        lines.append(f"header = {quote(f'{k}: {v}')}")
+    return "\n".join(lines) + "\n"
+
+
 def http_get_status(
     url: str,
     timeout: float = 4.0,
@@ -22,15 +42,12 @@ def http_get_status(
     import subprocess
 
     if shutil.which("curl"):
-        cmd = ["curl", "-sL", "--max-time", str(timeout), "-w", "\n%{http_code}"]
-        if cookies:
-            cmd.extend(["-b", cookies])
-        if headers:
-            for k, v in headers.items():
-                cmd.extend(["-H", f"{k}: {v}"])
-        cmd.append(url)
+        cmd = ["curl", "-sL", "--max-time", str(timeout), "-w", "\n%{http_code}", "-K", "-"]
         try:
-            res = subprocess.run(cmd, capture_output=True, timeout=timeout + 2)
+            config = _curl_config(url, cookies, headers)
+            res = subprocess.run(
+                cmd, input=config.encode("utf-8"), capture_output=True, timeout=timeout + 2
+            )
             out = res.stdout
             if b"\n" in out:
                 body, code_bytes = out.rsplit(b"\n", 1)

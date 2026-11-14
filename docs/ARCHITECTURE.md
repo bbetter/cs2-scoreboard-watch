@@ -60,7 +60,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 |---|---|
 | `lookup/steam_lookup.py` | Orchestration: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call. Fetchers are in `sources/*`, search in `lookup/steam_search.py` |
 | `lookup/steam_search.py` | Steam Community search, 429 cooldown and rate limit, XML profile parsing, candidate scoring, Web API batch. Does not import `steam_lookup` |
-| `lookup/http_client.py` | Plain HTTP helpers: `http_get`, `http_get_status`, `USER_AGENT` (standard library only) |
+| `lookup/http_client.py` | Plain HTTP helpers: `http_get`, `http_get_status`, `USER_AGENT` (standard library only). curl gets the URL, headers and cookie through stdin (`-K -`), so API keys are not visible in the process list |
 | `lookup/nick_match.py` | Fuzzy nickname matching for OCR output |
 | `lookup/ai_analyzer.py` | Optional AI stage (Claude CLI or Anthropic API) and the compact payload sent to it. Model aliases are in `ANTHROPIC_MODEL_ALIASES` (`resolve_anthropic_model`) |
 
