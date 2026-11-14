@@ -5,7 +5,6 @@ Thresholds come from scoring.thresholds (T.*), so boundary tests follow the tabl
 Run: /home/andrii/fun/.venv/bin/python -m unittest discover -s tests -v
 """
 
-import math
 import sys
 import unittest
 from pathlib import Path
@@ -16,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 from vision.scoreboard_scan import Player  # noqa: E402
 from scoring import engine  # noqa: E402
 from scoring import thresholds as T  # noqa: E402
-from scoring.rules import RULES, Hit, ScoreContext, recent_aim_hits, smurf_flags, smurf_signal_hits  # noqa: E402
+from scoring.rules import RULES, ScoreContext, smurf_flags, smurf_signal_hits  # noqa: E402
 from lookup.steam_lookup import SteamProfile  # noqa: E402
 from unittest import mock  # noqa: E402
 

@@ -8,8 +8,6 @@ import queue
 import shutil
 import threading
 import time
-import uuid
-from dataclasses import asdict
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

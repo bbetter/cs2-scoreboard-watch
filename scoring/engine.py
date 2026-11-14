@@ -7,10 +7,10 @@ component, rule name, points and reason, so a report can explain exactly where a
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from scoring import thresholds as T
-from scoring.rules import RULES, Hit, ScoreContext, smurf_flags, smurf_signal_hits
+from scoring.rules import RULES, ScoreContext, smurf_flags, smurf_signal_hits
 
 
 def risk_level(prob: float) -> str:

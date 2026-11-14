@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Literal, Mapping, Optional
+from typing import Any, Literal, Mapping, Optional
 
 Status = Literal["ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable"]
 STATUSES: tuple[str, ...] = ("ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable")

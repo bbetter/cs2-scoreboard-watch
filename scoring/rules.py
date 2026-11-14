@@ -11,7 +11,7 @@ numbers to thresholds.py and a unit test in tests/test_scoring_rules.py.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from scoring import thresholds as T
