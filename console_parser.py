@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import os
 import re
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,12 +34,34 @@ def find_cs2_game_dir() -> Optional[Path]:
         Path.home() / ".local/share/Steam/steamapps/libraryfolders.vdf",
         Path.home() / ".steam/steam/steamapps/libraryfolders.vdf",
     ]
+    if sys.platform == "win32":
+        try:
+            import winreg  # type: ignore[import-not-found]
+
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam") as key:
+                steam_path, _ = winreg.QueryValueEx(key, "SteamPath")
+                if steam_path:
+                    sp = Path(steam_path)
+                    vdf_paths.append(sp / "steamapps/libraryfolders.vdf")
+                    candidates.append(sp / "steamapps/common/Counter-Strike Global Offensive/game/csgo")
+        except OSError:
+            pass
+        vdf_paths.extend([
+            Path(r"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf"),
+            Path(r"C:\Program Files\Steam\steamapps\libraryfolders.vdf"),
+        ])
+    elif sys.platform == "darwin":
+        mac_steam = Path.home() / "Library/Application Support/Steam"
+        vdf_paths.append(mac_steam / "steamapps/libraryfolders.vdf")
+        candidates.append(mac_steam / "steamapps/common/Counter-Strike Global Offensive/game/csgo")
+
     for vdf in vdf_paths:
         if vdf.is_file():
             try:
                 txt = vdf.read_text(encoding="utf-8", errors="ignore")
                 for m in re.finditer(r'"path"\s+"([^"]+)"', txt):
-                    candidates.append(Path(m.group(1)) / "steamapps/common/Counter-Strike Global Offensive/game/csgo")
+                    lib_path = m.group(1).replace("\\\\", "\\")
+                    candidates.append(Path(lib_path) / "steamapps/common/Counter-Strike Global Offensive/game/csgo")
             except OSError:
                 pass
     candidates.extend([

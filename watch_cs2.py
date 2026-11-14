@@ -5,12 +5,22 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import os
+import shutil
 import signal
 import subprocess
 import sys
 from http.server import ThreadingHTTPServer
 
-from server import CsWatchHandler, _load_history, configure_tab_watcher
+from server import CsWatchHandler, _load_history, configure_tab_watcher, schedule_tab_scan
+
+
+def is_hyprland() -> bool:
+    return (
+        sys.platform.startswith("linux")
+        and bool(os.environ.get("HYPRLAND_INSTANCE_SIGNATURE"))
+        and bool(shutil.which("hyprctl"))
+    )
 
 
 def register_tab_bind(url: str) -> None:
@@ -23,6 +33,26 @@ def register_tab_bind(url: str) -> None:
 
 def unregister_tab_bind() -> None:
     subprocess.run(["hyprctl", "eval", 'if hl.unbind then hl.unbind("Tab") end'], capture_output=True)
+
+
+def start_pynput_listener():
+    try:
+        from pynput import keyboard  # type: ignore[import-not-found]
+    except ImportError:
+        print(
+            "Помилка: для відстеження натискання TAB на цій платформі потрібен пакет 'pynput'.\n"
+            "Встановіть його командою: pip install pynput",
+            file=sys.stderr,
+        )
+        return None
+
+    def on_press(key) -> None:
+        if key == keyboard.Key.tab:
+            schedule_tab_scan()
+
+    listener = keyboard.Listener(on_press=on_press)
+    listener.start()
+    return listener
 
 
 def main() -> None:
@@ -39,14 +69,31 @@ def main() -> None:
     _load_history()
 
     httpd = ThreadingHTTPServer((args.host, args.port), CsWatchHandler)
-    register_tab_bind(url)
-    atexit.register(unregister_tab_bind)
+    use_hyprland = is_hyprland()
+    listener = None
+
+    def _cleanup() -> None:
+        if use_hyprland:
+            unregister_tab_bind()
+        elif listener is not None:
+            listener.stop()
+
+    if use_hyprland:
+        register_tab_bind(url)
+    else:
+        listener = start_pynput_listener()
+        if listener is None:
+            httpd.server_close()
+            sys.exit(1)
+
+    atexit.register(_cleanup)
 
     def _handle_sig(_signum, _frame):
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, _handle_sig)
-    signal.signal(signal.SIGHUP, _handle_sig)
+    if hasattr(signal, "SIGHUP"):
+        signal.signal(signal.SIGHUP, _handle_sig)
 
     print(f"Веб-інтерфейс: {url}")
     print(f"Слухаю натискання TAB (затримка {args.delay:.1f}с, тільки CS2: {not args.all_windows}). Ctrl+C для виходу.")
@@ -55,7 +102,7 @@ def main() -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        unregister_tab_bind()
+        _cleanup()
         httpd.server_close()
         print("\nЗупинено, Tab-бінд знято.")
 

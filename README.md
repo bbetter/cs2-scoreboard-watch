@@ -1,6 +1,6 @@
 # CS2 Scoreboard Watch
 
-Утиліта для автоматичного аналізу таблиці рахунку (`TAB`) у **Counter-Strike 2** на Linux (Wayland / Hyprland) із розпізнаванням гравців через OCR, пошуком реальних профілів у Steam та Leetify, оцінкою ризику і окремим веб-інтерфейсом.
+Утиліта для автоматичного аналізу таблиці рахунку (`TAB`) у **Counter-Strike 2** (Linux Wayland/Hyprland, Windows та macOS) із розпізнаванням гравців через OCR, пошуком реальних профілів у Steam та Leetify, оцінкою ризику і окремим веб-інтерфейсом.
 
 ## Що вміє проект
 
@@ -24,7 +24,9 @@
 
 ## Вимоги
 
-- Linux (Wayland / Hyprland + `grim`, `curl`, `notify-send` опціонально)
+- **Linux:** Wayland / Hyprland + `grim`, `curl`, `notify-send` (опціонально)
+- **Windows:** Windows 10/11 (використовує `pynput` та `mss`)
+- **macOS:** macOS (використовує `pynput`, вбудований `screencapture`; потрібні дозволи **Accessibility** та **Screen Recording** для терміналу/Python у *System Settings → Privacy & Security*)
 - Python 3.11+
 
 ## Встановлення та запуск
@@ -43,7 +45,15 @@ echo 'export STEAM_API_KEY="ВАШ_КЛЮЧ"' >> ~/.zshrc && source ~/.zshrc
 Запуск утиліти:
 
 ```bash
+# Linux / macOS
 .venv/bin/python watch_cs2.py
+```
+
+```powershell
+# Windows (PowerShell)
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python watch_cs2.py
 ```
 
 Після запуску відкрийте `http://127.0.0.1:8765` у браузері (можна на другому моніторі) та натискайте `TAB` у грі.

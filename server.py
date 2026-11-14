@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import queue
 import shutil
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -94,9 +96,120 @@ def _get_cs2_monitor_name() -> Optional[str]:
     return None
 
 
+def _win32_enable_dpi_awareness() -> None:
+    try:
+        ctypes.windll.user32.SetProcessDPIAware()  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
+def _win32_get_window_title(hwnd: int) -> str:
+    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    length = user32.GetWindowTextLengthW(hwnd)
+    if length <= 0:
+        return ""
+    buf = ctypes.create_unicode_buffer(length + 1)
+    user32.GetWindowTextW(hwnd, buf, length + 1)
+    return buf.value
+
+
+def _win32_get_process_name(hwnd: int) -> str:
+    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+    pid = ctypes.c_ulong(0)
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    if not pid.value:
+        return ""
+    handle = kernel32.OpenProcess(0x1000, False, pid.value)  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return ""
+    try:
+        size = ctypes.c_ulong(512)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return os.path.basename(buf.value).lower()
+        return ""
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _win32_is_cs2_hwnd(hwnd: int) -> bool:
+    if not hwnd:
+        return False
+    title = _win32_get_window_title(hwnd).strip().lower()
+    if "counter-strike 2" in title or title == "cs2":
+        return True
+    return _win32_get_process_name(hwnd) == "cs2.exe"
+
+
+def _win32_find_cs2_hwnd() -> int:
+    user32 = ctypes.windll.user32  # type: ignore[attr-defined]
+    fg = user32.GetForegroundWindow()
+    if _win32_is_cs2_hwnd(fg):
+        return fg
+    return int(user32.FindWindowW(None, "Counter-Strike 2") or 0)
+
+
+def _win32_get_window_center(hwnd: int) -> Optional[tuple[int, int]]:
+    if not hwnd:
+        return None
+    from ctypes import wintypes
+
+    rect = wintypes.RECT()
+    if not ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect)):  # type: ignore[attr-defined]
+        return None
+    return (rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2
+
+
+def _capture_with_mss_or_pil(out_path: Path, center: Optional[tuple[int, int]] = None) -> None:
+    try:
+        import mss
+        import mss.tools
+
+        with mss.mss() as sct:
+            monitors = sct.monitors
+            target = monitors[1] if len(monitors) > 1 else monitors[0]
+            if center is not None:
+                cx, cy = center
+                for mon in monitors[1:]:
+                    if mon["left"] <= cx < mon["left"] + mon["width"] and mon["top"] <= cy < mon["top"] + mon["height"]:
+                        target = mon
+                        break
+            img = sct.grab(target)
+            mss.tools.to_png(img.rgb, img.size, output=str(out_path))
+            return
+    except ImportError:
+        pass
+
+    from PIL import ImageGrab
+
+    ImageGrab.grab().save(out_path)
+
+
 def capture_screenshot() -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
     out_path = SCREENSHOT_DIR / f"cs2_{ts}.png"
+
+    if sys.platform == "win32":
+        _win32_enable_dpi_awareness()
+        hwnd = _win32_find_cs2_hwnd()
+        center = _win32_get_window_center(hwnd) if hwnd else None
+        _capture_with_mss_or_pil(out_path, center=center)
+        if not out_path.exists():
+            raise RuntimeError("Screenshot failed on Windows.")
+        return out_path
+
+    if sys.platform == "darwin":
+        if shutil.which("screencapture"):
+            cmd = ["screencapture", "-x", str(out_path)]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if res.returncode != 0 or not out_path.exists():
+                raise RuntimeError(f"Screenshot failed ({' '.join(cmd)}): {res.stderr.strip()}")
+            return out_path
+        _capture_with_mss_or_pil(out_path)
+        if not out_path.exists():
+            raise RuntimeError("Screenshot failed on macOS.")
+        return out_path
 
     if os.environ.get("WAYLAND_DISPLAY") and shutil.which("grim"):
         monitor_name = _get_cs2_monitor_name()
@@ -232,6 +345,34 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
 
 
 def _is_cs2_active() -> bool:
+    if sys.platform == "win32":
+        try:
+            hwnd = ctypes.windll.user32.GetForegroundWindow()  # type: ignore[attr-defined]
+            return _win32_is_cs2_hwnd(hwnd)
+        except Exception:
+            return True
+
+    if sys.platform == "darwin":
+        if not shutil.which("osascript"):
+            return True
+        try:
+            res = subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    'tell application "System Events" to get name of first application process whose frontmost is true',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=1.5,
+            )
+            if res.returncode != 0 or not res.stdout.strip():
+                return True
+            app_name = res.stdout.strip().lower()
+            return "counter-strike" in app_name or "cs2" in app_name
+        except Exception:
+            return True
+
     if not shutil.which("hyprctl"):
         return True
     try:
@@ -244,6 +385,38 @@ def _is_cs2_active() -> bool:
         return True
 
 
+def _send_notification(title: str, msg: str) -> None:
+    try:
+        if sys.platform.startswith("linux"):
+            if shutil.which("notify-send"):
+                clean_env = {k: v for k, v in os.environ.items() if k != "LD_LIBRARY_PATH"}
+                subprocess.run(["notify-send", title, msg], env=clean_env, check=False)
+        elif sys.platform == "darwin":
+            if shutil.which("osascript"):
+                safe_msg = msg.replace("\\", "\\\\").replace('"', '\\"')
+                safe_title = title.replace("\\", "\\\\").replace('"', '\\"')
+                subprocess.run(
+                    ["osascript", "-e", f'display notification "{safe_msg}" with title "{safe_title}"'],
+                    check=False,
+                )
+        # Windows: safe no-op
+    except Exception:
+        pass
+
+
+def schedule_tab_scan() -> dict:
+    if _CS2_ONLY and not _is_cs2_active():
+        return {"status": "ignored", "reason": "cs2_not_focused"}
+    now = time.time()
+    with _TAB_LOCK:
+        global _LAST_TAB_TS
+        if now - _LAST_TAB_TS < _TAB_COOLDOWN_SEC:
+            return {"status": "debounced"}
+        _LAST_TAB_TS = now
+    threading.Thread(target=_delayed_tab_scan, daemon=True).start()
+    return {"status": "scheduled", "delay_sec": _TAB_DELAY_SEC}
+
+
 def _delayed_tab_scan() -> None:
     time.sleep(_TAB_DELAY_SEC)
     try:
@@ -251,14 +424,12 @@ def _delayed_tab_scan() -> None:
             return
         result = run_scan()
         players = result.get("players", [])
-        if shutil.which("notify-send"):
-            if players:
-                top = players[0]
-                msg = f"Знайдено {len(players)} гравців. Топ: {top['nick']} ({top['cheat_probability']}%)"
-            else:
-                msg = "Гравців не знайдено на скріншоті"
-            clean_env = {k: v for k, v in os.environ.items() if k != "LD_LIBRARY_PATH"}
-            subprocess.run(["notify-send", "CS2 Scoreboard Watch", msg], env=clean_env, check=False)
+        if players:
+            top = players[0]
+            msg = f"Знайдено {len(players)} гравців. Топ: {top['nick']} ({top['cheat_probability']}%)"
+        else:
+            msg = "Гравців не знайдено на скріншоті"
+        _send_notification("CS2 Scoreboard Watch", msg)
     except Exception as exc:
         print(f"[tab-scan error] {exc}")
 
@@ -393,18 +564,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         if path == "/api/tab-pressed":
-            if _CS2_ONLY and not _is_cs2_active():
-                self._send_json({"status": "ignored", "reason": "cs2_not_focused"})
-                return
-            now = time.time()
-            with _TAB_LOCK:
-                global _LAST_TAB_TS
-                if now - _LAST_TAB_TS < _TAB_COOLDOWN_SEC:
-                    self._send_json({"status": "debounced"})
-                    return
-                _LAST_TAB_TS = now
-            threading.Thread(target=_delayed_tab_scan, daemon=True).start()
-            self._send_json({"status": "scheduled", "delay_sec": _TAB_DELAY_SEC})
+            self._send_json(schedule_tab_scan())
             return
 
         if path == "/api/scan":

@@ -28,13 +28,22 @@
         <button type="button" class="btn btn-secondary" id="rescanBtn" disabled>
           Повторний аналіз
         </button>
-        <label class="btn btn-secondary file-btn">
-          Завантажити скріншот
-          <input type="file" id="fileInput" accept="image/*" hidden />
-        </label>
-        <button type="button" class="btn btn-secondary" id="setupCs2Btn">
-          Налаштувати CS2 (autoexec)
-        </button>
+        <details class="tools-menu" id="toolsMenu">
+          <summary class="btn btn-secondary tools-trigger">
+            Інструменти <span class="chevron" aria-hidden="true">▾</span>
+          </summary>
+          <div class="tools-dropdown" role="menu" aria-label="Додаткові інструменти">
+            <label class="tools-item file-btn" role="menuitem" tabindex="0">
+              <span>Завантажити скріншот</span>
+              <span class="tools-hint">PNG / JPG</span>
+              <input type="file" id="fileInput" accept="image/*" hidden />
+            </label>
+            <button type="button" class="tools-item" id="setupCs2Btn" role="menuitem">
+              <span>Налаштувати CS2 (autoexec)</span>
+              <span class="tools-hint">Бінд</span>
+            </button>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -58,44 +67,52 @@
     </section>
 
     <section class="filter-bar" aria-label="Фільтри та пошук">
-      <div class="filter-group">
-        <label for="searchInput">Пошук гравця:</label>
+      <div class="filter-group filter-search">
+        <label for="searchInput">Пошук гравця</label>
         <input type="search" id="searchInput" class="filter-input" placeholder="Нік, Steam, ID64 або причина..." />
       </div>
       <div class="filter-group">
-        <label for="dateFilter">Дата:</label>
+        <label for="dateFilter">Дата</label>
         <input type="date" id="dateFilter" class="filter-input" />
       </div>
       <div class="filter-group">
-        <label for="matchSelect">Матч:</label>
-        <select id="matchSelect" disabled>
+        <label for="matchSelect">Матч</label>
+        <select id="matchSelect" class="filter-input" disabled>
           <option value="">Усі матчі</option>
         </select>
       </div>
       <div class="filter-group">
-        <label for="riskFilter">Ризик:</label>
-        <select id="riskFilter">
+        <label for="riskFilter">Ризик</label>
+        <select id="riskFilter" class="filter-input">
           <option value="all">Усі гравці</option>
           <option value="suspicious">Підозрілі (&ge; 55%)</option>
           <option value="critical">Критичні (&ge; 75%)</option>
           <option value="banned">З банами (VAC / Leetify)</option>
         </select>
       </div>
-      <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm">Скинути</button>
+      <div class="filter-actions">
+        <button type="button" id="clearFiltersBtn" class="btn btn-secondary btn-sm">Скинути</button>
+      </div>
     </section>
 
     <section class="controls-bar">
       <div class="tabs-bar" role="tablist" aria-label="Режими перегляду">
-        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="table">Таблиця гравців</button>
-        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="logs">Логи пошуку та кандидати</button>
+        <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="table">
+          Таблиця гравців <span class="tab-count" id="tabCountTable">0</span>
+        </button>
+        <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="logs">
+          Логи пошуку та кандидати <span class="tab-count" id="tabCountLogs">0</span>
+        </button>
       </div>
-      <div class="history-wrap">
-        <label for="historySelect">Скріншот у матчі:</label>
-        <select id="historySelect" disabled>
-          <option value="">Немає сканів</option>
-        </select>
+      <div class="controls-right">
+        <div class="history-wrap">
+          <label for="historySelect">Скріншот у матчі:</label>
+          <select id="historySelect" disabled>
+            <option value="">Немає сканів</option>
+          </select>
+        </div>
+        <div class="status-msg" id="statusMsg" role="status" aria-live="polite"></div>
       </div>
-      <div class="status-msg" id="statusMsg" role="status" aria-live="polite"></div>
     </section>
 
     <main class="main-panel" id="dropZone">

@@ -23,6 +23,7 @@ const els = {
   riskFilter: document.getElementById("riskFilter"),
   clearFiltersBtn: document.getElementById("clearFiltersBtn"),
   setupCs2Btn: document.getElementById("setupCs2Btn"),
+  toolsMenu: document.getElementById("toolsMenu"),
   cs2SetupDialog: document.getElementById("cs2SetupDialog"),
   setupStatusText: document.getElementById("setupStatusText"),
   launchOptionsCode: document.getElementById("launchOptionsCode"),
@@ -40,6 +41,8 @@ const els = {
   screenshotPreview: document.getElementById("screenshotPreview"),
   tabPanelTable: document.getElementById("tabPanelTable"),
   tabPanelLogs: document.getElementById("tabPanelLogs"),
+  tabCountTable: document.getElementById("tabCountTable"),
+  tabCountLogs: document.getElementById("tabCountLogs"),
   logsContainer: document.getElementById("logsContainer"),
 };
 
@@ -135,6 +138,8 @@ function renderScan(scan) {
   }
 
   if (!players.length) {
+    if (els.tabCountTable) els.tabCountTable.textContent = "0";
+    if (els.tabCountLogs) els.tabCountLogs.textContent = "0";
     els.playersBody.innerHTML = `
       <tr class="empty-row">
         <td colspan="8">Гравців не знайдено на скріншоті. Переконайтеся, що відкрита таблиця TAB.</td>
@@ -146,6 +151,13 @@ function renderScan(scan) {
   renderLogs(scan);
 
   const sorted = sortPlayers(applyPlayerFilters(players));
+  if (els.tabCountTable) {
+    els.tabCountTable.textContent =
+      sorted.length === players.length ? String(players.length) : `${sorted.length}/${players.length}`;
+  }
+  if (els.tabCountLogs) {
+    els.tabCountLogs.textContent = String(players.length);
+  }
   if (!sorted.length) {
     els.playersBody.innerHTML = `
       <tr class="empty-row">
@@ -166,12 +178,12 @@ function renderScan(scan) {
         : "Steam профіль не знайдено автоматично";
 
       const tags = [];
-      if (steam.in_cs2) tags.push('<span class="tag" style="background:rgba(34,197,94,.2);color:#86efac">In CS2</span>');
-      else if (steam.online_state === "online") tags.push('<span class="tag tag-private">Online</span>');
+      if (steam.in_cs2) tags.push('<span class="tag tag-cs2">In CS2</span>');
+      else if (steam.online_state === "online") tags.push('<span class="tag tag-online">Online</span>');
       if (steam.vac_banned) tags.push('<span class="tag tag-vac">VAC BAN</span>');
       if (steam.is_limited) tags.push('<span class="tag tag-limited">Limited</span>');
-      if (steam.account_age_years != null) tags.push(`<span class="tag tag-private">${steam.account_age_years}y</span>`);
-      if (steam.cs2_hours != null) tags.push(`<span class="tag tag-private">${Math.round(steam.cs2_hours)}h</span>`);
+      if (steam.account_age_years != null) tags.push(`<span class="tag tag-meta">${steam.account_age_years}y</span>`);
+      if (steam.cs2_hours != null) tags.push(`<span class="tag tag-meta">${Math.round(steam.cs2_hours)}h</span>`);
       if (steam.privacy_state && steam.privacy_state !== "public") {
         tags.push(`<span class="tag tag-private">${escapeHtml(steam.privacy_state)}</span>`);
       }
@@ -413,10 +425,35 @@ els.rescanBtn.addEventListener("click", async () => {
   }
 });
 els.fileInput.addEventListener("change", (e) => {
+  if (els.toolsMenu) els.toolsMenu.open = false;
   const file = e.target.files?.[0];
   if (file) uploadFile(file);
   e.target.value = "";
 });
+
+// Close tools dropdown on outside click, Escape, or keyboard activation on file label
+if (els.toolsMenu) {
+  document.addEventListener("click", (e) => {
+    if (els.toolsMenu.open && !els.toolsMenu.contains(e.target)) {
+      els.toolsMenu.open = false;
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && els.toolsMenu.open) {
+      els.toolsMenu.open = false;
+      els.toolsMenu.querySelector("summary")?.focus();
+    }
+  });
+  const fileLabel = els.toolsMenu.querySelector(".file-btn");
+  if (fileLabel) {
+    fileLabel.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        els.fileInput.click();
+      }
+    });
+  }
+}
 
 els.historySelect.addEventListener("change", async (e) => {
   const id = e.target.value;
@@ -631,6 +668,7 @@ els.clearFiltersBtn.addEventListener("click", async () => {
 });
 
 els.setupCs2Btn.addEventListener("click", async () => {
+  if (els.toolsMenu) els.toolsMenu.open = false;
   els.setupCs2Btn.disabled = true;
   setStatus("Шукаю CS2 та оновлюю autoexec.cfg...");
   try {
