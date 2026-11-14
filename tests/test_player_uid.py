@@ -22,6 +22,7 @@ import app.pipeline as pipeline  # noqa: E402
 import app.server as server  # noqa: E402
 from app.scan_store import ScanStore  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
+import sources.leetify as leetify_source  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import PlayerReport, SteamProfile  # noqa: E402
 
@@ -152,7 +153,7 @@ class _LiveServer(unittest.TestCase):
 
 class RecheckSourceUidTests(_LiveServer):
     def test_uid_selects_the_second_duplicate(self):
-        with mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 55.0}) as fetch:
+        with mock.patch.object(leetify_source, "fetch_leetify", return_value={"aim": 55.0}) as fetch:
             status, body = self.post("/api/recheck-source",
                                      {"scan_id": "scan-u1", "nick": "dup", "source": "leetify",
                                       "player_uid": "scan-u1-1"})
@@ -162,7 +163,7 @@ class RecheckSourceUidTests(_LiveServer):
         self.assertIsNone(self.player("scan-u1-0")["steam"]["leetify"])
 
     def test_nick_only_still_picks_the_first_match(self):
-        with mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 1.0}) as fetch:
+        with mock.patch.object(leetify_source, "fetch_leetify", return_value={"aim": 1.0}) as fetch:
             status, _ = self.post("/api/recheck-source", {"scan_id": "scan-u1", "nick": "dup", "source": "leetify"})
         self.assertEqual(status, 200)
         fetch.assert_called_once_with(SID0)
