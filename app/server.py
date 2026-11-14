@@ -31,7 +31,14 @@ from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
 from app.events import EventBus
 from app.pipeline import ScanPipeline
-from app.web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
+from app.web_router import (
+    JsonBodyError,
+    Router,
+    check_request,
+    read_json_body,
+    resolve_static_file,
+    static_content_type,
+)
 from sources import REGISTRY, SourceContext
 from storage.config_schema import describe_schema
 from storage.feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
@@ -833,12 +840,31 @@ class CsWatchHandler(BaseHTTPRequestHandler):
             raise ValueError("Payload too large")
         return self.rfile.read(length)
 
+    def _guard(self, method: str) -> bool:
+        """Reject DNS-rebinding and cross-site requests before routing. False means a response was sent."""
+        try:
+            body_length = int(self.headers.get("Content-Length", "0") or 0)
+        except ValueError:
+            body_length = 0
+        rejection = check_request(method, urlparse(self.path).path, self.headers, body_length)
+        if rejection is None:
+            return True
+        status, message = rejection
+        # A rejected request may leave its body unread; do not let it bleed into the next keep-alive request.
+        self.close_connection = True
+        self._send_json({"error": message}, status=status)
+        return False
+
     def do_GET(self) -> None:
+        if not self._guard("GET"):
+            return
         path = urlparse(self.path).path
         if not router.dispatch(self, "GET", path):
             self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
+        if not self._guard("POST"):
+            return
         path = urlparse(self.path).path
         if not router.dispatch(self, "POST", path):
             self.send_error(HTTPStatus.NOT_FOUND)
