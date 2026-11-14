@@ -1,4 +1,4 @@
-"""API keys for the Steam Web API and FACEIT: config.json first, then the environment, then .env / shell rc files.
+"""API keys for the Steam Web API and FACEIT: config.json first, then the environment, then the root .env file.
 
 Lives outside lookup/ so that sources/* can read keys without importing the scanner module. lookup.steam_lookup
 re-exports these names for app/server.py and the existing callers.
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
 from typing import Optional
 
 from storage.paths import ROOT
@@ -70,15 +69,14 @@ def _get_steam_api_key() -> Optional[str]:
         pass
     key = os.environ.get("STEAM_API_KEY", "").strip()
     if not key:
-        for rc_path in (ROOT / ".env", Path.home() / ".zshrc", Path.home() / ".bashrc"):
-            if rc_path.is_file():
-                try:
-                    txt = rc_path.read_text(encoding="utf-8", errors="ignore")
-                    m = re.search(r'(?:export\s+)?STEAM_API_KEY\s*=\s*["\']?([A-Za-z0-9]{16,64})["\']?', txt)
-                    if m:
-                        key = m.group(1).strip()
-                        break
-                except OSError:
-                    pass
+        env_path = ROOT / ".env"
+        if env_path.is_file():
+            try:
+                txt = env_path.read_text(encoding="utf-8", errors="ignore")
+                m = re.search(r'(?:export\s+)?STEAM_API_KEY\s*=\s*["\']?([A-Za-z0-9]{16,64})["\']?', txt)
+                if m:
+                    key = m.group(1).strip()
+            except OSError:
+                pass
     _STEAM_API_KEY_CACHE = key
     return key or None

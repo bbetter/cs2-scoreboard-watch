@@ -42,11 +42,12 @@ python3 -m venv .venv
 
 Для розробки (тести і `ruff`): `.venv/bin/pip install -r requirements-dev.txt`.
 
-*(Опціонально, але рекомендовано для стабільної роботи без `HTTP 429` від Steam)* — отримайте безкоштовний ключ на [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) та додайте в оточення:
+*(Опціонально, але рекомендовано для стабільної роботи без `HTTP 429` від Steam)* — отримайте безкоштовний ключ на [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) і задайте його одним із двох способів:
 
-```zsh
-echo 'export STEAM_API_KEY="ВАШ_КЛЮЧ"' >> ~/.zshrc && source ~/.zshrc
-```
+- поле **Steam Web API key** у налаштуваннях веб-інтерфейсу (зберігається в `data/config.json`);
+- рядок `STEAM_API_KEY=ВАШ_КЛЮЧ` у кореневому файлі `.env` (поруч із `requirements.txt`).
+
+Змінна оточення `STEAM_API_KEY` теж працює. Програма не читає `~/.zshrc`, `~/.bashrc` та інші shell-конфіги.
 
 Запуск утиліти:
 
