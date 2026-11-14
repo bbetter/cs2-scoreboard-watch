@@ -21,24 +21,37 @@ from storage.paths import DATA_DIR
 FEEDBACK_FILE = DATA_DIR / "feedback.json"
 VALID_LABELS = ("cheater", "legit", "unsure")
 MAX_NICK_LEN = 100
+MAX_PLAYER_UID_LEN = 64
 
 _FEEDBACK_LOCK = threading.Lock()
 
 
 def validate_feedback_payload(payload: Any) -> tuple[Optional[dict], Optional[str]]:
-    """Return (clean_fields, None) or (None, error_message). Does not touch any state."""
+    """Return (clean_fields, None) or (None, error_message). Does not touch any state.
+
+    A valid `nick` or a valid `player_uid` is enough; at least one of the two must be present. `nick` is returned as
+    "" when only the uid was sent.
+    """
     if not isinstance(payload, dict):
         return None, "Invalid feedback payload"
     scan_id = payload.get("scan_id")
     nick = payload.get("nick")
+    player_uid = payload.get("player_uid")
     label = payload.get("label")
     if not isinstance(scan_id, str) or not scan_id.strip():
         return None, "scan_id is required"
-    if not isinstance(nick, str) or not nick.strip() or len(nick) > MAX_NICK_LEN:
-        return None, "nick is required"
+    nick_ok = isinstance(nick, str) and bool(nick.strip()) and len(nick) <= MAX_NICK_LEN
+    uid_ok = isinstance(player_uid, str) and 0 < len(player_uid.strip()) <= MAX_PLAYER_UID_LEN
+    if not nick_ok and not uid_ok:
+        return None, "nick or player_uid is required"
     if label not in VALID_LABELS:
         return None, "label must be one of: cheater, legit, unsure"
-    return {"scan_id": scan_id.strip(), "nick": nick.strip(), "label": label}, None
+    return {
+        "scan_id": scan_id.strip(),
+        "nick": nick.strip() if nick_ok else "",
+        "player_uid": player_uid.strip() if uid_ok else None,
+        "label": label,
+    }, None
 
 
 def _num_or_none(val: Any) -> Optional[float]:

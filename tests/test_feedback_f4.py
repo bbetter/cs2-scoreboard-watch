@@ -17,7 +17,22 @@ class ValidationTests(unittest.TestCase):
         for label in ("cheater", "legit", "unsure"):
             clean, err = validate_feedback_payload({"scan_id": "abc", "nick": " x ", "label": label})
             self.assertIsNone(err)
-            self.assertEqual(clean, {"scan_id": "abc", "nick": "x", "label": label})
+            self.assertEqual(clean, {"scan_id": "abc", "nick": "x", "player_uid": None, "label": label})
+
+    def test_player_uid_alone_is_accepted(self):
+        clean, err = validate_feedback_payload({"scan_id": "abc", "player_uid": " abc-1 ", "label": "legit"})
+        self.assertIsNone(err)
+        self.assertEqual(clean, {"scan_id": "abc", "nick": "", "player_uid": "abc-1", "label": "legit"})
+
+    def test_missing_nick_and_uid_gives_the_new_message(self):
+        clean, err = validate_feedback_payload({"scan_id": "abc", "label": "legit"})
+        self.assertIsNone(clean)
+        self.assertEqual(err, "nick or player_uid is required")
+
+    def test_overlong_player_uid_does_not_replace_a_missing_nick(self):
+        clean, err = validate_feedback_payload({"scan_id": "abc", "player_uid": "u" * 65, "label": "legit"})
+        self.assertIsNone(clean)
+        self.assertEqual(err, "nick or player_uid is required")
 
     def test_invalid_payloads_rejected(self):
         bad = [
