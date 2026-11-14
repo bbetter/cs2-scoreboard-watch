@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cs2-scoreboard-watch"
+version = "0.1.0"
+description = "Local web UI that reads CS2 TAB scoreboard screenshots, looks up players and scores anomalies."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0.0",
+    "onnxruntime>=1.20.0",
+    "opencv-python>=4.10.0",
+    "pillow>=11.0.0",
+    "rapidocr-onnxruntime>=1.4.0",
+    "mss>=9.0.0; sys_platform != \"linux\"",
+    "pynput>=1.7.6; sys_platform != \"linux\"",
+    "playwright>=1.49.0",
+    "beautifulsoup4>=4.12",
+]
+
+[project.scripts]
+cs2watch = "cs2watch.__main__:main"
+
+[tool.setuptools]
+# Flat layout: the top-level modules stay where they are; packages are listed explicitly so that
+# tests/, web/, not-working-tricks/ and the runtime data files are not picked up as packages.
+py-modules = [
+    "ai_analyzer",
+    "atomic_io",
+    "config_fields",
+    "config_schema",
+    "config_store",
+    "console_parser",
+    "events",
+    "feedback_store",
+    "nick_match",
+    "pipeline",
+    "player_db",
+    "scoreboard_scan",
+    "server",
+    "steam_lookup",
+    "web_router",
+    "watch_cs2",
+]
+packages = ["cs2watch", "cs2platform", "sources", "scoring"]
