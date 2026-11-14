@@ -1185,26 +1185,38 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     now = time.time()
     lf_ttl = _leetify_cache_ttl_sec()
 
+    def _from_cache_entry(entry: dict) -> SteamProfile:
+        entry = dict(entry)
+        if screenshot_avatar:
+            entry["screenshot_avatar"] = screenshot_avatar
+        entry["leetify"] = _leetify_cached_or_fetch(entry.get("steamid64"), lf_ttl)
+        cached_profile = SteamProfile(**entry)
+        cached_profile.coverage = _source_coverage(cached_profile)
+        return cached_profile
+
     hit: Optional[dict] = None
+    stale: Optional[dict] = None  # within TTL but due a refresh; used if the refresh is rate limited
     with _CACHE_LOCK:
         cached = _PROFILE_CACHE.get(cache_key)
         if cached:
             ttl = CACHE_TTL_SEC if cached[1].get("lookup_source") != "not_found" else 30
-            if (now - cached[0]) < ttl and _cache_entry_current(cached[1]):
-                hit = dict(cached[1])
+            if (now - cached[0]) < ttl:
+                if _cache_entry_current(cached[1]):
+                    hit = dict(cached[1])
+                elif cached[1].get("steamid64"):
+                    stale = dict(cached[1])
     if hit is not None:
-        if screenshot_avatar:
-            hit["screenshot_avatar"] = screenshot_avatar
-        hit["leetify"] = _leetify_cached_or_fetch(hit.get("steamid64"), lf_ttl)
-        profile = SteamProfile(**hit)
-        profile.coverage = _source_coverage(profile)
-        return profile
+        return _from_cache_entry(hit)
 
     data: Optional[dict] = None
     search_log: list[str] = []
     candidates: list[dict] = []
     if clean_nick:
         data, search_log, candidates = _search_steam_community(clean_nick, avatar_thumb=avatar_thumb)
+
+    if stale is not None and data is not None and data.get("_rate_limited"):
+        _LOG.info("steam lookup %r: refresh rate limited, serving cached profile", clean_nick)
+        return _from_cache_entry(stale)
 
     nick_encoded = urllib.parse.quote(clean_nick, safe="")
     rip_nick_url = f"https://steamcommunity.rip/id/{nick_encoded}/"
