@@ -374,6 +374,83 @@ def _build_matches_locked() -> list[dict]:
     return matches
 
 
+def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
+    ai_enabled = bool(load_config().get("ai_enabled"))
+    total = len(players)
+    done_count = 0
+    progress_lock = threading.Lock()
+
+    def _on_player(rep) -> None:
+        nonlocal done_count
+        pdict = asdict(rep)
+        pdict["loading"] = False
+        pdict["loading_stage"] = "ai" if ai_enabled else "done"
+        with progress_lock:
+            done_count += 1
+            cur_done = done_count
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+            if not scan_rec:
+                return
+            for i, existing in enumerate(scan_rec.get("players", [])):
+                if existing.get("nick") == pdict.get("nick"):
+                    scan_rec["players"][i] = pdict
+                    break
+            scan_rec["progress"] = {"done": cur_done, "total": total}
+            scan_rec["duration_ms"] = round((time.time() - started) * 1000)
+        _broadcast_event(
+            "scan_update",
+            {
+                "scan_id": scan_id,
+                "player": pdict,
+                "progress": {"done": cur_done, "total": total},
+                "scan_status": "loading_steam",
+            },
+        )
+
+    reports = enrich_players(players, fetch_steam=True, on_player_ready=_on_player)
+    player_dicts = []
+    for r in reports:
+        d = asdict(r)
+        d["loading"] = False
+        d["loading_stage"] = "ai" if ai_enabled else "done"
+        player_dicts.append(d)
+
+    if ai_enabled and player_dicts:
+        with _STATE_LOCK:
+            scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+            if scan_rec:
+                scan_rec["players"] = player_dicts
+                scan_rec["scan_status"] = "loading_ai"
+                scan_rec["duration_ms"] = round((time.time() - started) * 1000)
+                snapshot = dict(scan_rec)
+            else:
+                snapshot = None
+        if snapshot:
+            _broadcast_event("scan", snapshot)
+        player_dicts, ai_error = analyze_players_with_ai(player_dicts)
+    else:
+        ai_error = None
+
+    for d in player_dicts:
+        d["loading"] = False
+        d["loading_stage"] = "done"
+
+    with _STATE_LOCK:
+        scan_rec = next((s for s in _SCANS if s["id"] == scan_id), None)
+        if not scan_rec:
+            return
+        scan_rec["players"] = player_dicts
+        scan_rec["player_count"] = len(player_dicts)
+        scan_rec["duration_ms"] = round((time.time() - started) * 1000)
+        scan_rec["ai_error"] = ai_error
+        scan_rec["scan_status"] = "done"
+        scan_rec["progress"] = {"done": total, "total": total}
+        _save_history_locked()
+        final_snapshot = dict(scan_rec)
+    _broadcast_event("scan", final_snapshot)
+
+
 def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dict:
     started = time.time()
     if image_path is None:
@@ -389,14 +466,26 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
         for p in players:
             p.nick = correct_nick_from_console(p.nick, console_status.nicks)
 
-    reports = enrich_players(players, fetch_steam=fetch_steam)
-    player_dicts, ai_error = analyze_players_with_ai([asdict(r) for r in reports])
+    initial_reports = enrich_players(players, fetch_steam=False)
+    initial_dicts = []
+    for r in initial_reports:
+        d = asdict(r)
+        if fetch_steam:
+            d["loading"] = True
+            d["loading_stage"] = "steam"
+        else:
+            d["loading"] = False
+            d["loading_stage"] = "done"
+        initial_dicts.append(d)
+
     duration_ms = round((time.time() - started) * 1000)
     now_dt = datetime.now()
     match_id, map_name = _resolve_match_meta(now_dt, console_status)
+    scan_id = uuid.uuid4().hex[:10]
+    will_stream = bool(fetch_steam and players)
 
     scan_record = {
-        "id": uuid.uuid4().hex[:10],
+        "id": scan_id,
         "created_at": now_dt.isoformat(timespec="seconds"),
         "date": now_dt.strftime("%Y-%m-%d"),
         "match_id": match_id,
@@ -404,9 +493,11 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
         "image_name": image_path.name,
         "image_url": f"/screenshots/{image_path.name}" if image_path.parent.resolve() == get_screenshot_dir().resolve() else None,
         "duration_ms": duration_ms,
-        "player_count": len(player_dicts),
-        "players": player_dicts,
-        "ai_error": ai_error,
+        "player_count": len(initial_dicts),
+        "players": initial_dicts,
+        "ai_error": None,
+        "scan_status": "loading_steam" if will_stream else "done",
+        "progress": {"done": 0 if will_stream else len(initial_dicts), "total": len(initial_dicts)},
     }
 
     with _STATE_LOCK:
@@ -415,6 +506,12 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
         _save_history_locked()
 
     _broadcast_event("scan", scan_record)
+    if will_stream:
+        threading.Thread(
+            target=_enrich_scan_async,
+            args=(scan_id, players, started),
+            daemon=True,
+        ).start()
     return scan_record
 
 
@@ -703,17 +800,34 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 if console_status and console_status.nicks:
                     for p in players:
                         p.nick = correct_nick_from_console(p.nick, console_status.nicks)
-                reports = enrich_players(players, fetch_steam=True)
-                player_dicts, ai_error = analyze_players_with_ai([asdict(r) for r in reports])
+
+                initial_reports = enrich_players(players, fetch_steam=False)
+                initial_dicts = []
+                for r in initial_reports:
+                    d = asdict(r)
+                    d["loading"] = bool(players)
+                    d["loading_stage"] = "steam" if players else "done"
+                    initial_dicts.append(d)
                 duration_ms = round((time.time() - started) * 1000)
 
                 with _STATE_LOCK:
-                    scan_rec["players"] = player_dicts
-                    scan_rec["player_count"] = len(player_dicts)
+                    scan_rec["players"] = initial_dicts
+                    scan_rec["player_count"] = len(initial_dicts)
                     scan_rec["duration_ms"] = duration_ms
-                    scan_rec["ai_error"] = ai_error
+                    scan_rec["ai_error"] = None
+                    scan_rec["scan_status"] = "loading_steam" if players else "done"
+                    scan_rec["progress"] = {"done": 0, "total": len(initial_dicts)}
                     _save_history_locked()
                     snapshot = dict(scan_rec)
+                    target_scan_id = scan_rec["id"]
+
+                _broadcast_event("scan", snapshot)
+                if players:
+                    threading.Thread(
+                        target=_enrich_scan_async,
+                        args=(target_scan_id, players, started),
+                        daemon=True,
+                    ).start()
                 self._send_json(snapshot)
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=500)

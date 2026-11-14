@@ -216,9 +216,12 @@ function renderScan(scan) {
         ? `<img class="avatar" src="${escapeHtml(avSrc)}" alt="" loading="lazy" />`
         : `<div class="avatar avatar-placeholder" aria-hidden="true">${escapeHtml(p.nick.slice(0, 1).toUpperCase())}</div>`;
 
-      const profileName = steam.profile_name
-        ? `Steam: ${escapeHtml(steam.profile_name)}`
-        : "Steam профіль не знайдено автоматично";
+      const isLoading = Boolean(p.loading);
+      const profileName = isLoading
+        ? '<span class="loading-inline"><span class="spinner-dot" aria-hidden="true"></span><span>Завантаження Steam / Leetify...</span></span>'
+        : steam.profile_name
+          ? `Steam: ${escapeHtml(steam.profile_name)}`
+          : "Steam профіль не знайдено автоматично";
 
       const tags = [];
       if (steam.in_cs2) tags.push('<span class="tag tag-cs2">In CS2</span>');
@@ -278,7 +281,9 @@ function renderScan(scan) {
       const aiClass = ai ? `ai-${String(ai.decision || "uncertain").toLowerCase()}` : "";
       const aiBadge = ai
         ? `<div><span class="ai-decision-badge ${escapeHtml(aiClass)}">AI-DECISION: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)</span></div>`
-        : "";
+        : p.loading_stage === "ai"
+          ? `<div><span class="ai-loading-pill"><span class="spinner-dot" aria-hidden="true"></span>AI аналізує...</span></div>`
+          : "";
       const isExpanded = state.expandedNicks.has(p.nick);
 
       const mainRow = `
@@ -293,9 +298,9 @@ function renderScan(scan) {
                   <button type="button" class="edit-nick-btn" data-nick="${escapeHtml(p.nick)}" title="Виправити нік або вставити Steam URL / SteamID64">✎</button>
                 </div>
                 <span class="steam-sub">${profileName}</span>
-                ${leetifyLine}
-                ${faceitLine}
-                ${tags.length ? `<div class="badge-row">${tags.join("")}</div>` : ""}
+                ${isLoading ? '<div class="skeleton-line" aria-hidden="true"></div>' : leetifyLine}
+                ${!isLoading && faceitLine ? faceitLine : ""}
+                ${!isLoading && tags.length ? `<div class="badge-row">${tags.join("")}</div>` : ""}
               </div>
             </div>
           </td>
@@ -566,8 +571,30 @@ function connectSSE() {
   ev.addEventListener("scan", (event) => {
     const scan = JSON.parse(event.data);
     renderScan(scan);
-    fetchLatest();
-    setStatus(`Новий скан по шорткату: ${scan.player_count} гравців.`);
+    if (scan.scan_status === "loading_steam") {
+      const total = scan.progress?.total ?? scan.player_count ?? 0;
+      setStatus(`OCR готово (${total} гравців). Тягну профілі Steam / Leetify...`);
+    } else if (scan.scan_status === "loading_ai") {
+      setStatus("Профілі завантажено. Запускаю AI-аналіз (Claude)...");
+    } else {
+      fetchLatest();
+      setStatus(`Скан завершено: ${scan.player_count} гравців (${scan.duration_ms} мс).`);
+    }
+  });
+  ev.addEventListener("scan_update", (event) => {
+    const payload = JSON.parse(event.data);
+    if (!state.currentScan || state.currentScan.id !== payload.scan_id) return;
+    const players = state.currentScan.players || [];
+    const idx = players.findIndex((p) => p.nick === payload.player?.nick);
+    if (idx !== -1) {
+      players[idx] = payload.player;
+    }
+    state.currentScan.progress = payload.progress;
+    state.currentScan.scan_status = payload.scan_status;
+    renderScan(state.currentScan);
+    if (payload.progress) {
+      setStatus(`Завантаження профілів: ${payload.progress.done} / ${payload.progress.total}...`);
+    }
   });
 }
 

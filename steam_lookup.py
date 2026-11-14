@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -1173,50 +1173,80 @@ def _compute_scores(
     return cheat_prob, cheat_risk, smurf_prob, smurf_risk, uncertainty, effective_weights, reasons
 
 
-def enrich_players(players: list[Player], fetch_steam: bool = True) -> list[PlayerReport]:
+def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
+    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
+    anomaly = None if math.isnan(p.score) else round(p.score, 1)
+    return PlayerReport(
+        nick=p.nick,
+        kills=p.kills,
+        deaths=p.deaths,
+        kd=round(p.kd, 2),
+        hs=round(p.hs, 1),
+        level=p.level,
+        anomaly_score=anomaly,
+        cheat_probability=prob,
+        risk_level=risk,
+        reasons=reasons,
+        steam=asdict(steam),
+        smurf_probability=smurf_prob,
+        smurf_risk_level=smurf_risk,
+        uncertainty=uncertainty,
+        effective_weights=eff_weights,
+    )
+
+
+def enrich_players(
+    players: list[Player],
+    fetch_steam: bool = True,
+    on_player_ready=None,
+) -> list[PlayerReport]:
     if not players:
         return []
 
-    if fetch_steam:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            profiles = list(
-                pool.map(lambda p: lookup_steam_profile(p.nick, p.avatar_thumb, p.avatar_data_url), players)
-            )
-    else:
-        profiles = [
-            SteamProfile(
-                query_nick=p.nick,
-                screenshot_avatar=p.avatar_data_url,
-                rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
-                rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+    if not fetch_steam:
+        reports = [
+            _build_player_report(
+                p,
+                SteamProfile(
+                    query_nick=p.nick,
+                    screenshot_avatar=p.avatar_data_url,
+                    rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+                    rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+                ),
             )
             for p in players
         ]
+        reports.sort(key=lambda r: r.cheat_probability, reverse=True)
+        return reports
 
-    reports: list[PlayerReport] = []
-    for p, steam in zip(players, profiles):
-        prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
-        anomaly = None if math.isnan(p.score) else round(p.score, 1)
-        reports.append(
-            PlayerReport(
-                nick=p.nick,
-                kills=p.kills,
-                deaths=p.deaths,
-                kd=round(p.kd, 2),
-                hs=round(p.hs, 1),
-                level=p.level,
-                anomaly_score=anomaly,
-                cheat_probability=prob,
-                risk_level=risk,
-                reasons=reasons,
-                steam=asdict(steam),
-                smurf_probability=smurf_prob,
-                smurf_risk_level=smurf_risk,
-                uncertainty=uncertainty,
-                effective_weights=eff_weights,
-            )
-        )
+    reports_by_idx: dict[int, PlayerReport] = {}
+    max_workers = min(6, len(players))
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_map = {
+            pool.submit(lookup_steam_profile, p.nick, p.avatar_thumb, p.avatar_data_url): idx
+            for idx, p in enumerate(players)
+        }
+        for fut in as_completed(future_map):
+            idx = future_map[fut]
+            p = players[idx]
+            try:
+                steam = fut.result()
+            except Exception:
+                steam = SteamProfile(
+                    query_nick=p.nick,
+                    screenshot_avatar=p.avatar_data_url,
+                    rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+                    rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+                )
+            rep = _build_player_report(p, steam)
+            reports_by_idx[idx] = rep
+            if on_player_ready is not None:
+                try:
+                    on_player_ready(rep)
+                except Exception:
+                    pass
 
+    reports = [reports_by_idx[i] for i in range(len(players))]
     reports.sort(key=lambda r: r.cheat_probability, reverse=True)
     return reports
 
