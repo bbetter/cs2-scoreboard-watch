@@ -17,3 +17,6 @@ pton.logs
 players.db
 players.db-wal
 players.db-shm
+feedback.json
+feedback.json.tmp
+feedback.json.corrupt

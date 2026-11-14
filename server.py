@@ -31,6 +31,7 @@ from console_parser import (
     parse_latest_status,
     setup_autoexec,
 )
+from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
 from scoreboard_scan import scan as scan_scoreboard
 from steam_lookup import (
     _get_faceit_api_key,
@@ -904,6 +905,33 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     snapshot = dict(scan_rec)
 
                 self._send_json(snapshot)
+            except Exception as exc:
+                self._send_json({"error": str(exc)}, status=500)
+            return
+
+        if path == "/api/feedback":
+            try:
+                raw = self._read_body()
+                try:
+                    payload = json.loads(raw.decode("utf-8")) if raw else None
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    payload = None
+                clean, err = validate_feedback_payload(payload)
+                if err:
+                    self._send_json({"error": err}, status=400)
+                    return
+                with _STATE_LOCK:
+                    scan_rec = next((s for s in _SCANS if s["id"] == clean["scan_id"]), None)
+                    if not scan_rec:
+                        self._send_json({"error": "Scan not found"}, status=404)
+                        return
+                    player = next((dict(p) for p in scan_rec["players"] if p.get("nick") == clean["nick"]), None)
+                if player is None:
+                    self._send_json({"error": "Player not found in scan"}, status=404)
+                    return
+                entry = build_feedback_entry(clean["scan_id"], clean["label"], player)
+                append_feedback(entry)
+                self._send_json({"ok": True, "entry": entry})
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=500)
             return
