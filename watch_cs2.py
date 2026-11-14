@@ -13,7 +13,7 @@ import sys
 from http.server import ThreadingHTTPServer
 
 from config_store import load_config
-from server import CsWatchHandler, _load_history, configure_tab_watcher, schedule_tab_scan
+from server import CsWatchHandler, _load_history, configure_tab_watcher, init, schedule_tab_scan
 
 
 def is_hyprland() -> bool:
@@ -71,6 +71,7 @@ def main() -> None:
     cs2_only = False if args.all_windows else bool(cfg.get("cs2_only", True))
 
     url = f"http://{args.host}:{args.port}"
+    init()
     configure_tab_watcher(delay_sec=delay, cooldown_sec=cooldown, cs2_only=cs2_only)
     _load_history()
 
