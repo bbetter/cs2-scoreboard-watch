@@ -823,6 +823,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             lookup_source="rate_limited" if is_rl else "not_found",
             rip_url=rip_nick_url,
             rip_nick_url=rip_nick_url,
+            extra_stats={},
             search_log=search_log,
             candidates=candidates,
         )
@@ -865,9 +866,19 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             leetify=leetify_data,
             faceit=faceit_data,
             cs2_stats=cs2_stats,
+            extra_stats={},
             search_log=search_log,
             candidates=candidates,
         )
+        if steamid64:
+            try:
+                from api_fetcher import fetch_player_telemetry
+
+                custom_payload = fetch_player_telemetry(steamid64)
+                if isinstance(custom_payload, dict) and custom_payload:
+                    apply_multi_source_payload(profile, custom_payload)
+            except Exception:
+                pass
 
     if profile.lookup_source != "rate_limited":
         with _CACHE_LOCK:
