@@ -374,6 +374,11 @@ Scan files: `POST /api/scan` accepts an `image_path` only if it resolves to a `.
 configured screenshots directory or `SCREENSHOT_DIR` (`data/screenshots`). Otherwise it returns 400; a missing file
 returns 404. `POST /api/upload` checks the PNG or JPEG signature before it writes anything and returns 400 otherwise.
 
+AI prompt: player data is sent inside `<players_data>` with `<`/`>` escaped and an instruction to treat it as data.
+Nicks and profile text come from third parties, so `lookup.ai_analyzer._data_block` escapes `<` and `>` as `<` and
+`>` (still valid JSON), and `_build_prompt` tells the model that the block is untrusted and must not be followed
+as instructions. Covered by `tests/test_ai_prompt.py`.
+
 ## Known limitations and follow-ups
 
 - **Source names are hard-coded in the frontend.** The frontend is split into modules (`web/*.js`), but Leetify, CSTracker,
