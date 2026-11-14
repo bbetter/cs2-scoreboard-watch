@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional
 
 from lookup.http_client import http_get_status as _http_get_status
-from sources._util import num_or_none
+from sources._util import num_or_none, round_num
 from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
@@ -46,12 +46,7 @@ def _leetify_get(path: str, steamid64: str, api_key: str) -> tuple[int, Any]:
         return status, None
 
 
-def _num(val: Any, nd: Optional[int] = None) -> Optional[Any]:
-    if isinstance(val, bool) or not isinstance(val, (int, float)):
-        return None
-    if nd == 0:
-        return int(round(val))
-    return round(float(val), nd) if nd is not None else float(val)
+_num = round_num  # module-local name used by fetch_leetify and the Leetify payload helpers
 
 
 def _round_stats(d: dict) -> dict:

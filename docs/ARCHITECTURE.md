@@ -50,7 +50,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `storage/player_db.py` | SQLite player history (`data/players.db`, tables `players` and `sightings`) |
 | `storage/feedback_store.py` | Labelled feedback records (`data/feedback.json`) and their feature block |
 | `storage/profile_cache.py` | `ProfileCache`: Steam profile cache (`data/profile_cache.json`), read on first use, not at import |
-| `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then the root `.env`. Shell rc files are not read. `lookup/steam_lookup.py` re-exports it |
+| `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then the root `.env`. Shell rc files are not read. Callers import it from here directly (`lookup/steam_lookup.py` does not re-export it) |
 
 ### `vision/` (OCR)
 
@@ -62,7 +62,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `lookup/steam_lookup.py` | Orchestration: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call. Fetchers are in `sources/*`, search in `lookup/steam_search.py` |
+| `lookup/steam_lookup.py` | Orchestration only: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call; no re-exports. Fetchers are in `sources/*`, search in `lookup/steam_search.py` |
 | `lookup/steam_search.py` | Steam Community search, 429 cooldown and rate limit, XML profile parsing, candidate scoring, Web API batch. Does not import `steam_lookup` |
 | `lookup/http_client.py` | Plain HTTP helpers: `http_get`, `http_get_status`, `USER_AGENT` (standard library only). curl gets the URL, headers and cookie through stdin (`-K -`), so API keys are not visible in the process list |
 | `lookup/nick_match.py` | Fuzzy nickname matching for OCR output |
@@ -86,7 +86,7 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `faceit.py` | FACEIT (declares `faceit_api_key`); fetcher `fetch_faceit_stats` |
 | `cstracker.py` | CSTracker.gg (recheckable; status may be `blocked`); fetcher `fetch_cstracker` |
 | `steam_stats.py` | Steam CS2 lifetime stats (declares `steam_api_key`); fetcher `fetch_steam_cs2_stats` |
-| `_util.py` | Numeric helpers shared by the source features (`num_or_none`, `_safe_float`, `_safe_int`) |
+| `_util.py` | Numeric helpers shared by the source features and `scoring/rules.py` (`num_or_none`, `round_num`, `_safe_float`, `_safe_int`) |
 
 Each source module holds its own fetcher and does not import `lookup.steam_lookup`.
 
