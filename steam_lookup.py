@@ -50,6 +50,16 @@ _CACHE_LOCK = threading.Lock()
 _PROFILE_CACHE: dict[str, tuple[float, dict]] = {}
 _SEARCH_LOCK = threading.Lock()
 _LAST_SEARCH_TS = 0.0
+# Steam Community search queue: minimum spacing between search request starts,
+# cooldown after HTTP 429 (doubles per consecutive 429, reset on 200), and a bounded
+# retry of rate-limited lookups inside enrich_players. In-memory only.
+STEAM_SEARCH_MIN_INTERVAL_SEC = 0.55
+STEAM_COOLDOWN_BASE_SEC = 5.0
+STEAM_COOLDOWN_MAX_SEC = 120.0
+STEAM_RETRY_ROUNDS = 3
+STEAM_RETRY_BUDGET_SEC = 30.0
+_STEAM_RL_LOCK = threading.Lock()
+_STEAM_RL_STATE: dict[str, float] = {"until": 0.0, "streak": 0.0}
 _STEAM_API_KEY_CACHE: Optional[str] = None
 _FACEIT_API_KEY_CACHE: Optional[str] = None
 
@@ -797,18 +807,15 @@ def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], 
         f"?text={q}&filter=users&sessionid={session_id}&steamid_user=false&page=1"
     )
 
-    status = 0
-    raw = None
-    for attempt in range(2):
-        with _SEARCH_LOCK:
-            wait = 0.55 - (time.time() - _LAST_SEARCH_TS)
-            if wait > 0:
-                time.sleep(wait)
-            _LAST_SEARCH_TS = time.time()
-        status, raw = _http_get_status(url, timeout=4.5, cookies=f"sessionid={session_id}")
-        if status != 429:
-            break
-        time.sleep(1.5)
+    with _SEARCH_LOCK:
+        if _steam_cooldown_remaining() > 0:
+            return 429, []  # cooling down after a 429: do not send another request
+        wait = STEAM_SEARCH_MIN_INTERVAL_SEC - (time.time() - _LAST_SEARCH_TS)
+        if wait > 0:
+            time.sleep(wait)
+        _LAST_SEARCH_TS = time.time()
+    status, raw = _http_get_status(url, timeout=4.5, cookies=f"sessionid={session_id}")
+    _steam_record_search_status(status)
 
     if status != 200 or not raw:
         return status, []
@@ -842,6 +849,29 @@ def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], 
     ql = query.strip().lower()
     candidates.sort(key=lambda c: (0 if c[3].lower() == ql else 1, 0 if ql in c[3].lower() else 1))
     return status, candidates[:5]
+
+
+def _steam_cooldown_remaining() -> float:
+    with _STEAM_RL_LOCK:
+        return max(0.0, _STEAM_RL_STATE["until"] - time.monotonic())
+
+
+def _steam_record_search_status(status: int) -> None:
+    with _STEAM_RL_LOCK:
+        if status == 429:
+            streak = _STEAM_RL_STATE["streak"] + 1
+            cooldown = min(STEAM_COOLDOWN_MAX_SEC, STEAM_COOLDOWN_BASE_SEC * (2 ** (int(streak) - 1)))
+            _STEAM_RL_STATE["streak"] = streak
+            _STEAM_RL_STATE["until"] = max(_STEAM_RL_STATE["until"], time.monotonic() + cooldown)
+            _LOG.warning("Steam search: HTTP 429, cooldown %.0fs (streak %d)", cooldown, int(streak))
+        elif status == 200:
+            _STEAM_RL_STATE["streak"] = 0.0
+
+
+def get_steam_search_status() -> dict:
+    """Current Steam search cooldown state for the UI: {limited: bool, retry_in_sec: int}."""
+    remaining = _steam_cooldown_remaining()
+    return {"limited": remaining > 0, "retry_in_sec": int(math.ceil(remaining))}
 
 
 def _fetch_batch_via_web_api(
@@ -977,6 +1007,7 @@ def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Opt
         if status == 429:
             rate_limited = True
             log.append(f"Пошук Steam '{q}': HTTP 429 — спрацював rate limit Steam (потрібен повторний аналіз)")
+            break  # no point trying alternative spellings while Steam is limiting us
         elif status != 200:
             log.append(f"Пошук Steam '{q}': помилка HTTP {status} (не вдалося звернутися до Steam)")
         else:
@@ -1492,6 +1523,33 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
     )
 
 
+def _retry_rate_limited(
+    players: list[Player],
+    steam_by_idx: dict[int, Optional[SteamProfile]],
+    lookup,
+    max_workers: int,
+) -> None:
+    """Retry lookups that ended as 'rate_limited', waiting out the Steam cooldown between rounds.
+
+    Bounded by STEAM_RETRY_ROUNDS and STEAM_RETRY_BUDGET_SEC total sleep, so a scan never
+    stalls for long. Players still limited after the budget keep lookup_source='rate_limited'
+    (they are not cached, so the next scan retries them).
+    """
+    pending = [i for i, st in steam_by_idx.items() if st is not None and st.lookup_source == "rate_limited"]
+    budget = STEAM_RETRY_BUDGET_SEC
+    for _ in range(STEAM_RETRY_ROUNDS):
+        if not pending or budget <= 0:
+            break
+        wait = min(max(_steam_cooldown_remaining(), 0.5), budget)
+        time.sleep(wait)
+        budget -= wait
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(pending))) as pool:
+            results = list(pool.map(lookup, pending))
+        for idx, st in zip(pending, results):
+            steam_by_idx[idx] = st
+        pending = [i for i, st in zip(pending, results) if st is not None and st.lookup_source == "rate_limited"]
+
+
 def enrich_players(
     players: list[Player],
     fetch_steam: bool = True,
@@ -1518,30 +1576,42 @@ def enrich_players(
 
     reports_by_idx: dict[int, PlayerReport] = {}
     max_workers = min(6, len(players))
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
-        future_map = {
-            pool.submit(lookup_steam_profile, p.nick, p.avatar_thumb, p.avatar_data_url): idx
-            for idx, p in enumerate(players)
-        }
-        for fut in as_completed(future_map):
-            idx = future_map[fut]
-            p = players[idx]
+
+    def _emit(idx: int, steam: SteamProfile) -> None:
+        rep = _build_player_report(players[idx], steam)
+        reports_by_idx[idx] = rep
+        if on_player_ready is not None:
             try:
-                steam = fut.result()
+                on_player_ready(rep)
             except Exception:
-                steam = SteamProfile(
-                    query_nick=p.nick,
-                    screenshot_avatar=p.avatar_data_url,
-                    rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
-                    rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
-                )
-            rep = _build_player_report(p, steam)
-            reports_by_idx[idx] = rep
-            if on_player_ready is not None:
-                try:
-                    on_player_ready(rep)
-                except Exception:
-                    pass
+                pass
+
+    def _lookup(idx: int) -> Optional[SteamProfile]:
+        p = players[idx]
+        try:
+            return lookup_steam_profile(p.nick, p.avatar_thumb, p.avatar_data_url)
+        except Exception:
+            return None
+
+    # Rate-limited players are held back and reported once, after their retries,
+    # so on_player_ready (scan progress) is called exactly once per player.
+    steam_by_idx: dict[int, Optional[SteamProfile]] = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        future_map = {pool.submit(_lookup, idx): idx for idx in range(len(players))}
+        for fut in as_completed(future_map):
+            steam_by_idx[future_map[fut]] = fut.result()
+    _retry_rate_limited(players, steam_by_idx, _lookup, max_workers)
+
+    for idx, p in enumerate(players):
+        steam = steam_by_idx.get(idx)
+        if steam is None:
+            steam = SteamProfile(
+                query_nick=p.nick,
+                screenshot_avatar=p.avatar_data_url,
+                rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+                rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(p.nick, safe='')}/",
+            )
+        _emit(idx, steam)
 
     reports = [reports_by_idx[i] for i in range(len(players))]
     reports.sort(key=lambda r: r.cheat_probability, reverse=True)

@@ -35,6 +35,7 @@ from steam_lookup import (
     _get_faceit_api_key,
     _get_steam_api_key,
     enrich_players,
+    get_steam_search_status,
     recheck_player_report,
     reset_faceit_api_key_cache,
     reset_steam_api_key_cache,
@@ -654,6 +655,10 @@ class CsWatchHandler(BaseHTTPRequestHandler):
             return
         if path == "/app.js":
             self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
+            return
+
+        if path == "/api/steam-status":
+            self._send_json(get_steam_search_status())
             return
 
         if path == "/api/latest":
