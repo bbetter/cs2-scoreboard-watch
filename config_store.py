@@ -17,10 +17,11 @@ ALLOWED_AI_PROVIDERS = ("claude_cli", "anthropic_api")
 
 DEFAULT_AI_PROMPT = (
     "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: "
-    "1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани); "
-    "2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO або високим K/D). "
-    "Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): коли Leetify, Steam або FACEIT закриті чи відсутні, "
-    "спирайся на доступні джерела за effective_weights і знижуй confidence при високій uncertainty. "
+    "1) Чітерство (cheat_probability: 0..100 — аномальний aim, reaction_time_ms / cstracker.ttd_ms, HS%, підозрілий K/D, VAC/Game/Leetify бани, cstracker.vaclive > 0 або низький cstracker.trust); "
+    "2) Смурфінг (smurf_probability: 0..100 — молодий акаунт / мало годин в CS2 / відсутність ветеранських медалей / чисті бани у поєднанні з високим рівнем гри, FACEIT ELO, scope_gg.hltv_2_1 або високим K/D). "
+    "Використовуй усі доступні джерела: поточний рахунок у матчі, Steam API, Leetify, FACEIT та extra_stats (CSTracker trust/vaclive/ttd/hltv, Scope.gg role/hltv_2_1/adr, medals_count, has_veteran_coin, xp_level). "
+    "Крос-перевіряй метрики між Leetify, CSTracker і Scope.gg. Враховуй невизначеність (uncertainty) та ефективні ваги (effective_weights): "
+    "коли зовнішні джерела закриті чи відсутні, спирайся на доступні дані за effective_weights і знижуй confidence при високій uncertainty. "
     "Опиши покроковий аналіз (analysis_steps) українською мовою, зроби короткий висновок (summary) "
     "і вистав рішення decision одне з: LEGIT, UNCERTAIN, SMURF, SUSPICIOUS або BLATANT."
 )
