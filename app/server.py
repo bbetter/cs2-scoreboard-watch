@@ -533,14 +533,40 @@ def _post_tab_pressed(h: CsWatchHandler) -> None:
     h._send_json(schedule_tab_scan())
 
 
+_SCAN_IMAGE_SUFFIXES = frozenset({".png", ".jpg", ".jpeg"})
+
+
+def _resolve_scan_image(raw: str) -> Path:
+    """Resolve a client-supplied scan image path. Only .png/.jpg files inside a screenshots directory are allowed."""
+    path = Path(raw).expanduser().resolve()
+    screenshot_dirs = (get_screenshot_dir().resolve(), SCREENSHOT_DIR.resolve())
+    inside = any(path.is_relative_to(d) for d in screenshot_dirs)
+    if not inside or path.suffix.lower() not in _SCAN_IMAGE_SUFFIXES:
+        raise ValueError("image_path must be a .png/.jpg file inside the screenshots directory")
+    return path
+
+
 @router.route("POST", "/api/scan")
 def _post_scan(h: CsWatchHandler) -> None:
     try:
         payload = read_json_body(h)
         img_path = payload.get("image_path")
         fetch_steam = payload.get("fetch_steam", True)
+        image_path: Optional[Path] = None
+        if img_path not in (None, ""):
+            if not isinstance(img_path, str):
+                h._send_json({"error": "image_path must be a string"}, status=400)
+                return
+            try:
+                image_path = _resolve_scan_image(img_path)
+            except ValueError as exc:
+                h._send_json({"error": str(exc)}, status=400)
+                return
+            if not image_path.is_file():
+                h._send_json({"error": "Image not found"}, status=404)
+                return
         result = run_scan(
-            image_path=Path(img_path) if img_path else None,
+            image_path=image_path,
             fetch_steam=bool(fetch_steam),
         )
         h._send_json(result)
@@ -750,8 +776,15 @@ def _post_upload(h: CsWatchHandler) -> None:
         if not raw:
             h._send_json({"error": "Empty upload"}, status=400)
             return
+        if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            suffix = ".png"
+        elif raw.startswith(b"\xff\xd8\xff"):
+            suffix = ".jpg"
+        else:
+            h._send_json({"error": "Upload must be a PNG or JPEG image"}, status=400)
+            return
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        out_path = get_screenshot_dir() / f"upload_{ts}.png"
+        out_path = get_screenshot_dir() / f"upload_{ts}{suffix}"
         out_path.write_bytes(raw)
         result = run_scan(image_path=out_path, fetch_steam=True)
         h._send_json(result)
