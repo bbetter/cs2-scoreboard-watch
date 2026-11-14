@@ -50,6 +50,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "ai_weights": dict(DEFAULT_AI_WEIGHTS),
     "anthropic_api_key": "",
     "leetify_api_key": "",
+    # Seconds Leetify data may be reused from memory (never written to profile_cache.json). 0 = no reuse.
+    "leetify_cache_ttl_sec": 0,
 }
 
 _CONFIG_LOCK = threading.Lock()
@@ -82,6 +84,10 @@ def _normalize_config(raw: dict[str, Any]) -> dict[str, Any]:
     prompt = str(raw.get("ai_prompt") or "").strip()
     cfg["ai_prompt"] = prompt if prompt else DEFAULT_AI_PROMPT
     cfg["anthropic_api_key"] = str(raw.get("anthropic_api_key") or "").strip()
+    try:
+        cfg["leetify_cache_ttl_sec"] = max(0, min(86400, int(raw.get("leetify_cache_ttl_sec") or 0)))
+    except (TypeError, ValueError):
+        cfg["leetify_cache_ttl_sec"] = 0
 
     raw_weights = raw.get("ai_weights") if isinstance(raw.get("ai_weights"), dict) else {}
     cfg["ai_weights"] = {

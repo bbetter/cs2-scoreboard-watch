@@ -185,6 +185,7 @@
     <footer class="footer-note">
       Оцінка ймовірності базується на статистичному відхиленні (HS%, K/D, рівень) та публічних сигналах Steam (VAC, обмеження акаунта, приватність) і не є остаточним доказом чітерства.
       Посилання <code>steamcommunity.rip/id/&lt;nickname&gt;/</code> відкриваються безпосередньо в браузері (сайт перенаправляє на <code>csst.at</code> із захистом Cloudflare).
+      <div class="leetify-attribution"><a href="https://leetify.com/" target="_blank" rel="noopener noreferrer">Data Provided by Leetify</a></div>
     </footer>
   </div>
 
@@ -276,6 +277,13 @@
             <div class="key-input-row">
               <input type="password" id="cfgSteamApiKey" class="filter-input" placeholder="Введіть новий ключ (опціонально)" autocomplete="off" />
               <button type="button" id="clearSteamKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
+            </div>
+          </label>
+          <label class="field-group">
+            <span>FACEIT API Key <em id="cfgFaceitKeyStatus" class="key-status"></em></span>
+            <div class="key-input-row">
+              <input type="password" id="cfgFaceitApiKey" class="filter-input" placeholder="Введіть новий ключ (опціонально)" autocomplete="off" />
+              <button type="button" id="clearFaceitKeyBtn" class="btn btn-secondary btn-sm">Очистити</button>
             </div>
           </label>
         </div>

@@ -1385,3 +1385,14 @@ tr.player-details-row td {
   gap: 6px;
   margin-top: 4px;
 }
+
+/* Leetify attribution (required by Leetify API developer guidelines) */
+.leetify-attribution {
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.leetify-attribution a {
+  color: inherit;
+}

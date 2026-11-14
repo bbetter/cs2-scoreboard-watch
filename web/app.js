@@ -368,6 +368,10 @@ function fmtNum(v, d = 1, suffix = "") {
   return v == null || Number.isNaN(Number(v)) ? null : `${Number(v).toFixed(d)}${suffix}`;
 }
 
+function leetifyAttribution() {
+  return '<div class="leetify-attribution"><a href="https://leetify.com/" target="_blank" rel="noopener noreferrer">Data Provided by Leetify</a></div>';
+}
+
 function leetifyRows(lf) {
   if (!lf || !Object.keys(lf).length) {
     return [detailKv("Статус", "Немає профілю в Leetify (не зареєстрований або профіль прихований)")];
@@ -522,7 +526,7 @@ function renderPlayerDetailsRow(p) {
                 detailKv("CS2 вбивства / матчі", cs2.total_kills != null ? `${cs2.total_kills} / ${cs2.total_matches_played ?? "—"}` : null),
                 detailKv("Метод пошуку", steam.lookup_method),
               ])}
-              ${detailSection("Leetify", leetifyRows(lf))}
+              ${detailSection("Leetify", [...leetifyRows(lf), leetifyAttribution()])}
               ${detailSection("FACEIT", (fc.found || fc.skill_level != null) ? [
                 detailKv("Рівень / ELO", `${fc.skill_level ?? "—"} / ${fc.faceit_elo ?? "—"}`),
                 detailKv("K/D / WR / Матчі", `${fc.kd != null ? Number(fc.kd).toFixed(2) : "—"} / ${fmtNum(fc.winrate, 1, "%") ?? "—"} / ${fc.matches ?? "—"}`),
