@@ -76,14 +76,15 @@ class ScanPipeline:
             out.append(d)
         return out
 
-    def _start_enrichment(self, scan_id: str, players: list, started: float) -> None:
-        self._spawn(lambda: self.enrich_scan(scan_id, players, started))
+    def _start_enrichment(self, scan_id: str, players: list, started: float, run_id: str) -> None:
+        self._spawn(lambda: self.enrich_scan(scan_id, players, started, run_id))
 
     # ------------------------------------------------------------------ entry points
     def run_new(self, image_path: Path, fetch_steam: bool = True) -> dict:
         """Create a new scan record from an image already on disk."""
         started = time.time()
         scan_id = uuid.uuid4().hex[:10]
+        run_id = uuid.uuid4().hex[:8]
         players, console_status = self._ocr(image_path)
         assign_player_uids(scan_id, players)
         initial = self._initial_dicts(players, fetch_steam)
@@ -93,6 +94,7 @@ class ScanPipeline:
         will_stream = bool(fetch_steam and players)
         record = {
             "id": scan_id,
+            "run_id": run_id,
             "created_at": now_dt.isoformat(timespec="seconds"),
             "date": now_dt.strftime("%Y-%m-%d"),
             "match_id": match_id,
@@ -113,7 +115,7 @@ class ScanPipeline:
             self.repo.save_locked()
         self.bus.publish("scan.created", record)
         if will_stream:
-            self._start_enrichment(scan_id, players, started)
+            self._start_enrichment(scan_id, players, started, run_id)
         return record
 
     def rescan(self, scan_rec: dict, image_path: Path) -> dict:
@@ -123,7 +125,9 @@ class ScanPipeline:
         players, console_status = self._ocr(image_path)
         assign_player_uids(scan_id, players)
         initial = self._initial_dicts(players, True)
+        run_id = uuid.uuid4().hex[:8]
         with self.repo.lock:
+            scan_rec["run_id"] = run_id
             scan_rec["players"] = initial
             scan_rec["player_count"] = len(initial)
             scan_rec["duration_ms"] = round((time.time() - started) * 1000)
@@ -135,14 +139,23 @@ class ScanPipeline:
             snapshot = dict(scan_rec)
         self.bus.publish("scan.created", snapshot)
         if players:
-            self._start_enrichment(scan_id, players, started)
+            self._start_enrichment(scan_id, players, started, run_id)
         return snapshot
 
     # ------------------------------------------------------------------ background enrichment
     def _find(self, scan_id: str) -> Optional[dict]:
         return next((s for s in self.repo.scans if s["id"] == scan_id), None)
 
-    def enrich_scan(self, scan_id: str, players: list, started: float) -> None:
+    def _find_run(self, scan_id: str, run_id: Optional[str]) -> Optional[dict]:
+        """The record for `scan_id`, but only while it still belongs to run `run_id` (None = no check)."""
+        rec = self._find(scan_id)
+        if rec is None:
+            return None
+        if run_id is not None and rec.get("run_id") != run_id:
+            return None          # a newer run owns this record now
+        return rec
+
+    def enrich_scan(self, scan_id: str, players: list, started: float, run_id: Optional[str] = None) -> None:
         ai_enabled = bool(self._ai_enabled())
         total = len(players)
         done_count = 0
@@ -157,7 +170,7 @@ class ScanPipeline:
                 done_count += 1
                 cur_done = done_count
             with self.repo.lock:
-                scan_rec = self._find(scan_id)
+                scan_rec = self._find_run(scan_id, run_id)
                 if not scan_rec:
                     return
                 uid = pdict.get("player_uid")
@@ -187,7 +200,7 @@ class ScanPipeline:
             with progress_lock:
                 cur_done = done_count
             with self.repo.lock:
-                scan_rec = self._find(scan_id)
+                scan_rec = self._find_run(scan_id, run_id)
                 if not scan_rec:
                     return
                 for row in scan_rec.get("players", []):
@@ -212,7 +225,7 @@ class ScanPipeline:
         ai_error = None
         if ai_enabled and player_dicts:
             with self.repo.lock:
-                scan_rec = self._find(scan_id)
+                scan_rec = self._find_run(scan_id, run_id)
                 if scan_rec:
                     scan_rec["players"] = player_dicts
                     scan_rec["scan_status"] = "loading_ai"
@@ -220,8 +233,9 @@ class ScanPipeline:
                     snapshot = dict(scan_rec)
                 else:
                     snapshot = None
-            if snapshot:
-                self.bus.publish("scan.updated", snapshot)
+            if snapshot is None:
+                return           # the record is gone or belongs to a newer run: skip the AI spend
+            self.bus.publish("scan.updated", snapshot)
             try:
                 player_dicts, ai_error = self._analyze_ai(player_dicts)
             except Exception as exc:
@@ -232,7 +246,7 @@ class ScanPipeline:
             d["loading_stage"] = "done"
 
         with self.repo.lock:
-            scan_rec = self._find(scan_id)
+            scan_rec = self._find_run(scan_id, run_id)
             if not scan_rec:
                 return
             scan_rec["players"] = player_dicts

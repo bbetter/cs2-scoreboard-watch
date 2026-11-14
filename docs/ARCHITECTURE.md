@@ -168,11 +168,15 @@ stable) or `nick` (first match, legacy). `/api/feedback` still requires `nick`; 
 ### Scan record (`data/scans_history.json`, `GET /api/latest`, SSE `scan`)
 
 ```
-id, created_at, date, match_id, map_name, image_name, image_url,
+id, run_id, created_at, date, match_id, map_name, image_name, image_url,
 duration_ms, player_count, players: [PlayerReport dict, ...],
 ai_error, enrich_error (`null` or `"<ExceptionType>: <message>"`), scan_status: "loading_steam" | "loading_ai" | "done",
 progress: {done, total}
 ```
+
+`run_id` is `uuid4().hex[:8]`, set by `ScanPipeline.run_new` and replaced by every `rescan` (`app.pipeline`). Background
+enrichment writes to the record only while its `run_id` still matches (`ScanPipeline._find_run`), so an older run cannot
+write into a newer one even though the scan `id` and the `player_uid`s are the same.
 
 Newest first, at most `app.server._MAX_HISTORY` (100) records. Written only through `ScanStore.save_locked` (`app.server.STORE`).
 
@@ -387,9 +391,6 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
   source needs a frontend change.
 - **Legacy storage slots are canonical** for Leetify, FACEIT, CSTracker and Steam CS2 stats. `steam.sources` is a
   derived view. Moving to native storage would need a data migration and changes to scoring and the frontend.
-- **Rescan can race with a stale enrichment.** A rescan keeps the scan id, so its `player_uid`s repeat. A slow
-  enrichment from the previous run can write its rows into the new run and mark the scan `done`. Reproduced by
-  `tests/test_player_uid.py::RaceExpectedFailureTests` (`expectedFailure`).
 - **The final enrichment write can overwrite concurrent rechecks.** `app.pipeline.enrich_scan` replaces the whole
   `players` list at the end. A `/api/recheck` or `/api/ai-analyze` result written while enrichment is still running
   is lost. Read from the code; not yet covered by a test.
