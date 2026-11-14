@@ -1515,4 +1515,50 @@ tr.player-details-row td {
 #playersTable.hide-col-8 > thead > tr > th:nth-child(8),
 #playersTable.hide-col-8 > tbody > tr > td:nth-child(8) {
   display: none;
+/* U2: вкладки в розгорнутій картці гравця */
+.player-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.player-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+
+.player-tab:hover {
+  color: var(--text);
+}
+
+.player-tab[aria-selected="true"] {
+  color: var(--accent);
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-bottom-color: var(--surface-2);
+}
+
+.player-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.player-tab-panel[hidden] {
+  display: none;
+}
+
+.player-tab-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
