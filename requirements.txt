@@ -5,3 +5,4 @@ pillow>=11.0.0
 rapidocr-onnxruntime>=1.4.0
 mss>=9.0.0; sys_platform != "linux"
 pynput>=1.7.6; sys_platform != "linux"
+playwright>=1.49.0
