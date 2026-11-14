@@ -3,7 +3,7 @@
 Run from the repo root:
     python -m unittest discover -s tests -v
 
-All HTTP is mocked (steam_lookup._http_get_status and lookup.http_client.http_get_status); no network access is needed.
+All HTTP is mocked (steam_search._http_get_status and lookup.http_client.http_get_status); no network access is needed.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import lookup.http_client as http_client  # noqa: E402
 import lookup.steam_lookup as sl  # noqa: E402
+import lookup.steam_search as steam_search  # noqa: E402
 from storage import config_store  # noqa: E402
 from storage.profile_cache import ProfileCache  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
@@ -59,13 +60,15 @@ class SteamQueueTests(unittest.TestCase):
             # Keep reads of data/config.json out of the tests: fresh-install defaults instead.
             mock.patch.object(config_store, "load_config", return_value=dict(config_store.DEFAULT_CONFIG)),
             mock.patch.object(sl, "_get_steam_api_key", return_value=None),
+            mock.patch.object(steam_search, "_get_steam_api_key", return_value=None),
             mock.patch.object(sl, "_fetch_external_stats", return_value=(None, None, None)),
             mock.patch.object(sl, "_cstracker_extra", return_value={}),
             # Lazy pton.logs handler would append to data/logs; these tests do not assert on logs.
             mock.patch.object(sl, "_setup_pton_log", lambda: None),
             # Fast timings so the tests stay quick.
-            mock.patch.object(sl, "STEAM_SEARCH_MIN_INTERVAL_SEC", 0.0),
-            mock.patch.object(sl, "STEAM_COOLDOWN_BASE_SEC", 0.2),
+            mock.patch.object(steam_search, "STEAM_SEARCH_MIN_INTERVAL_SEC", 0.0),
+            mock.patch.object(steam_search, "STEAM_COOLDOWN_BASE_SEC", 0.2),
+            mock.patch.object(steam_search, "STEAM_COOLDOWN_MAX_SEC", 1.0),
             mock.patch.object(sl, "STEAM_COOLDOWN_MAX_SEC", 1.0),
             mock.patch.object(sl, "STEAM_RETRY_ROUNDS", 3),
             mock.patch.object(sl, "STEAM_RETRY_BUDGET_SEC", 10.0),
@@ -83,16 +86,16 @@ class SteamQueueTests(unittest.TestCase):
     def _reset_state(self) -> None:
         with sl._STEAM_RL_LOCK:
             sl._STEAM_RL_STATE.update({"until": 0.0, "streak": 0.0})
-        sl._LAST_SEARCH_TS = 0.0
+        steam_search._LAST_SEARCH_TS = 0.0
         with sl.PROFILE_CACHE.lock:
             sl.PROFILE_CACHE.clear()
 
     def _http(self, statuses) -> FakeSteamHTTP:
-        # _search_candidates calls sl._http_get_status directly; the other lookups go through
+        # _search_candidates calls steam_search._http_get_status directly; the other lookups go through
         # sl._http_get -> lookup.http_client.http_get -> http_client.http_get_status, so patch both.
         fake = FakeSteamHTTP(statuses)
         for patcher in (
-            mock.patch.object(sl, "_http_get_status", side_effect=fake),
+            mock.patch.object(steam_search, "_http_get_status", side_effect=fake),
             mock.patch.object(http_client, "http_get_status", side_effect=fake),
         ):
             patcher.start()

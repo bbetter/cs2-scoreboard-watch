@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import html
-import json
 import logging
 import math
 import re
@@ -12,14 +10,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
 from typing import Optional
 
 from storage.profile_cache import ProfileCache
-from lookup.nick_match import best_match_index
 from lookup.http_client import USER_AGENT, http_get as _http_get, http_get_status as _http_get_status  # noqa: F401
 from vision.scoreboard_scan import Player
 from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
@@ -32,6 +27,16 @@ import sources.faceit as faceit_source
 import sources.leetify as leetify_source
 import sources.steam_stats as steam_stats_source
 from sources.leetify import _num  # noqa: F401  # re-exported: scoring/rules.py imports it from here
+from lookup import steam_search
+from lookup.steam_search import (  # noqa: F401  # re-exported: app/server.py and tests import these names from here
+    _STEAM_RL_LOCK,
+    _STEAM_RL_STATE,
+    STEAM_COOLDOWN_MAX_SEC,
+    _search_candidates,
+    _search_steam_community,
+    _steam_record_search_status,
+    get_steam_search_status,
+)
 from storage.api_keys import (  # noqa: F401  # re-exported: app/server.py and tests import these names from here
     _get_faceit_api_key,
     _get_steam_api_key,
@@ -57,25 +62,16 @@ def _setup_pton_log() -> None:
     _LOG.propagate = False
 
 
-
-STEAMID64_BASE = 76561197960265728
 CACHE_TTL_SEC = 86400
 PROFILE_CACHE_FILE = DATA_DIR / "profile_cache.json"
 # Leetify data lives only in memory, keyed by SteamID64, for leetify_cache_ttl_sec (0 = not reused).
 _LEETIFY_LOCK = threading.Lock()
 _LEETIFY_MEM: dict[str, tuple[float, dict]] = {}
-_SEARCH_LOCK = threading.Lock()
-_LAST_SEARCH_TS = 0.0
 # Steam Community search queue: minimum spacing between search request starts,
 # cooldown after HTTP 429 (doubles per consecutive 429, reset on 200), and a bounded
 # retry of rate-limited lookups inside enrich_players. In-memory only.
-STEAM_SEARCH_MIN_INTERVAL_SEC = 0.55
-STEAM_COOLDOWN_BASE_SEC = 5.0
-STEAM_COOLDOWN_MAX_SEC = 120.0
 STEAM_RETRY_ROUNDS = 3
 STEAM_RETRY_BUDGET_SEC = 30.0
-_STEAM_RL_LOCK = threading.Lock()
-_STEAM_RL_STATE: dict[str, float] = {"until": 0.0, "streak": 0.0}
 
 
 def _strip_leetify(data: dict) -> dict:
@@ -200,81 +196,6 @@ class PlayerReport:
     player_uid: str = ""
 
 
-def _parse_member_age_years(member_since: Optional[str]) -> Optional[float]:
-    if not member_since:
-        return None
-    for fmt in ("%B %d, %Y", "%d %B, %Y", "%b %d, %Y"):
-        try:
-            dt = datetime.strptime(member_since.strip(), fmt)
-            return round((datetime.now() - dt).days / 365.25, 1)
-        except ValueError:
-            continue
-    m = re.search(r"(19|20)\d{2}", member_since)
-    if m:
-        return max(0.0, float(datetime.now().year - int(m.group())))
-    return None
-
-
-def _parse_steam_xml(xml_bytes: bytes, vanity: Optional[str] = None, source: str = "xml") -> Optional[dict]:
-    try:
-        root = ET.fromstring(xml_bytes)
-    except ET.ParseError:
-        return None
-    if root.find("error") is not None:
-        return None
-    steamid64 = (root.findtext("steamID64") or "").strip() or None
-    profile_name = (root.findtext("steamID") or "").strip() or None
-    if not steamid64 and not profile_name:
-        return None
-    privacy = (root.findtext("privacyState") or "").strip() or None
-    online_state = (root.findtext("onlineState") or "").strip().lower() or None
-    state_msg = (root.findtext("stateMessage") or "").strip().lower()
-    in_cs2 = online_state == "in-game" and ("counter-strike" in state_msg or "cs2" in state_msg)
-    vac = (root.findtext("vacBanned") or "0").strip() == "1"
-    trade_ban = (root.findtext("tradeBanState") or "").strip() or None
-    limited = (root.findtext("isLimitedAccount") or "0").strip() == "1"
-    member_since = (root.findtext("memberSince") or "").strip() or None
-    avatar = (
-        (root.findtext("avatarMedium") or "").strip()
-        or (root.findtext("avatarIcon") or "").strip()
-        or None
-    )
-
-    cs2_hours = None
-    for game in root.findall("./mostPlayedGames/mostPlayedGame"):
-        gname = (game.findtext("gameName") or "").lower()
-        if "counter-strike" in gname:
-            hrs_raw = (game.findtext("hoursOnRecord") or "").replace(",", "").strip()
-            try:
-                cs2_hours = float(hrs_raw)
-            except ValueError:
-                pass
-            break
-
-    profile_url = (
-        f"https://steamcommunity.com/id/{urllib.parse.quote(vanity)}"
-        if vanity
-        else (f"https://steamcommunity.com/profiles/{steamid64}" if steamid64 else None)
-    )
-    return {
-        "profile_name": profile_name,
-        "steamid64": steamid64,
-        "vanity": vanity,
-        "profile_url": profile_url,
-        "avatar_url": avatar,
-        "privacy_state": privacy,
-        "online_state": online_state,
-        "in_cs2": in_cs2,
-        "vac_banned": vac,
-        "trade_ban": trade_ban if trade_ban and trade_ban.lower() != "none" else None,
-        "is_limited": limited,
-        "member_since": member_since,
-        "account_age_years": _parse_member_age_years(member_since),
-        "cs2_hours": cs2_hours,
-        "lookup_source": source,
-    }
-
-
 def _cstracker_extra(steamid64: Optional[str]) -> dict:
     """extra_stats for a fresh profile: cstracker data plus a marker that CS2 stats were requested.
 
@@ -298,350 +219,6 @@ def _fetch_external_stats(steamid64: Optional[str]) -> tuple[Optional[dict], dic
         faceit_data = f_faceit.result()
         cs2_stats = f_cs2.result() if f_cs2 else {}
     return leetify_data, faceit_data, cs2_stats
-
-
-def _avatar_similarity(thumb: object, avatar_url: Optional[str]) -> float:
-    if thumb is None or not avatar_url:
-        return 0.0
-    raw = _http_get(avatar_url, timeout=3.0)
-    if not raw:
-        return 0.0
-    try:
-        import io
-        import numpy as np
-        from PIL import Image
-
-        resample = Image.Resampling.BILINEAR if hasattr(Image, "Resampling") else 2
-        im = Image.open(io.BytesIO(raw)).convert("RGB").resize((16, 16), resample)
-        cand = np.asarray(im, dtype=np.float32) / 255.0
-        a = thumb.reshape(-1)
-        b = cand.reshape(-1)
-        l1_sim = max(0.0, 1.0 - float(np.mean(np.abs(a - b))) * 2.2)
-        na = float(np.linalg.norm(a))
-        nb = float(np.linalg.norm(b))
-        cos_sim = float(np.dot(a, b) / (na * nb)) if na > 1e-6 and nb > 1e-6 else 0.0
-        return 0.55 * l1_sim + 0.45 * max(0.0, cos_sim)
-    except Exception:
-        return 0.0
-
-
-def _score_candidate(data: dict, target_nick: str) -> float:
-    score = 0.0
-    av_sim = data.get("avatar_match") or 0.0
-    if av_sim >= 0.72:
-        score += av_sim * 1500.0
-    pname = (data.get("profile_name") or "").strip().lower()
-    tnick = target_nick.strip().lower()
-    if pname == tnick:
-        score += 250.0
-    elif tnick and tnick in pname:
-        score += 80.0
-    if data.get("in_cs2"):
-        score += 1000.0
-    elif data.get("online_state") == "in-game":
-        score += 350.0
-    elif data.get("online_state") == "online":
-        score += 150.0
-    if data.get("cs2_hours") is not None:
-        score += 120.0
-    if data.get("privacy_state") == "public":
-        score += 20.0
-    return score
-
-
-def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], Optional[str], str]]]:
-    global _LAST_SEARCH_TS
-    session_id = "a1b2c3d4e5f6789012345678"
-    q = urllib.parse.quote(query)
-    url = (
-        f"https://steamcommunity.com/search/SearchCommunityAjax"
-        f"?text={q}&filter=users&sessionid={session_id}&steamid_user=false&page=1"
-    )
-
-    with _SEARCH_LOCK:
-        if _steam_cooldown_remaining() > 0:
-            return 429, []  # cooling down after a 429: do not send another request
-        wait = STEAM_SEARCH_MIN_INTERVAL_SEC - (time.time() - _LAST_SEARCH_TS)
-        if wait > 0:
-            time.sleep(wait)
-        _LAST_SEARCH_TS = time.time()
-    status, raw = _http_get_status(url, timeout=4.5, cookies=f"sessionid={session_id}")
-    _steam_record_search_status(status)
-
-    if status != 200 or not raw:
-        return status, []
-    try:
-        payload = json.loads(raw.decode("utf-8", errors="replace"))
-    except json.JSONDecodeError:
-        return status, []
-    html_snippet = payload.get("html") or ""
-    if not html_snippet:
-        return status, []
-
-    blocks = re.split(r'<div class="search_row"', html_snippet)
-    candidates = []
-    for blk in blocks[1:]:
-        row_m = re.search(
-            r'<a[^>]+class="searchPersonaName"[^>]+href="(https://steamcommunity\.com/(id|profiles)/([^"/]+))"[^>]*>(.*?)</a>',
-            blk,
-            re.DOTALL,
-        )
-        if not row_m:
-            continue
-        profile_url, kind, ident, raw_name = row_m.groups()
-        found_name = html.unescape(re.sub(r"<[^>]+>", "", raw_name)).strip()
-        vanity = ident if kind == "id" else None
-        steamid64 = ident if kind == "profiles" else None
-        if not steamid64:
-            mp = re.search(r'data-miniprofile="(\d+)"', blk)
-            if mp:
-                steamid64 = str(STEAMID64_BASE + int(mp.group(1)))
-        candidates.append((profile_url, vanity, steamid64, found_name))
-    ql = query.strip().lower()
-    candidates.sort(key=lambda c: (0 if c[3].lower() == ql else 1, 0 if ql in c[3].lower() else 1))
-    return status, candidates[:5]
-
-
-def _steam_cooldown_remaining() -> float:
-    with _STEAM_RL_LOCK:
-        return max(0.0, _STEAM_RL_STATE["until"] - time.monotonic())
-
-
-def _steam_record_search_status(status: int) -> None:
-    with _STEAM_RL_LOCK:
-        if status == 429:
-            streak = _STEAM_RL_STATE["streak"] + 1
-            cooldown = min(STEAM_COOLDOWN_MAX_SEC, STEAM_COOLDOWN_BASE_SEC * (2 ** (int(streak) - 1)))
-            _STEAM_RL_STATE["streak"] = streak
-            _STEAM_RL_STATE["until"] = max(_STEAM_RL_STATE["until"], time.monotonic() + cooldown)
-            _LOG.warning("Steam search: HTTP 429, cooldown %.0fs (streak %d)", cooldown, int(streak))
-        elif status == 200:
-            _STEAM_RL_STATE["streak"] = 0.0
-
-
-def get_steam_search_status() -> dict:
-    """Current Steam search cooldown state for the UI: {limited: bool, retry_in_sec: int}."""
-    remaining = _steam_cooldown_remaining()
-    return {"limited": remaining > 0, "retry_in_sec": int(math.ceil(remaining))}
-
-
-def _fetch_batch_via_web_api(
-    candidates: list[tuple[str, Optional[str], Optional[str], str]],
-    api_key: str,
-    avatar_thumb: object,
-) -> Optional[list[dict]]:
-    steamids = [c[2] for c in candidates if c[2]]
-    if not steamids:
-        return None
-    ids_csv = ",".join(steamids)
-    sum_url = f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={api_key}&steamids={ids_csv}"
-    ban_url = f"https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key={api_key}&steamids={ids_csv}"
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        f_sum = pool.submit(_http_get, sum_url, 4.0)
-        f_ban = pool.submit(_http_get, ban_url, 4.0)
-        raw_sum = f_sum.result()
-        raw_ban = f_ban.result()
-
-    if not raw_sum:
-        return None
-    try:
-        players_json = json.loads(raw_sum.decode("utf-8", errors="replace")).get("response", {}).get("players", [])
-    except json.JSONDecodeError:
-        return None
-    if not players_json:
-        return None
-
-    bans_by_id: dict[str, dict] = {}
-    if raw_ban:
-        try:
-            for b in json.loads(raw_ban.decode("utf-8", errors="replace")).get("players", []):
-                if b.get("SteamId"):
-                    bans_by_id[b["SteamId"]] = b
-        except json.JSONDecodeError:
-            pass
-
-    by_id = {p.get("steamid"): p for p in players_json if p.get("steamid")}
-    now_ts = time.time()
-
-    def _build(cand):
-        profile_url, vanity, sid, found_name = cand
-        p = by_id.get(sid) if sid else None
-        if not p:
-            return None
-        b = bans_by_id.get(sid, {})
-        vis = p.get("communityvisibilitystate")
-        privacy = "public" if vis == 3 else "private"
-        pstate = p.get("personastate", 0)
-        gameid = str(p.get("gameid") or "")
-        in_cs2 = gameid == "730"
-        online_state = "in-game" if gameid else ("online" if pstate and pstate > 0 else "offline")
-        created = p.get("timecreated")
-        age_years = round((now_ts - float(created)) / (365.25 * 86400), 1) if created else None
-        av_url = p.get("avatarmedium") or p.get("avatar")
-        av_match = round(_avatar_similarity(avatar_thumb, av_url), 3) if avatar_thumb is not None else 0.0
-        vac = bool(b.get("VACBanned")) or (b.get("NumberOfGameBans", 0) > 0)
-        econ = b.get("EconomyBan")
-        return {
-            "profile_name": p.get("personaname") or found_name,
-            "steamid64": sid,
-            "vanity": vanity,
-            "profile_url": p.get("profileurl") or profile_url,
-            "avatar_url": av_url,
-            "avatar_match": av_match,
-            "privacy_state": privacy,
-            "online_state": online_state,
-            "in_cs2": in_cs2,
-            "vac_banned": vac,
-            "trade_ban": econ if econ and econ != "none" else None,
-            "is_limited": False,
-            "member_since": None,
-            "account_age_years": age_years,
-            "cs2_hours": None,
-            "lookup_source": "steam_web_api",
-        }
-
-    with ThreadPoolExecutor(max_workers=min(5, len(candidates))) as pool:
-        built = [r for r in pool.map(_build, candidates) if r is not None]
-    return built or None
-
-
-def _fetch_cs2_hours_web_api(steamid64: str, api_key: str) -> Optional[float]:
-    url = (
-        f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
-        f"?key={api_key}&steamid={steamid64}&include_played_free_games=1&appids_filter[0]=730"
-    )
-    raw = _http_get(url, timeout=3.5)
-    if not raw:
-        return None
-    try:
-        games = json.loads(raw.decode("utf-8", errors="replace")).get("response", {}).get("games", [])
-        for g in games:
-            if g.get("appid") == 730:
-                return round(float(g.get("playtime_forever", 0)) / 60.0, 1)
-    except (json.JSONDecodeError, ValueError, TypeError):
-        pass
-    return None
-
-
-def _prefer_unambiguous_name_match(enriched: list[dict], nick: str, log: list[str]) -> None:
-    """If no candidate's profile name equals the OCR nick, move the unique fuzzy
-    name match (nick_match) to the front. Otherwise keep the score order."""
-    if not enriched:
-        return
-    names = [d.get("profile_name") or "" for d in enriched]
-    if any(n.strip().lower() == nick.strip().lower() for n in names):
-        return
-    idx = best_match_index(nick, names)
-    if idx is None or idx == 0:
-        return
-    chosen = enriched.pop(idx)
-    enriched.insert(0, chosen)
-    log.append(f"Нечітке співпадіння імені: {names[idx]!r} обрано для OCR-ніка {nick!r}")
-
-
-def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Optional[dict], list[str], list[dict]]:
-    log: list[str] = [f"OCR нік: {nick!r}"]
-    variants = [nick]
-    for alt in (
-        nick.replace("1", "l").replace("0", "o"),
-        nick.replace("l", "1").replace("I", "1").replace("O", "0"),
-    ):
-        if alt not in variants:
-            variants.append(alt)
-
-    candidates = []
-    rate_limited = False
-    for q in variants:
-        status, found = _search_candidates(q)
-        if status == 429:
-            rate_limited = True
-            log.append(f"Пошук Steam '{q}': HTTP 429 — спрацював rate limit Steam (потрібен повторний аналіз)")
-            break  # no point trying alternative spellings while Steam is limiting us
-        elif status != 200:
-            log.append(f"Пошук Steam '{q}': помилка HTTP {status} (не вдалося звернутися до Steam)")
-        else:
-            log.append(f"Пошук Steam '{q}': знайдено {len(found)} кандидатів")
-        if found:
-            candidates = found
-            break
-    if not candidates:
-        if rate_limited:
-            log.append("Результат: кандидатів не отримано через rate limit Steam (HTTP 429)")
-        return ({"_rate_limited": True} if rate_limited else None), log, []
-
-    api_key = _get_steam_api_key()
-    enriched = None
-    if api_key:
-        enriched = _fetch_batch_via_web_api(candidates, api_key, avatar_thumb)
-        if enriched:
-            log.append(f"Steam Web API: пакетно перевірено {len(enriched)} кандидатів")
-
-    if not enriched:
-        def _fetch_one(cand):
-            profile_url, vanity, steamid64, found_name = cand
-            xml_bytes = _http_get(f"{profile_url}/?xml=1", timeout=3.5)
-            if xml_bytes:
-                parsed = _parse_steam_xml(xml_bytes, vanity=vanity, source="search+xml")
-                if parsed:
-                    if not parsed.get("profile_name") and found_name:
-                        parsed["profile_name"] = found_name
-                    parsed["avatar_match"] = round(_avatar_similarity(avatar_thumb, parsed.get("avatar_url")), 3)
-                    return parsed
-            return {
-                "profile_name": found_name or nick,
-                "steamid64": steamid64,
-                "vanity": vanity,
-                "profile_url": profile_url,
-                "avatar_url": None,
-                "avatar_match": 0.0,
-                "privacy_state": None,
-                "online_state": None,
-                "in_cs2": False,
-                "vac_banned": False,
-                "trade_ban": None,
-                "is_limited": False,
-                "member_since": None,
-                "account_age_years": None,
-                "cs2_hours": None,
-                "lookup_source": "search",
-            }
-
-        with ThreadPoolExecutor(max_workers=len(candidates)) as pool:
-            enriched = list(pool.map(_fetch_one, candidates))
-
-    for d in enriched:
-        d["match_score"] = round(_score_candidate(d, nick), 1)
-    enriched.sort(key=lambda d: d["match_score"], reverse=True)
-    _prefer_unambiguous_name_match(enriched, nick, log)
-
-    if api_key and enriched[0].get("steamid64") and enriched[0].get("cs2_hours") is None:
-        hrs = _fetch_cs2_hours_web_api(enriched[0]["steamid64"], api_key)
-        if hrs is not None:
-            enriched[0]["cs2_hours"] = hrs
-
-    for idx, d in enumerate(enriched, 1):
-        status = "In CS2" if d.get("in_cs2") else (d.get("online_state") or "?")
-        av = d.get("avatar_match") or 0.0
-        log.append(
-            f"  #{idx} {d.get('profile_name')!r} [{status}, av={av:.2f}, score={d['match_score']}]"
-        )
-
-    cand_summaries = [
-        {
-            "profile_name": d.get("profile_name"),
-            "profile_url": d.get("profile_url"),
-            "steamid64": d.get("steamid64"),
-            "avatar_url": d.get("avatar_url"),
-            "online_state": d.get("online_state"),
-            "in_cs2": bool(d.get("in_cs2")),
-            "avatar_match": d.get("avatar_match") or 0.0,
-            "cs2_hours": d.get("cs2_hours"),
-            "score": d["match_score"],
-        }
-        for d in enriched
-    ]
-    return enriched[0], log, cand_summaries
 
 
 def _cache_entry_current(data: dict) -> bool:
@@ -698,7 +275,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     search_log: list[str] = []
     candidates: list[dict] = []
     if clean_nick:
-        data, search_log, candidates = _search_steam_community(clean_nick, avatar_thumb=avatar_thumb)
+        data, search_log, candidates = steam_search._search_steam_community(clean_nick, avatar_thumb=avatar_thumb)
 
     if stale is not None and data is not None and data.get("_rate_limited"):
         _LOG.info("steam lookup %r: refresh rate limited, serving cached profile", clean_nick)
@@ -860,7 +437,7 @@ def _retry_rate_limited(
     for _ in range(STEAM_RETRY_ROUNDS):
         if not pending or budget <= 0:
             break
-        wait = min(max(_steam_cooldown_remaining(), 0.5), budget)
+        wait = min(max(steam_search._steam_cooldown_remaining(), 0.5), budget)
         time.sleep(wait)
         budget -= wait
         with ThreadPoolExecutor(max_workers=min(max_workers, len(pending))) as pool:
@@ -950,11 +527,11 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
         kind, ident = url_match.groups()
         xml_bytes = _http_get(f"https://steamcommunity.com/{kind}/{urllib.parse.quote(ident)}/?xml=1", timeout=4.0)
         if xml_bytes:
-            data = _parse_steam_xml(xml_bytes, vanity=ident if kind == "id" else None, source="manual_url")
+            data = steam_search._parse_steam_xml(xml_bytes, vanity=ident if kind == "id" else None, source="manual_url")
     elif re.fullmatch(r"7656119\d{10}", q):
         xml_bytes = _http_get(f"https://steamcommunity.com/profiles/{q}/?xml=1", timeout=4.0)
         if xml_bytes:
-            data = _parse_steam_xml(xml_bytes, vanity=None, source="manual_id64")
+            data = steam_search._parse_steam_xml(xml_bytes, vanity=None, source="manual_id64")
 
     if data is not None:
         steamid64 = data.get("steamid64")
