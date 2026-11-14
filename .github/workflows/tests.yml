@@ -18,6 +18,8 @@ jobs:
     name: unittest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Python 3.13 is non-blocking: rapidocr-onnxruntime has no 3.13 wheels, so its install fails.
+    continue-on-error: ${{ matrix.python-version == '3.13' }}
     strategy:
       fail-fast: false
       matrix:
