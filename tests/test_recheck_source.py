@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
 
 
@@ -48,12 +49,17 @@ def _make_scan(scan_id: str = "scan-1") -> dict:
     }
 
 
+def _store(path: Path, scans: list) -> ScanStore:
+    store = ScanStore(path)
+    store.scans[:] = scans
+    return store
+
+
 class RecheckSourceTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self._patches = [
-            mock.patch.object(server, "HISTORY_FILE", Path(self._tmp.name) / "history.json"),
-            mock.patch.object(server, "_SCANS", [_make_scan()]),
+            mock.patch.object(server, "STORE", _store(Path(self._tmp.name) / "history.json", [_make_scan()])),
             mock.patch.object(server, "_broadcast_event"),
         ]
         for p in self._patches:
@@ -66,7 +72,7 @@ class RecheckSourceTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def _player(self, nick: str) -> dict:
-        return next(p for p in server._SCANS[0]["players"] if p["nick"] == nick)
+        return next(p for p in server.STORE.scans[0]["players"] if p["nick"] == nick)
 
     def test_leetify_refresh_updates_only_leetify(self) -> None:
         status, body = server.recheck_source_for_player("scan-1", "alpha", "leetify")
@@ -126,7 +132,7 @@ class RecheckSourceTests(unittest.TestCase):
 
     def test_history_is_saved(self) -> None:
         server.recheck_source_for_player("scan-1", "alpha", "leetify")
-        saved = json.loads(server.HISTORY_FILE.read_text(encoding="utf-8"))
+        saved = json.loads(server.STORE.history_file.read_text(encoding="utf-8"))
         self.assertEqual(saved[0]["players"][0]["steam"]["leetify"], {"aim": 99})
 
 
@@ -147,8 +153,7 @@ class RecheckSourceHttpTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self._patches = [
-            mock.patch.object(server, "HISTORY_FILE", Path(self._tmp.name) / "history.json"),
-            mock.patch.object(server, "_SCANS", [_make_scan()]),
+            mock.patch.object(server, "STORE", _store(Path(self._tmp.name) / "history.json", [_make_scan()])),
             mock.patch.object(server, "_broadcast_event"),
             mock.patch.object(steam_lookup, "_fetch_leetify", return_value={"aim": 42}),
         ]

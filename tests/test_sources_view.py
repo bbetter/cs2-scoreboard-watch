@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import app.server as server  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 from sources import REGISTRY, DataSource, SourceRegistry, SourceResult  # noqa: E402
@@ -97,9 +98,9 @@ class LegacyAdapterTests(unittest.TestCase):
         }
         self.history.write_text(json.dumps([record]), encoding="utf-8")
         self.file_before = self.history.read_bytes()
+        self.store = ScanStore(self.history)
         patches = [
-            mock.patch.object(server, "HISTORY_FILE", self.history),
-            mock.patch.object(server, "_SCANS", []),
+            mock.patch.object(server, "STORE", self.store),
         ]
         for p in patches:
             p.start()
@@ -107,7 +108,7 @@ class LegacyAdapterTests(unittest.TestCase):
 
     def test_load_history_fills_sources_for_legacy_records(self):
         server._load_history()
-        steam = server._SCANS[0]["players"][0]["steam"]
+        steam = server.STORE.scans[0]["players"][0]["steam"]
         self.assertEqual({k: v["status"] for k, v in steam["sources"].items()},
                          {"leetify": "ok", "faceit": "ok", "cstracker": "blocked", "steam_stats": "ok"})
         self.assertEqual(steam["sources"]["leetify"]["data"], {"total_matches": 120, "aim": 77.0, "bans": []})
@@ -121,7 +122,7 @@ class LegacyAdapterTests(unittest.TestCase):
         record[0]["players"][0]["steam"]["sources"] = {"custom": {"status": "ok", "data": {}, "fetched_at": "x"}}
         self.history.write_text(json.dumps(record), encoding="utf-8")
         server._load_history()
-        self.assertEqual(list(server._SCANS[0]["players"][0]["steam"]["sources"]), ["custom"])
+        self.assertEqual(list(server.STORE.scans[0]["players"][0]["steam"]["sources"]), ["custom"])
 
 
 class RecheckRefreshTests(unittest.TestCase):
@@ -132,9 +133,10 @@ class RecheckRefreshTests(unittest.TestCase):
         steam["sources"] = REGISTRY.sources_view(steam)
         self.scan = {"id": "scan-1", "created_at": "2026-01-01T10:00:00", "image_name": "a.png",
                      "player_count": 1, "players": [{"nick": "legacy", "steam": steam}]}
+        self.store = ScanStore(Path(self._tmp.name) / "h.json")
+        self.store.scans[:] = [self.scan]
         patches = [
-            mock.patch.object(server, "HISTORY_FILE", Path(self._tmp.name) / "h.json"),
-            mock.patch.object(server, "_SCANS", [self.scan]),
+            mock.patch.object(server, "STORE", self.store),
             mock.patch.object(server, "_broadcast_event"),
         ]
         for p in patches:
