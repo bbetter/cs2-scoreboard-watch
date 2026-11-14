@@ -1,9 +1,9 @@
 ---
 id: T12
 title: Enrichment writes keep rows edited by the user during the run
-wave: 2
+wave: 6
 depends_on: [T11]
-review: lead
+review: none
 size: M
 golden: []
 files:
@@ -11,6 +11,7 @@ files:
   - app/server.py
   - tests/test_pipeline.py
   - tests/test_enrichment_merge.py
+  - docs/ARCHITECTURE.md
 ---
 
 # T12 — Enrichment не перетирає рядки, змінені користувачем під час прогону
@@ -85,6 +86,6 @@ files:
 
 ## Docs delta
 
-`ARCHITECTURE.md` → Data shapes / Player report: додати `edited_at` (float, ставлять маршрути recheck /
+Онови `docs/ARCHITECTURE.md` у цьому ж PR. Data shapes / Player report: додати `edited_at` (float, ставлять маршрути recheck /
 recheck-source / ai-analyze); Known limitations: прибрати «The final enrichment write can overwrite concurrent
 rechecks», додати компроміс про AI-стадію.

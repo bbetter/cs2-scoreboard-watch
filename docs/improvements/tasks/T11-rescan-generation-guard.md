@@ -1,15 +1,16 @@
 ---
 id: T11
 title: Rescan generation token so a stale enrichment cannot write into a new run
-wave: 2
-depends_on: [T10]
-review: lead
+wave: 6
+depends_on: [T25]
+review: none
 size: M
 golden: []
 files:
   - app/pipeline.py
   - tests/test_pipeline.py
   - tests/test_player_uid.py
+  - docs/ARCHITECTURE.md
 ---
 
 # T11 — Токен покоління rescan
@@ -79,5 +80,5 @@ Rescan зберігає `scan_id`, тому `player_uid` нового прого
 
 ## Docs delta
 
-`ARCHITECTURE.md` → Data shapes / Scan record: додати `run_id`; Known limitations: прибрати «Rescan can race with a
+Онови `docs/ARCHITECTURE.md` у цьому ж PR. Data shapes / Scan record: додати `run_id`; Known limitations: прибрати «Rescan can race with a
 stale enrichment».
