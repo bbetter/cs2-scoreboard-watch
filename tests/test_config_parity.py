@@ -18,7 +18,7 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import config_store  # noqa: E402
+import storage.config_store as config_store  # noqa: E402
 
 GOLDEN = ROOT / "tests" / "golden" / "config_golden.json"
 ENV_KEYS = ("STEAM_API_KEY", "FACEIT_API_KEY", "ANTHROPIC_API_KEY")

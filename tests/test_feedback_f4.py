@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload  # noqa: E402
+from storage.feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload  # noqa: E402
 
 
 class ValidationTests(unittest.TestCase):

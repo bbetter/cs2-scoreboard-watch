@@ -14,11 +14,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import steam_lookup  # noqa: E402
-from events import EventBus  # noqa: E402
-from pipeline import ScanPipeline  # noqa: E402
-from scoreboard_scan import Player  # noqa: E402
-from steam_lookup import SteamProfile  # noqa: E402
+import lookup.steam_lookup as steam_lookup  # noqa: E402
+from app.events import EventBus  # noqa: E402
+from app.pipeline import ScanPipeline  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
+from lookup.steam_lookup import SteamProfile  # noqa: E402
 
 
 class FakeRepo:

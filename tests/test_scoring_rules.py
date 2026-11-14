@@ -13,11 +13,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from scoreboard_scan import Player  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 from scoring import engine  # noqa: E402
 from scoring import thresholds as T  # noqa: E402
 from scoring.rules import RULES, Hit, ScoreContext, recent_aim_hits, smurf_flags, smurf_signal_hits  # noqa: E402
-from steam_lookup import SteamProfile  # noqa: E402
+from lookup.steam_lookup import SteamProfile  # noqa: E402
 from unittest import mock  # noqa: E402
 
 BASE_WEIGHTS = {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30}

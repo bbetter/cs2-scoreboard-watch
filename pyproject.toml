@@ -24,24 +24,5 @@ dependencies = [
 cs2watch = "cs2watch.__main__:main"
 
 [tool.setuptools]
-# Flat layout: the top-level modules stay where they are; packages are listed explicitly so that
-# tests/, web/, not-working-tricks/ and the runtime data files are not picked up as packages.
-py-modules = [
-    "ai_analyzer",
-    "atomic_io",
-    "config_fields",
-    "config_schema",
-    "config_store",
-    "console_parser",
-    "events",
-    "feedback_store",
-    "nick_match",
-    "pipeline",
-    "player_db",
-    "scoreboard_scan",
-    "server",
-    "steam_lookup",
-    "web_router",
-    "watch_cs2",
-]
-packages = ["cs2watch", "cs2platform", "sources", "scoring"]
+# Explicit package list so that tests/, web/, scripts/ and the runtime data/ dir are not picked up.
+packages = ["app", "cs2watch", "cs2platform", "lookup", "scoring", "sources", "storage", "vision"]

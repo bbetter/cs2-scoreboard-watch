@@ -1,4 +1,4 @@
-"""Golden tests that freeze the CURRENT deterministic scoring pipeline (steam_lookup.py).
+"""Golden tests that freeze the CURRENT deterministic scoring pipeline (lookup/steam_lookup.py).
 
 Purpose: later refactors (moving scoring into rules, a source registry) must not change
 any output. Every fixture is built from synthetic Player/SteamProfile objects or canned
@@ -26,9 +26,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import steam_lookup as sl  # noqa: E402
-from scoreboard_scan import Player  # noqa: E402
-from steam_lookup import SteamProfile, _build_player_report  # noqa: E402
+import lookup.steam_lookup as sl  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
+from lookup.steam_lookup import SteamProfile, _build_player_report  # noqa: E402
 
 GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "scoring_golden.json"
 PINNED_WEIGHTS = {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30}

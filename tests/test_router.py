@@ -18,9 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import server  # noqa: E402
-import web_router  # noqa: E402
-from web_router import JsonBodyError, Router, compile_pattern, read_json_body, resolve_static_file  # noqa: E402
+import app.server as server  # noqa: E402
+import app.web_router as web_router  # noqa: E402
+from app.web_router import JsonBodyError, Router, compile_pattern, read_json_body, resolve_static_file  # noqa: E402
 
 
 class FakeHandler:

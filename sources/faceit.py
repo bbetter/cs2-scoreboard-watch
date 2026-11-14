@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from config_fields import Secret
+from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 
 
@@ -22,12 +22,12 @@ class FaceitSource(LegacySlotSource):
     )
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
-        import steam_lookup
+        import lookup.steam_lookup as steam_lookup
 
         return steam_lookup._fetch_faceit_stats(steamid64)
 
     def is_enabled(self, ctx: SourceContext) -> bool:
-        import steam_lookup
+        import lookup.steam_lookup as steam_lookup
 
         return bool(steam_lookup._get_faceit_api_key())
 

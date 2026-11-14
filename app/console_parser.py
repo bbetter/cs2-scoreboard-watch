@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from config_store import load_config
-from nick_match import pick_best
+from storage.config_store import load_config
+from lookup.nick_match import pick_best
 
 DEFAULT_CONSOLE_LOG = Path(
     "/media/andrii/Entertainment/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log"

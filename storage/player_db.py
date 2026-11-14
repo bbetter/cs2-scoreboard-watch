@@ -14,8 +14,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-BASE_DIR = Path(__file__).resolve().parent
-DB_FILE = BASE_DIR / "players.db"
+from storage.paths import DATA_DIR
+
+DB_FILE = DATA_DIR / "players.db"
 
 STEAMID64_RE = re.compile(r"^\d{17}$")
 TAG_MAX_LEN = 64
@@ -169,7 +170,7 @@ _default_lock = threading.Lock()
 
 
 def get_db() -> PlayerDB:
-    """Process-wide PlayerDB on players.db in the project root (created on first use)."""
+    """Process-wide PlayerDB on data/players.db (created on first use)."""
     global _default_db
     with _default_lock:
         if _default_db is None:

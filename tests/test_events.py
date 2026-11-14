@@ -9,8 +9,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import events  # noqa: E402
-from events import WILDCARD, EventBus  # noqa: E402
+import app.events as events  # noqa: E402
+from app.events import WILDCARD, EventBus  # noqa: E402
 
 
 class SubscribePublishTests(unittest.TestCase):

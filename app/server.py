@@ -17,11 +17,11 @@ from pathlib import Path
 from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
-import player_db
-from ai_analyzer import analyze_players_with_ai
-from atomic_io import atomic_write_text
-from config_store import get_public_config, load_config, save_config
-from console_parser import (
+import storage.player_db as player_db
+from lookup.ai_analyzer import analyze_players_with_ai
+from storage.atomic_io import atomic_write_text
+from storage.config_store import get_public_config, load_config, save_config
+from app.console_parser import (
     correct_nick_from_console,
     find_cs2_game_dir,
     get_console_log_path,
@@ -31,14 +31,14 @@ from console_parser import (
 from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
 from cs2platform.focus import is_cs2_active as _is_cs2_active
 from cs2platform.notify import send_notification
-from events import EventBus
-from pipeline import ScanPipeline
-from web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
+from app.events import EventBus
+from app.pipeline import ScanPipeline
+from app.web_router import JsonBodyError, Router, read_json_body, resolve_static_file, static_content_type
 from sources import REGISTRY, SourceContext
-from config_schema import describe_schema
-from feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
-from scoreboard_scan import scan as scan_scoreboard
-from steam_lookup import (
+from storage.config_schema import describe_schema
+from storage.feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
+from vision.scoreboard_scan import scan as scan_scoreboard
+from lookup.steam_lookup import (
     _get_faceit_api_key,
     _get_steam_api_key,
     enrich_players,
@@ -48,9 +48,9 @@ from steam_lookup import (
     reset_steam_api_key_cache,
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-WEB_DIR = BASE_DIR / "web"
-HISTORY_FILE = BASE_DIR / "scans_history.json"
+from storage.paths import DATA_DIR, WEB_DIR
+
+HISTORY_FILE = DATA_DIR / "scans_history.json"
 
 _STATE_LOCK = threading.Lock()
 _SCANS: list[dict] = []

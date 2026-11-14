@@ -20,22 +20,24 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from atomic_io import atomic_write_text
-from nick_match import best_match_index
-from scoreboard_scan import Player
+from storage.atomic_io import atomic_write_text
+from lookup.nick_match import best_match_index
+from vision.scoreboard_scan import Player
 from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
 from sources import REGISTRY
-from config_store import DEFAULT_AI_WEIGHTS
+from storage.config_store import DEFAULT_AI_WEIGHTS
+from storage.paths import DATA_DIR, LOG_DIR, ROOT
 
 _LOG = logging.getLogger("pton")
 
 
 def _setup_pton_log() -> None:
-    """Append INFO+ records to pton.logs next to this file, once per process."""
+    """Append INFO+ records to data/logs/pton.logs, once per process."""
     if any(isinstance(h, logging.FileHandler) for h in _LOG.handlers):
         return
     try:
-        handler = logging.FileHandler(Path(__file__).resolve().parent / "pton.logs", encoding="utf-8")
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        handler = logging.FileHandler(LOG_DIR / "pton.logs", encoding="utf-8")
     except OSError:
         return
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
@@ -49,7 +51,7 @@ _setup_pton_log()
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 STEAMID64_BASE = 76561197960265728
 CACHE_TTL_SEC = 86400
-PROFILE_CACHE_FILE = Path(__file__).resolve().parent / "profile_cache.json"
+PROFILE_CACHE_FILE = DATA_DIR / "profile_cache.json"
 _CACHE_LOCK = threading.Lock()
 _PROFILE_CACHE: dict[str, tuple[float, dict]] = {}
 # Leetify data lives only in memory, keyed by SteamID64, for leetify_cache_ttl_sec (0 = not reused).
@@ -83,7 +85,7 @@ def _strip_leetify(data: dict) -> dict:
 
 def _leetify_cache_ttl_sec() -> int:
     try:
-        from config_store import load_config
+        from storage.config_store import load_config
 
         return max(0, int(load_config().get("leetify_cache_ttl_sec") or 0))
     except Exception:
@@ -162,7 +164,7 @@ def _get_faceit_api_key() -> Optional[str]:
     if _FACEIT_API_KEY_CACHE is not None:
         return _FACEIT_API_KEY_CACHE or None
     try:
-        from config_store import load_config
+        from storage.config_store import load_config
 
         cfg_key = str(load_config().get("faceit_api_key") or "").strip()
         if cfg_key:
@@ -172,7 +174,7 @@ def _get_faceit_api_key() -> Optional[str]:
         pass
     key = os.environ.get("FACEIT_API_KEY", "").strip()
     if not key:
-        env_path = Path(__file__).resolve().parent / ".env"
+        env_path = ROOT / ".env"
         if env_path.is_file():
             try:
                 txt = env_path.read_text(encoding="utf-8", errors="ignore")
@@ -190,7 +192,7 @@ def _get_steam_api_key() -> Optional[str]:
     if _STEAM_API_KEY_CACHE is not None:
         return _STEAM_API_KEY_CACHE or None
     try:
-        from config_store import load_config
+        from storage.config_store import load_config
 
         cfg_key = str(load_config().get("steam_api_key") or "").strip()
         if cfg_key:
@@ -200,7 +202,7 @@ def _get_steam_api_key() -> Optional[str]:
         pass
     key = os.environ.get("STEAM_API_KEY", "").strip()
     if not key:
-        for rc_path in (Path(__file__).resolve().parent / ".env", Path.home() / ".zshrc", Path.home() / ".bashrc"):
+        for rc_path in (ROOT / ".env", Path.home() / ".zshrc", Path.home() / ".bashrc"):
             if rc_path.is_file():
                 try:
                     txt = rc_path.read_text(encoding="utf-8", errors="ignore")
@@ -423,7 +425,7 @@ LEETIFY_TIMEOUT_SEC = 8.0
 
 def _leetify_api_key() -> str:
     try:
-        from config_store import load_config
+        from storage.config_store import load_config
 
         return str(load_config().get("leetify_api_key") or "").strip()
     except Exception:
@@ -1317,7 +1319,7 @@ def _risk_level(prob: float) -> str:
 def _load_base_weights() -> dict[str, float]:
     defaults = dict(DEFAULT_AI_WEIGHTS)  # single source of truth: config_store / config_schema
     try:
-        from config_store import load_config
+        from storage.config_store import load_config
 
         w = load_config().get("ai_weights")
         if isinstance(w, dict):

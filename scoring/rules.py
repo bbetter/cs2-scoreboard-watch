@@ -84,7 +84,7 @@ def _pick_recent_metric(
     lf: Optional[dict], cst_sections: dict, leetify_key: str, cst_key: Optional[str] = None
 ) -> tuple[Optional[float], str]:
     """Return (value, source) for one metric: Leetify first, cstracker as fallback (no double counting)."""
-    from steam_lookup import _num  # shared number rounding helper
+    from lookup.steam_lookup import _num  # shared number rounding helper
 
     if lf:
         raw = lf.get(leetify_key)

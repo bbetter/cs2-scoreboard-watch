@@ -18,11 +18,11 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import pipeline  # noqa: E402
-import server  # noqa: E402
-import steam_lookup  # noqa: E402
-from scoreboard_scan import Player  # noqa: E402
-from steam_lookup import PlayerReport, SteamProfile  # noqa: E402
+import app.pipeline as pipeline  # noqa: E402
+import app.server as server  # noqa: E402
+import lookup.steam_lookup as steam_lookup  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
+from lookup.steam_lookup import PlayerReport, SteamProfile  # noqa: E402
 
 SID0, SID1, SID2 = "76561198000000001", "76561198000000002", "76561198000000003"
 
@@ -262,7 +262,7 @@ class RaceExpectedFailureTests(_LiveServer):
 
     @unittest.expectedFailure
     def test_stale_enrichment_of_an_old_run_does_not_overwrite_a_rescan(self):
-        from events import EventBus
+        from app.events import EventBus
         from tests.test_pipeline import FakeEnrich, FakeRepo
 
         deferred = []

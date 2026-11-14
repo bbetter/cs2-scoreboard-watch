@@ -12,7 +12,7 @@ import urllib.request
 from datetime import datetime
 from typing import Any, Optional
 
-from config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
+from storage.config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
 from sources import REGISTRY
 
 ALLOWED_DECISIONS = ("LEGIT", "UNCERTAIN", "SMURF", "SUSPICIOUS", "BLATANT")

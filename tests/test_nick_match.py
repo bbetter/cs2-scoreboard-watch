@@ -4,7 +4,7 @@ import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from nick_match import best_match_index, normalize_nick, pick_best  # noqa: E402
+from lookup.nick_match import best_match_index, normalize_nick, pick_best  # noqa: E402
 
 
 class NormalizeTests(unittest.TestCase):

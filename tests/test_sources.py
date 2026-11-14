@@ -14,9 +14,9 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import ai_analyzer  # noqa: E402
-import feedback_store  # noqa: E402
-import steam_lookup  # noqa: E402
+import lookup.ai_analyzer as ai_analyzer  # noqa: E402
+import storage.feedback_store as feedback_store  # noqa: E402
+import lookup.steam_lookup as steam_lookup  # noqa: E402
 from sources import REGISTRY, DataSource, SourceContext, SourceRegistry, SourceResult  # noqa: E402
 from sources.cstracker import CsTrackerSource  # noqa: E402
 from sources.faceit import FaceitSource  # noqa: E402
@@ -319,14 +319,14 @@ class ConsumerRegistryTests(unittest.TestCase):
     """Behaviour of the registry-driven consumers that the golden files do not cover."""
 
     def test_recheck_invalid_source_message_is_unchanged(self):
-        import server
+        import app.server as server
 
         status, body = server.recheck_source_for_player("scan-x", "nick", "faceit")
         self.assertEqual(status, 400)
         self.assertEqual(body, {"error": "source має бути 'leetify' або 'cstracker'"})
 
     def test_recheck_non_string_source_is_400_not_crash(self):
-        import server
+        import app.server as server
 
         for bad in (["leetify"], {"a": 1}, 5, None, ""):
             with self.subTest(source=bad):
@@ -335,7 +335,7 @@ class ConsumerRegistryTests(unittest.TestCase):
                 self.assertIn("source має бути", body["error"])
 
     def test_choices_text_two_and_many(self):
-        import server
+        import app.server as server
 
         self.assertEqual(server._source_choices_text(["leetify", "cstracker"]), "'leetify' або 'cstracker'")
         self.assertEqual(server._source_choices_text(["a", "b", "c"]), "'a', 'b' або 'c'")

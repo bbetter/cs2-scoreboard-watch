@@ -1,4 +1,3 @@
-#!/home/andrii/fun/.venv/bin/python
 """Auto-watch CS2 TAB presses: wait 1s, screenshot, OCR, Steam lookup, and update Web UI."""
 
 from __future__ import annotations
@@ -12,8 +11,8 @@ import subprocess
 import sys
 from http.server import ThreadingHTTPServer
 
-from config_store import load_config
-from server import CsWatchHandler, _load_history, configure_tab_watcher, init, schedule_tab_scan
+from storage.config_store import load_config
+from app.server import CsWatchHandler, _load_history, configure_tab_watcher, init, schedule_tab_scan
 
 
 def is_hyprland() -> bool:

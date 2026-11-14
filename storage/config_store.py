@@ -8,16 +8,17 @@ import threading
 from pathlib import Path
 from typing import Any, Optional
 
-import config_schema as _schema
-from config_schema import (  # noqa: F401  (re-exported: other modules import these names from config_store)
+import storage.config_schema as _schema
+from storage.config_schema import (  # noqa: F401  (re-exported: other modules import these names from config_store)
     ALLOWED_AI_PROVIDERS,
     ALLOWED_SCREENSHOT_TOOLS,
     DEFAULT_AI_PROMPT,
     DEFAULT_AI_WEIGHTS,
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-CONFIG_FILE = BASE_DIR / "config.json"
+from storage.paths import DATA_DIR
+
+CONFIG_FILE = DATA_DIR / "config.json"
 
 DEFAULT_CONFIG: dict[str, Any] = _schema.default_config()
 

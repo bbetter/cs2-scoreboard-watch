@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from typing import Any, Mapping, Optional
 
-from config_fields import Field, Secret, describe
+from storage.config_fields import Field, Secret, describe
 from sources import REGISTRY
 
 DEFAULT_AI_PROMPT = (

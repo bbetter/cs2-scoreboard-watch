@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import ai_analyzer  # noqa: E402
+import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 from parity_cases import GOLDEN_DIR, cases, jsonable  # noqa: E402
 
 import json  # noqa: E402

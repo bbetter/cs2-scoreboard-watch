@@ -198,11 +198,11 @@ class ImportHygieneTests(unittest.TestCase):
             "        raise AssertionError('screenshots dir created at import')\n"
             "    return orig(self, *a, **k)\n"
             "pathlib.Path.mkdir = guard\n"
-            "import config_store\n"
+            "import storage.config_store as config_store\n"
             "def boom(*a, **k):\n"
             "    raise AssertionError('config read at import')\n"
             "config_store.load_config = boom\n"
-            "import server\n"
+            "import app.server as server\n"
             "print('IMPORT_OK')\n"
         ) % str(ROOT)
         res = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120)
@@ -210,7 +210,7 @@ class ImportHygieneTests(unittest.TestCase):
         self.assertIn("IMPORT_OK", res.stdout)
 
     def test_init_applies_runtime_config_to_server_globals(self):
-        import server
+        import app.server as server
 
         cfg = {"tab_delay_sec": 1.5, "tab_cooldown_sec": 9.0, "cs2_only": False, "notify_enabled": False}
         with mock.patch.object(server, "load_config", return_value=cfg), \
@@ -225,7 +225,7 @@ class ImportHygieneTests(unittest.TestCase):
             self.assertFalse(server._NOTIFY_ENABLED)
 
     def test_server_notify_wrapper_respects_enabled_flag(self):
-        import server
+        import app.server as server
 
         with mock.patch.object(server, "_NOTIFY_ENABLED", False), \
                 mock.patch.object(server, "send_notification") as send:

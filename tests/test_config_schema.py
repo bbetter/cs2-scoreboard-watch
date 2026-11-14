@@ -16,10 +16,10 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import config_schema  # noqa: E402
-import config_store  # noqa: E402
-import server  # noqa: E402
-from config_fields import Secret  # noqa: E402
+import storage.config_schema as config_schema  # noqa: E402
+import storage.config_store as config_store  # noqa: E402
+import app.server as server  # noqa: E402
+from storage.config_fields import Secret  # noqa: E402
 from sources import DataSource, SourceRegistry, SourceResult  # noqa: E402
 
 FAKE_KEY = "sk-TESTKEY-SCHEMAPROBE-1234"
