@@ -237,6 +237,11 @@ function renderScan(scan) {
       if (steam.privacy_state && steam.privacy_state !== "public") {
         tags.push(`<span class="tag tag-private">${escapeHtml(steam.privacy_state)}</span>`);
       }
+      const extra = steam.extra_stats || {};
+      const ct = extra.cstracker || {};
+      if (ct.vaclive > 0) tags.push(`<span class="tag tag-vac">VACLive ${ct.vaclive}</span>`);
+      if (ct.trust != null) tags.push(`<span class="tag tag-meta">Trust ${Math.round(ct.trust)}%</span>`);
+      if (extra.has_veteran_coin) tags.push('<span class="tag tag-meta">Veteran</span>');
 
       const lf = steam.leetify;
       let leetifyLine = "";
@@ -384,6 +389,22 @@ function renderPlayerDetailsRow(p) {
         <div class="detail-kv"><span>Steam CS2 Kills / Матчі</span><strong>${cs2.total_kills != null ? cs2.total_kills : "—"} / ${cs2.total_matches_played != null ? cs2.total_matches_played : "—"}</strong></div>`
       : "";
 
+  const extra = steam.extra_stats || {};
+  const ct = extra.cstracker || {};
+  const sg = extra.scope_gg || {};
+
+  const extraStatsHtml = [
+    ct.trust != null || ct.hltv != null || ct.vaclive != null
+      ? `<div class="detail-kv"><span>CSTracker Trust / HLTV / VACLive</span><strong>${ct.trust != null ? `${Number(ct.trust).toFixed(0)}%` : "—"} / ${ct.hltv != null ? Number(ct.hltv).toFixed(2) : "—"} / ${ct.vaclive ?? "—"}</strong></div>`
+      : "",
+    sg.hltv_2_1 != null || sg.adr != null || sg.role
+      ? `<div class="detail-kv"><span>Scope.gg (${escapeHtml(sg.role || "—")}) HLTV / ADR</span><strong>${sg.hltv_2_1 != null ? Number(sg.hltv_2_1).toFixed(2) : "—"} / ${sg.adr != null ? Number(sg.adr).toFixed(1) : "—"}</strong></div>`
+      : "",
+    extra.medals_count != null || extra.xp_level != null
+      ? `<div class="detail-kv"><span>Медалі / XP Lvl</span><strong>${extra.medals_count ?? "—"} ${extra.has_veteran_coin ? "(Veteran)" : ""} / ${extra.xp_level ?? "—"}</strong></div>`
+      : "",
+  ].join("");
+
   const aiProbsNote =
     ai && (ai.cheat_probability != null || ai.smurf_probability != null)
       ? `<div class="ai-meta-note">Чітер: ${escapeHtml(ai.cheat_probability ?? "—")}% · Смурф: ${escapeHtml(ai.smurf_probability ?? "—")}%</div>`
@@ -439,9 +460,10 @@ function renderPlayerDetailsRow(p) {
                 <div class="detail-kv"><span>VAC / Game бани</span><strong>${steam.number_of_vac_bans || 0} VAC / ${steam.game_bans || 0} Game</strong></div>
                 <div class="detail-kv"><span>Leetify Aim / RT</span><strong>${lf.aim != null ? Number(lf.aim).toFixed(1) : "—"} / ${lf.reaction_time_ms != null ? `${lf.reaction_time_ms}ms` : "—"}</strong></div>
                 <div class="detail-kv"><span>Leetify Winrate</span><strong>${lf.winrate != null ? `${(lf.winrate <= 1 ? lf.winrate * 100 : lf.winrate).toFixed(0)}%` : "—"}</strong></div>
-                <div class="detail-kv"><span>Premier / Faceit</span><strong>${lf.premier_rank || "—"} / ${lf.faceit_level ? `Lvl ${lf.faceit_level}` : "—"}</strong></div>
+                <div class="detail-kv"><span>Premier / Faceit</span><strong>${lf.premier ?? lf.premier_rank ?? "—"} / ${(lf.faceit ?? lf.faceit_level) ? `Lvl ${lf.faceit ?? lf.faceit_level}` : "—"}</strong></div>
                 ${faceitStatsHtml}
                 ${cs2StatsHtml}
+                ${extraStatsHtml}
               </div>
               ${allReasons ? `<ul class="detail-reasons">${allReasons}</ul>` : ""}
             </div>
