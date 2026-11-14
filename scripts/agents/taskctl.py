@@ -47,6 +47,9 @@ REQUIRED_KEYS = ["id", "title", "wave", "depends_on", "review", "size", "golden"
 APPROVAL_PHRASE = "AUTO_MERGE - approved by"
 FORBIDDEN_PATHS = ["data/*", ".env", ".env.*"]
 PR_BODY_SECTIONS = ["## Summary", "## Verification", "## Docs delta"]
+# Checks that are non-blocking on main (continue-on-error in .github/workflows/tests.yml, PR #30).
+# A failed run of these does not fail the CI-green gate. Pending runs still block.
+NON_BLOCKING_CHECKS = {"unittest (Python 3.13)"}
 
 
 def _main_checkout() -> Path:
@@ -654,6 +657,14 @@ def _run_tests_at(ref: str) -> tuple[int, int, str]:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _failed_checks(rollup: list[dict]) -> list[str]:
+    """Completed checks with a failing conclusion, excluding NON_BLOCKING_CHECKS."""
+    return [c.get("name") for c in rollup
+            if (c.get("conclusion") or "").upper() not in ("SUCCESS", "SKIPPED", "NEUTRAL", "")
+            and (c.get("status") or "COMPLETED") == "COMPLETED"
+            and c.get("name") not in NON_BLOCKING_CHECKS]
+
+
 def cmd_check_pr(args) -> int:
     tasks = load_tasks()
     t = tasks.get(args.task)
@@ -693,9 +704,7 @@ def cmd_check_pr(args) -> int:
 
     rollup = pr.get("statusCheckRollup") or []
     pending = [c.get("name") for c in rollup if (c.get("status") or "COMPLETED") != "COMPLETED"]
-    failed = [c.get("name") for c in rollup
-              if (c.get("conclusion") or "").upper() not in ("SUCCESS", "SKIPPED", "NEUTRAL", "")
-              and (c.get("status") or "COMPLETED") == "COMPLETED"]
+    failed = _failed_checks(rollup)
     has_unit = any((c.get("name") or "").startswith("unittest") for c in rollup)
     check(bool(rollup) and has_unit and not pending and not failed, "CI green",
           f"CI not green: pending={pending} failed={failed} unittest-present={has_unit}")
