@@ -1,5 +1,7 @@
 # CS2 Scoreboard Watch
 
+[![Tests](https://github.com/bbetter/cs2-scoreboard-watch/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/bbetter/cs2-scoreboard-watch/actions/workflows/tests.yml?query=branch%3Amain)
+
 Утиліта для автоматичного аналізу таблиці рахунку (`TAB`) у **Counter-Strike 2** (Linux Wayland/Hyprland, Windows та macOS) із розпізнаванням гравців через OCR, пошуком реальних профілів у Steam та Leetify, оцінкою ризику і окремим веб-інтерфейсом.
 
 ## Що вміє проект
