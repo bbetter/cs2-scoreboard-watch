@@ -666,7 +666,14 @@ def _fetch_cstracker(steamid64: str) -> dict:
 
 
 def _cstracker_extra(steamid64: Optional[str]) -> dict:
-    return {"cstracker": _fetch_cstracker(steamid64)} if steamid64 else {}
+    """extra_stats for a fresh profile: cstracker data plus a marker that CS2 stats were requested.
+
+    A public profile can still hide game stats, leaving cs2_stats empty for good; the marker
+    stops _cache_entry_current from treating such entries as stale on every lookup.
+    """
+    if not steamid64:
+        return {}
+    return {"cstracker": _fetch_cstracker(steamid64), "_cs2_checked": bool(_get_steam_api_key())}
 
 
 def _safe_float(val: object) -> Optional[float]:
@@ -1158,8 +1165,13 @@ def _cache_entry_current(data: dict) -> bool:
     An entry with a SteamID64 but no Leetify block was cached while Leetify had no
     profile (or before the key was in use). Refetching is cheap, so do it.
     """
-    if data.get("steamid64") and not data.get("cs2_stats") and _get_steam_api_key():
-        return False  # Steam CS2 stats were not fetched while no key was configured
+    if (
+        data.get("steamid64")
+        and not data.get("cs2_stats")
+        and _get_steam_api_key()
+        and not (data.get("extra_stats") or {}).get("_cs2_checked")
+    ):
+        return False  # Steam CS2 stats were never requested (cached before a key was configured)
     ct = (data.get("extra_stats") or {}).get("cstracker")
     if data.get("steamid64") and (not isinstance(ct, dict) or ct.get("status") == "error"):
         return False  # cstracker data missing or failed; 'blocked'/'not_found' stay cached
