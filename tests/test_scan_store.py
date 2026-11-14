@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -89,6 +90,66 @@ class ScanStoreTests(unittest.TestCase):
         self.assertEqual(store.max_history, 100)
         self.assertEqual(store.history_file, self.path)
         self.assertTrue(hasattr(store.lock, "acquire") and hasattr(store.lock, "release"))
+
+
+class PersistenceErrorTests(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name)
+        self.path = self.dir / "scans_history.json"
+
+    def test_corrupt_json_is_logged_and_moved_aside(self) -> None:
+        self.path.write_text("{broken", encoding="utf-8")
+        store = ScanStore(self.path)
+        with self.assertLogs("cs2watch.scan_store", level="WARNING") as cm:
+            store.load()
+        self.assertEqual(store.scans, [])
+        self.assertFalse(self.path.exists())
+        corrupt = self.dir / "scans_history.json.corrupt"
+        self.assertEqual(corrupt.read_text(encoding="utf-8"), "{broken")
+        self.assertIn("moved to", cm.output[0])
+
+    def test_second_corrupt_file_gets_a_timestamped_name(self) -> None:
+        (self.dir / "scans_history.json.corrupt").write_text("first", encoding="utf-8")
+        self.path.write_text("{second", encoding="utf-8")
+        store = ScanStore(self.path)
+        with self.assertLogs("cs2watch.scan_store", level="WARNING"):
+            store.load()
+        self.assertEqual((self.dir / "scans_history.json.corrupt").read_text(encoding="utf-8"), "first")
+        stamped = list(self.dir.glob("scans_history.json.corrupt.*"))
+        self.assertEqual(len(stamped), 1)
+        self.assertEqual(stamped[0].read_text(encoding="utf-8"), "{second")
+        self.assertFalse(self.path.exists())
+
+    def test_non_list_json_is_treated_as_corrupt(self) -> None:
+        self.path.write_text(json.dumps({"not": "a list"}), encoding="utf-8")
+        store = ScanStore(self.path)
+        with self.assertLogs("cs2watch.scan_store", level="WARNING"):
+            store.load()
+        self.assertEqual(store.scans, [])
+        self.assertTrue((self.dir / "scans_history.json.corrupt").exists())
+        self.assertFalse(self.path.exists())
+
+    def test_failed_move_aside_is_logged_and_file_is_kept(self) -> None:
+        self.path.write_text("{broken", encoding="utf-8")
+        store = ScanStore(self.path)
+        with mock.patch("app.scan_store.os.replace", side_effect=OSError("read-only fs")), \
+                self.assertLogs("cs2watch.scan_store", level="ERROR") as cm:
+            store.load()
+        self.assertIn("could not be moved aside", cm.output[0])
+        self.assertTrue(self.path.exists())
+        self.assertEqual(store.scans, [])
+
+    def test_save_failure_is_logged_and_does_not_raise(self) -> None:
+        store = ScanStore(self.path)
+        store.scans[:] = [_scan("a")]
+        with mock.patch("app.scan_store.atomic_write_text", side_effect=OSError("disk full")), \
+                self.assertLogs("cs2watch.scan_store", level="ERROR") as cm:
+            store.save_locked()  # must not raise
+        self.assertEqual(store.scans, [_scan("a")])  # in-memory state unchanged
+        exc = cm.records[0].exc_info[1]
+        self.assertIn("disk full", str(exc))
 
 
 if __name__ == "__main__":
