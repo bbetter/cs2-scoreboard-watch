@@ -26,10 +26,11 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `app/server.py` | HTTP server: router table, route functions, scan history state, SSE, wiring of the pipeline |
+| `app/server.py` | HTTP server: router table, route functions, the scan store `STORE`, SSE, wiring of the pipeline |
 | `app/watch_cs2.py` | Entry point for the TAB watcher: registers the Hyprland bind or a pynput listener, then serves `app.server.CsWatchHandler` |
 | `app/web_router.py` | Stdlib router (`Router.route` / `fallback`), JSON body helper, static-file resolution |
 | `app/pipeline.py` | `ScanPipeline`: scan / rescan / enrichment flow, the only code that writes scan records |
+| `app/scan_store.py` | `ScanStore`: scan list (newest first), its lock and the history file `data/scans_history.json`. An unreadable file is moved to `.corrupt` and logged |
 | `app/events.py` | `EventBus`: in-process topics (`scan.created`, `scan.updated`, `player.enriched`, `scan.finished`) |
 | `app/console_parser.py` | Reads CS2 `console.log` for match id, map, and exact nicknames |
 
@@ -44,6 +45,8 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `storage/atomic_io.py` | `atomic_write_text`: temp file + `os.replace` for all JSON state writes |
 | `storage/player_db.py` | SQLite player history (`data/players.db`, tables `players` and `sightings`) |
 | `storage/feedback_store.py` | Labelled feedback records (`data/feedback.json`) and their feature block |
+| `storage/profile_cache.py` | `ProfileCache`: Steam profile cache (`data/profile_cache.json`), read on first use, not at import |
+| `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then `.env` and shell rc files. `lookup/steam_lookup.py` re-exports it |
 
 ### `vision/` (OCR)
 
@@ -55,9 +58,11 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `lookup/steam_lookup.py` | Steam profile lookup, source fetchers (`_fetch_leetify`, `_fetch_faceit_stats`, `_fetch_cstracker`, `_fetch_steam_cs2_stats`), profile cache (`data/profile_cache.json`), `PlayerReport` |
+| `lookup/steam_lookup.py` | Orchestration: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call. Fetchers are in `sources/*`, search in `lookup/steam_search.py` |
+| `lookup/steam_search.py` | Steam Community search, 429 cooldown and rate limit, XML profile parsing, candidate scoring, Web API batch. Does not import `steam_lookup` |
+| `lookup/http_client.py` | Plain HTTP helpers: `http_get`, `http_get_status`, `USER_AGENT` (standard library only) |
 | `lookup/nick_match.py` | Fuzzy nickname matching for OCR output |
-| `lookup/ai_analyzer.py` | Optional AI stage (Claude CLI or Anthropic API) and the compact payload sent to it |
+| `lookup/ai_analyzer.py` | Optional AI stage (Claude CLI or Anthropic API) and the compact payload sent to it. Model aliases are in `ANTHROPIC_MODEL_ALIASES` (`resolve_anthropic_model`) |
 
 ### `cs2platform/` (OS integration)
 
@@ -73,11 +78,13 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 |---|---|
 | `base.py` | Contract: `DataSource`, `LegacySlotSource`, `SourceResult`, `SourceContext`, `SourceRegistry` |
 | `registry.py` | `REGISTRY`: the built-in sources, one `register(...)` line each |
-| `leetify.py` | Leetify (recheckable; declares `leetify_api_key`) |
-| `faceit.py` | FACEIT (declares `faceit_api_key`) |
-| `cstracker.py` | CSTracker.gg (recheckable; status may be `blocked`) |
-| `steam_stats.py` | Steam CS2 lifetime stats (declares `steam_api_key`) |
-| `_util.py` | Number rounding shared by the source features |
+| `leetify.py` | Leetify (recheckable; declares `leetify_api_key`); fetcher `fetch_leetify` |
+| `faceit.py` | FACEIT (declares `faceit_api_key`); fetcher `fetch_faceit_stats` |
+| `cstracker.py` | CSTracker.gg (recheckable; status may be `blocked`); fetcher `fetch_cstracker` |
+| `steam_stats.py` | Steam CS2 lifetime stats (declares `steam_api_key`); fetcher `fetch_steam_cs2_stats` |
+| `_util.py` | Numeric helpers shared by the source features (`num_or_none`, `_safe_float`, `_safe_int`) |
+
+Each source module holds its own fetcher and does not import `lookup.steam_lookup`.
 
 ### `scoring/` (risk rules)
 
@@ -97,12 +104,12 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Path | Role |
 |---|---|
-| `web/` | Static frontend (`index.html`, `app.js`, `styles.css`, `table-view.js`). Served from the repo root |
+| `web/` | Static frontend: `index.html`, `styles.css` and the scripts `app.js`, `api.js`, `state.js`, `sources.js`, `scan-table.js`, `player-details.js`, `lobby.js`, `settings.js`, `attention.js`, `table-view.js`, `util.js`. Served from the repo root |
 | `data/` | Runtime state, gitignored: `config.json`, `players.db`, `profile_cache.json`, `scans_history.json`, `feedback.json`, `screenshots/`, `logs/` |
 | `scripts/cs_scan.sh` | Starts `app.server` if needed, takes a screenshot, posts it to `/api/scan` |
 | `tests/` | `unittest` suite and golden files (see "Testing") |
 | `docs/` | This document |
-| `.env` | Optional secrets (API keys), read by `lookup/steam_lookup.py`; kept at the root and gitignored |
+| `.env` | Optional secrets (API keys), read by `storage/api_keys.py`; kept at the root and gitignored |
 
 ## Request flow
 
@@ -111,6 +118,7 @@ browser / scripts/cs_scan.sh
    │  HTTP
    ▼
 app.server.CsWatchHandler.do_GET / do_POST
+   │  CsWatchHandler._guard → app.web_router.check_request (403 / 415, see "Security model")
    │  urlparse(path).path
    ▼
 app.web_router.Router.dispatch(handler, method, path)
@@ -119,23 +127,23 @@ app.web_router.Router.dispatch(handler, method, path)
    │  nothing                  ──►  send_error(404)
    ▼
 route function
-   ├─ reads JSON with app.web_router.read_json_body, checks state under app.server._STATE_LOCK
+   ├─ reads JSON with app.web_router.read_json_body, checks state under app.server.STORE.lock
    ├─ scan work ──► app.pipeline.ScanPipeline
    │                 ├─ OCR (scoreboard_scan + console_parser)  ──► Player rows, player_uid assigned
    │                 ├─ lookup.steam_lookup.enrich_players (background thread unless spawn is synchronous)
-   │                 │     └─ per player: lookup.steam_lookup.lookup_steam_profile → sources (REGISTRY) → scoring.engine
+   │                 │     └─ per player: lookup.steam_lookup.lookup_steam_profile → lookup.steam_search → sources (REGISTRY) → scoring.engine
    │                 ├─ lookup.ai_analyzer.analyze_players_with_ai  (only when ai_enabled)
    │                 └─ EventBus.publish(topic, payload)
    │                       ├─ app.server._sink_player_db   (scan.finished)  → player_db
    │                       └─ app.server._sink_sse         (all topics)     → subscribers of /api/events
-   └─ storage: app.server._save_history_locked → data/scans_history.json (atomic_io)
+   └─ storage: app.server.STORE (ScanStore.save_locked) → data/scans_history.json (atomic_io)
 ```
 
 SSE: `GET /api/events` keeps one connection open. The `_SUBSCRIBERS` queues receive pre-formatted messages from
 `app.server._broadcast_event`. Topics map to SSE event names: `scan.created`, `scan.updated`, `scan.finished` → `scan`;
-`player.enriched` → `scan_update`.
+`player.enriched` → `scan_update`. The subscriber list is guarded by `app.server._SUBSCRIBERS_LOCK`, separate from the scan lock.
 
-Routes (from `app.server.router.routes()`; `tests/test_router.py` freezes this list):
+Routes (from `app.server.router.routes()`; `tests/test_router.py::RouteTableTests.EXPECTED` freezes this list):
 
 | Method | Path | Route function |
 |---|---|---|
@@ -144,13 +152,13 @@ Routes (from `app.server.router.routes()`; `tests/test_router.py` freezes this l
 | GET | `/api/config` | `_get_config` |
 | GET | `/api/config/schema` | `_get_config_schema` |
 | GET | `/api/matches` | `_get_matches` |
-| GET | `/api/scan/{scan_id}` | `_get_scan` |
-| GET | `/api/players/{steamid}` | `_get_player` |
-| GET | `/screenshots/{name}` | `_get_screenshot` |
+| GET | `/api/scan/{scan_id:path}` | `_get_scan` |
+| GET | `/api/players/{steamid:path}` | `_get_player` |
+| GET | `/screenshots/{name:path}` | `_get_screenshot` |
 | GET | `/api/events` | `_get_events` (SSE) |
 | GET | anything else | `_get_static` (fallback) |
 | POST | `/api/tab-pressed`, `/api/scan`, `/api/rescan`, `/api/setup-cs2`, `/api/recheck`, `/api/feedback`, `/api/recheck-source`, `/api/ai-analyze`, `/api/config`, `/api/upload` | `_post_*` |
-| POST | `/api/players/{steamid}` | `_post_player` |
+| POST | `/api/players/{steamid:path}` | `_post_player` |
 
 `POST /api/recheck`, `/api/recheck-source`, `/api/feedback` and `/api/ai-analyze` accept `player_uid` (preferred,
 stable) or `nick` (first match, legacy). `/api/feedback` still requires `nick`; see Known limitations.
@@ -162,11 +170,11 @@ stable) or `nick` (first match, legacy). `/api/feedback` still requires `nick`; 
 ```
 id, created_at, date, match_id, map_name, image_name, image_url,
 duration_ms, player_count, players: [PlayerReport dict, ...],
-ai_error, scan_status: "loading_steam" | "loading_ai" | "done",
+ai_error, enrich_error (`null` or `"<ExceptionType>: <message>"`), scan_status: "loading_steam" | "loading_ai" | "done",
 progress: {done, total}
 ```
 
-Newest first, at most `app.server._MAX_HISTORY` (100) records. Written only through `app.server._save_history_locked`.
+Newest first, at most `app.server._MAX_HISTORY` (100) records. Written only through `ScanStore.save_locked` (`app.server.STORE`).
 
 ### Player report (an element of `players`)
 
@@ -200,8 +208,8 @@ A source with no legacy slot stores its raw data in `steam.sources[<id>].data` (
 ### Config (`data/config.json`, `GET /api/config`)
 
 Keys and order come from `storage.config_schema.ORDER`. Secrets (`steam_api_key`, `faceit_api_key`,
-`anthropic_api_key`) are replaced in the API response by `has_*`, `*_source` (`config` / `env` / `none`) and
-`*_masked`. `leetify_api_key` is the exception: it is returned in `config` as stored (see Known limitations).
+`anthropic_api_key`, `leetify_api_key`) are replaced in the API response by `has_*` and `*_masked`; keys with an
+environment variable also get `*_source` (`config` / `env` / `none`).
 `GET /api/config/schema` returns the descriptors (names, types, limits, defaults, env var names), never values.
 
 ## Recipes
@@ -214,6 +222,9 @@ Keys and order come from `storage.config_schema.ORDER`. Secrets (`steam_api_key`
    from storage.config_fields import Secret
    from sources.base import DataSource, SourceContext, SourceResult
 
+   def fetch_example(steamid64):
+       ...   # HTTP through lookup.http_client; do not import lookup.steam_lookup here
+
    class ExampleSource(DataSource):
        id = "example"                 # key in steam["sources"] and in coverage
        label = "Example"
@@ -225,11 +236,10 @@ Keys and order come from `storage.config_schema.ORDER`. Secrets (`steam_api_key`
        )
 
        def fetch_raw(self, steamid64, ctx):
-           from lookup import steam_lookup        # late import, as in sources/leetify.py
-           return steam_lookup._fetch_example(steamid64)   # write this fetcher in lookup/steam_lookup.py
+           return fetch_example(steamid64)        # the fetcher lives in this module
 
        def is_enabled(self, ctx):
-           return bool(ctx.steam_api_key)  # or read the key the same way steam_lookup does
+           return bool(ctx.steam_api_key)  # or read the key via storage.api_keys, as sources/faceit.py does
 
        def normalize(self, raw):
            return SourceResult("ok" if raw else "not_found", raw if isinstance(raw, dict) else {})
@@ -248,7 +258,7 @@ What updates automatically: `coverage`, `steam.sources`, `POST /api/recheck-sour
 `GET /api/config/schema` and the config key list.
 What does **not** update automatically: the AI payload (`lookup.ai_analyzer._compact_player_for_ai` names Leetify and
 FACEIT explicitly), feedback features (`storage.feedback_store.build_feedback_entry`), scoring rules, and the frontend
-(`web/app.js` hard-codes source names). Each of those needs an explicit edit.
+(`web/*.js` hard-codes source names, e.g. in `scan-table.js` and `player-details.js`). Each of those needs an explicit edit.
 
 ### (b) Add a scoring rule
 
@@ -298,7 +308,8 @@ Notifier (`cs2platform/notify.py`): add a platform branch in `build_notification
    `Field("example_limit", "int", 5, label="Example limit", group="scan", min=1, max=50)`.
    Types: `float`, `int`, `bool`, `text`, `enum` (with `choices`), `str`, `weights`.
 2. Add `"example_limit"` to `ORDER` in the position it should appear in the API and in `data/config.json`.
-3. Read it with `storage.config_store.load_config().get("example_limit")` where it is used.
+3. Read it with `storage.config_store.load_config().get("example_limit")` where it is used. A non-numeric or
+   non-finite value (`inf`, `nan`) for a `float` or `int` field falls back to the field default (`_normalize_field`).
 4. Regenerate `tests/golden/config_golden.json` if the change is intentional (see Testing).
 
 ### (e) Add an HTTP route
@@ -323,6 +334,10 @@ Run the whole suite from the repository root:
 .venv/bin/python -m unittest discover -s tests
 ```
 
+Lint: `.venv/bin/ruff check .` (rules `F` and `E9`, configured in `pyproject.toml`). Development dependencies, including ruff,
+are in `requirements-dev.txt`. CI (`.github/workflows/tests.yml`) runs the lint and the suite on Python 3.11 and 3.12
+(required) and on 3.13 (non-blocking: `rapidocr-onnxruntime` has no 3.13 wheels, so its install fails there).
+
 Golden files (regenerate only for an intentional change, and review the diff):
 
 | File | Freezes | Test | Regenerate |
@@ -336,12 +351,34 @@ Shared player cases are in `tests/parity_cases.py`. All fixtures use fake keys (
 checks that. The tests added in the recent steps write their state to temporary files (history, feedback, config,
 player database, profile cache) and mock the network. The scoring golden pins the AI weight defaults, so it does not
 depend on `data/config.json`. The older tests (`test_scoring_f4`, `test_nick_match`, `test_steam_queue`,
-`test_stale_cache_fallback`) were not audited for real-file access.
+`test_stale_cache_fallback`) are isolated the same way: config reads are patched with fresh-install defaults and the
+profile cache is pointed at a temporary file. `tests/test_data_dir_untouched.py` snapshots `data/` around those four
+modules and fails on any created, removed or modified file.
+
+## Security model of the local server
+
+The server binds to `127.0.0.1` by default. It has no authentication: the checks below only stop DNS rebinding and
+cross-site requests. `app.web_router.check_request` runs for every request, before routing, from
+`CsWatchHandler._guard`:
+
+- **Host:** must be `localhost` or an IP literal (IPv4 or IPv6). Any other name gets 403 `Host not allowed`.
+- **Origin**, when sent: must be `http://` with the same host and port as the Host header. `null` or anything else gets
+  403 `Origin not allowed`.
+- **Sec-Fetch-Site**, when sent: `same-origin` or `none`. Anything else gets 403 `Cross-site request blocked`.
+- **Content-Type** on a POST with a body: `application/json` for all routes except `/api/upload`, which accepts
+  `image/png`, `image/jpeg` and `application/octet-stream`. Anything else gets 415 `Unsupported Content-Type`. Bodyless
+  POSTs skip this rule.
+- A rejected request gets a JSON error and its connection is closed.
+
+Scan files: `POST /api/scan` accepts an `image_path` only if it resolves to a `.png`, `.jpg` or `.jpeg` file inside the
+configured screenshots directory or `SCREENSHOT_DIR` (`data/screenshots`). Otherwise it returns 400; a missing file
+returns 404. `POST /api/upload` checks the PNG or JPEG signature before it writes anything and returns 400 otherwise.
 
 ## Known limitations and follow-ups
 
-- **Frontend is not modular.** `web/app.js` is a single file, and source names (Leetify, CSTracker, CS2 stats) are
-  hard-coded in it, for example in the source chips around lines 137–180. A new source needs a frontend change.
+- **Source names are hard-coded in the frontend.** The frontend is split into modules (`web/*.js`), but Leetify, CSTracker,
+  CS2 stats and FACEIT names are still written into `api.js`, `lobby.js`, `scan-table.js` and `player-details.js`. A new
+  source needs a frontend change.
 - **Legacy storage slots are canonical** for Leetify, FACEIT, CSTracker and Steam CS2 stats. `steam.sources` is a
   derived view. Moving to native storage would need a data migration and changes to scoring and the frontend.
 - **Rescan can race with a stale enrichment.** A rescan keeps the scan id, so its `player_uid`s repeat. A slow
@@ -350,32 +387,25 @@ depend on `data/config.json`. The older tests (`test_scoring_f4`, `test_nick_mat
 - **The final enrichment write can overwrite concurrent rechecks.** `app.pipeline.enrich_scan` replaces the whole
   `players` list at the end. A `/api/recheck` or `/api/ai-analyze` result written while enrichment is still running
   is lost. Read from the code; not yet covered by a test.
-- **A failing enrichment leaves the scan in `loading_steam` or `loading_ai`.** Nothing catches exceptions from
-  `enrich_players` or `analyze_players_with_ai` in `enrich_scan`, so the record never reaches `done` and no error is
-  stored (it only goes to the thread's traceback). Read from the code; not yet covered by a test.
 - **`/api/recheck` writes back by index.** The row index is found under one lock and used under another, so a
   concurrent change can put the result in the wrong row. Reproduced by `tests/test_player_uid.py` (`expectedFailure`).
 - **`/api/ai-analyze` with only a nick and duplicate nicks** replaces the first duplicate row with the second
   one's result. Reproduced by `tests/test_player_uid.py::AiAnalyzeUidTests` (`expectedFailure`). The `player_uid`
   path is not affected.
 - **`/api/feedback` requires `nick`** even when `player_uid` is sent, unlike `/api/recheck-source`. Pinned by a test.
-- **Leetify key is returned unmasked.** `GET /api/config` puts `leetify_api_key` into `config` exactly as stored
-  (`config_schema` has `masked=False` for it). Anthropic, Steam and FACEIT keys are masked. Pinned by
-  `tests/golden/config_golden.json`.
-- **Infinity in `data/config.json` resets all settings.** `load_config` catches the `OverflowError` raised by
-  `int(inf)` and returns the defaults for every key. Saving `leetify_cache_ttl_sec = inf` raises `OverflowError`
-  (a 500). Pinned by the config golden.
 - **The 68 damping cap can never bind with real inputs**, and the 99 cheat ceiling cannot be reached with the
   default weights (see `tests/test_scoring_rules.py`). Both are exercised only with mocked weights.
-- **Import has side effects.** `steam_lookup` opens `data/logs/pton.logs` in append mode when it is imported, which
-  creates the directory and file if missing. `--help` on either entry point does this, and nothing else.
 - **argparse shows `__main__.py` as the program name** under `python -m cs2watch`. Cosmetic.
 - **`pip install` of this project is not self-contained.** `pyproject.toml` installs the packages listed in
   `[tool.setuptools]`, but `web/` and `data/` are resolved relative to the repository root (`storage/paths.py`), so an
   installed copy will not find the UI. `pip install -e .` is intended for development from the checkout. It has not been run.
 - **Python version.** The code parses with the 3.8 feature set (checked with `ast.parse(feature_version=...)`), but
-  only Python 3.11.9 is available here, so `requires-python = ">=3.11"` is the tested floor.
-- **`playwright` is listed in `requirements.txt` but nothing in the repo imports it.**
+  only Python 3.11.9 is available here, so `requires-python = ">=3.11"` is the tested floor. CI runs 3.11 and 3.12
+  (required) and 3.13 (non-blocking).
 - **Recheck-source calls `fetch_raw` directly**, so it skips `is_enabled`. `DataSource.fetch` does check it.
+- **Tests can write to the real scan history.** `tests/test_player_db.py::DbFailureTests.test_scan_finalization_survives_db_failure`
+  patches `server._save_history_locked` to stop the save. Since `app.server._ServerRepo.save_locked` calls
+  `STORE.save_locked()` directly, the patch does not apply, and each run appends a `failscan01` record (no image name)
+  to `data/scans_history.json` of the checkout it runs in. Found while checking the smoke test; not fixed here.
 - **Scoring pieces with no effect:** scoring never reads cstracker `trust`, `vaclive`, `ttd`, or the medals / veteran
   coin / xp fields, even though the AI prompt mentions them (see `tests/golden/scoring_golden.json`, fixtures 14 and 20).

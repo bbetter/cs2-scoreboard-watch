@@ -1,7 +1,11 @@
 # План покращень cs2-scoreboard-watch
 
-Статус: **чернетка на погодження** (гілка `docs/improvement-plan`). Нічого з цього ще не заведено на борду і не
-запущено.
+Статус: **виконано** (2026-11-14), крім відкладених T11–T13 (`docs/improvements/deferred/`) і незавершеного smoke T20:
+`GET /api/latest` повертає 500 у worktree через запис тестом `failscan01` у `data/scans_history.json` (див.
+«Known limitations» в `docs/ARCHITECTURE.md`).
+
+Змерджені PR: T01 #25, T02 #28, T03 #27, T04 #26, T05 #29, T06 #31, T07 #32, T08 #34, T09 #37, T10 #38, T14 #39,
+T15 #40, T16 #33, T17 #35, T18 #41, T19 #42; хотфікси: #30 (CI 3.13 non-blocking), #36 (taskctl non-blocking).
 
 Зміст:
 
