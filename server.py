@@ -23,6 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 import player_db
 from ai_analyzer import analyze_players_with_ai
+from atomic_io import atomic_write_text
 from config_store import get_public_config, load_config, save_config
 from console_parser import (
     correct_nick_from_console,
@@ -316,7 +317,7 @@ def _load_history() -> None:
 
 def _save_history_locked() -> None:
     try:
-        HISTORY_FILE.write_text(json.dumps(_SCANS, ensure_ascii=False), encoding="utf-8")
+        atomic_write_text(HISTORY_FILE, json.dumps(_SCANS, ensure_ascii=False))
     except Exception:
         pass
 
@@ -713,6 +714,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
             return
         if path == "/app.js":
             self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
+            return
         if path == "/table-view.js":
             self._send_file(WEB_DIR / "table-view.js", "application/javascript; charset=utf-8")
             return

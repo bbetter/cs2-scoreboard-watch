@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/home/andrii/fun"
-VENV_PY="$BASE_DIR/.venv/bin/python"
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Interpreter: CS2WATCH_PYTHON override, else the project venv, else system python3.
+if [[ -n "${CS2WATCH_PYTHON:-}" ]]; then
+  VENV_PY="$CS2WATCH_PYTHON"
+elif [[ -x "$BASE_DIR/.venv/bin/python" ]]; then
+  VENV_PY="$BASE_DIR/.venv/bin/python"
+else
+  VENV_PY="python3"
+fi
 SERVER_URL="http://127.0.0.1:8765"
 SCREENSHOT_DIR="$BASE_DIR/screenshots"
 mkdir -p "$SCREENSHOT_DIR"

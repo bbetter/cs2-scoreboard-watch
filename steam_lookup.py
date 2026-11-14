@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from atomic_io import atomic_write_text
 from nick_match import best_match_index
 from scoreboard_scan import Player
 
@@ -131,7 +132,7 @@ def _save_profile_cache_locked() -> None:
             for k, (ts, data) in _PROFILE_CACHE.items()
             if data.get("lookup_source") not in {"not_found", "rate_limited"}
         }
-        PROFILE_CACHE_FILE.write_text(json.dumps(persisted, ensure_ascii=False), encoding="utf-8")
+        atomic_write_text(PROFILE_CACHE_FILE, json.dumps(persisted, ensure_ascii=False))
     except Exception:
         pass
 

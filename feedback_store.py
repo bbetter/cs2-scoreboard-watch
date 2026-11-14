@@ -8,11 +8,12 @@ thresholds in steam_lookup.py can be checked against real labels later.
 from __future__ import annotations
 
 import json
-import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+from atomic_io import atomic_write_text
 
 BASE_DIR = Path(__file__).resolve().parent
 FEEDBACK_FILE = BASE_DIR / "feedback.json"
@@ -96,6 +97,4 @@ def append_feedback(entry: dict, path: Path = FEEDBACK_FILE) -> None:
                 path.replace(path.with_name(path.name + ".corrupt"))
                 records = []
         records.append(entry)
-        tmp = path.with_name(path.name + ".tmp")
-        tmp.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
+        atomic_write_text(path, json.dumps(records, ensure_ascii=False, indent=2))
