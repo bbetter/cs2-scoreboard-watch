@@ -829,15 +829,33 @@ tbody tr:hover {
 }
 
 .prob-cell {
-  min-width: 200px;
+  min-width: 225px;
+}
+
+.dual-prob-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dual-prob-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dual-prob-label {
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: auto;
 }
 
 .prob-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 5px;
+  gap: 6px;
 }
 
 .prob-num {
@@ -875,6 +893,13 @@ tbody tr:hover {
 .fill-medium { background: var(--medium); }
 .fill-high { background: var(--high); }
 .fill-critical { background: var(--critical); }
+.fill-smurf { background: linear-gradient(90deg, #6366f1, #38bdf8); }
+
+.uncertainty-note {
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
 
 .reasons-text {
   margin-top: 5px;
@@ -969,6 +994,12 @@ tbody tr:hover {
     color: var(--muted);
     font-size: 0.8rem;
     font-weight: 600;
+  }
+
+  td.prob-cell {
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
   }
 }
 
@@ -1184,6 +1215,7 @@ tr.player-row.expanded .expand-caret {
 
 .ai-legit { background: rgba(34, 197, 94, 0.16); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.35); }
 .ai-uncertain { background: rgba(234, 179, 8, 0.16); color: #fde047; border: 1px solid rgba(234, 179, 8, 0.35); }
+.ai-smurf { background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.42); }
 .ai-suspicious { background: rgba(249, 115, 22, 0.18); color: #fdba74; border: 1px solid rgba(249, 115, 22, 0.4); }
 .ai-blatant { background: rgba(239, 68, 68, 0.22); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.45); }
 

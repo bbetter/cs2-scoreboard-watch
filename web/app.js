@@ -50,6 +50,9 @@ const els = {
   cfgSteamApiKey: document.getElementById("cfgSteamApiKey"),
   cfgSteamKeyStatus: document.getElementById("cfgSteamKeyStatus"),
   clearSteamKeyBtn: document.getElementById("clearSteamKeyBtn"),
+  cfgFaceitApiKey: document.getElementById("cfgFaceitApiKey"),
+  cfgFaceitKeyStatus: document.getElementById("cfgFaceitKeyStatus"),
+  clearFaceitKeyBtn: document.getElementById("clearFaceitKeyBtn"),
   cfgAiEnabled: document.getElementById("cfgAiEnabled"),
   cfgAiProvider: document.getElementById("cfgAiProvider"),
   cfgAiModel: document.getElementById("cfgAiModel"),
@@ -117,6 +120,7 @@ function applyPlayerFilters(players) {
   return players.filter((p) => {
     const steam = p.steam || {};
     if (state.riskFilter === "suspicious" && p.cheat_probability < 55) return false;
+    if (state.riskFilter === "smurf" && (p.smurf_probability || 0) < 55) return false;
     if (state.riskFilter === "critical" && p.cheat_probability < 75) return false;
     if (state.riskFilter === "banned") {
       const hasBans = steam.vac_banned || (steam.leetify?.bans?.length > 0);
@@ -241,7 +245,23 @@ function renderScan(scan) {
         }
       }
 
-      const riskLabel = RISK_LABELS[p.risk_level] || p.risk_level;
+      const fc = steam.faceit;
+      let faceitLine = "";
+      if (fc?.found || fc?.skill_level != null) {
+        const lvlText = fc.skill_level != null ? `FACEIT Lvl ${fc.skill_level}` : "FACEIT";
+        const eloText = fc.faceit_elo != null ? ` (${fc.faceit_elo} ELO)` : "";
+        faceitLine = `<span class="steam-sub">${escapeHtml(lvlText + eloText)}</span>`;
+      }
+
+      const cheatProb = Math.round(p.cheat_probability ?? 0);
+      const smurfProb = Math.round(p.smurf_probability ?? 0);
+      const cheatRiskLevel = p.risk_level || "low";
+      const smurfRiskLevel = p.smurf_risk_level || "low";
+      const riskLabel = RISK_LABELS[cheatRiskLevel] || cheatRiskLevel;
+      const smurfRiskLabel = RISK_LABELS[smurfRiskLevel] || smurfRiskLevel;
+      const uncertaintyNote = p.uncertainty != null
+        ? `<div class="uncertainty-note">Невизначеність даних: ${Math.round(p.uncertainty)}%</div>`
+        : "";
       const reasons = (p.reasons || []).slice(0, 3).map(escapeHtml).join(" · ");
       const ripUrl = steam.rip_url || `https://steamcommunity.rip/id/${encodeURIComponent(p.nick)}/`;
       const steamLink = steam.profile_url
@@ -249,6 +269,9 @@ function renderScan(scan) {
         : "";
       const leetifyLink = lf?.url
         ? `<a class="link-btn" href="${escapeHtml(lf.url)}" target="_blank" rel="noopener noreferrer">Leetify</a>`
+        : "";
+      const faceitLink = fc?.faceit_url
+        ? `<a class="link-btn link-btn-faceit" href="${escapeHtml(fc.faceit_url)}" target="_blank" rel="noopener noreferrer">FACEIT</a>`
         : "";
 
       const ai = p.ai_analysis || null;
@@ -271,6 +294,7 @@ function renderScan(scan) {
                 </div>
                 <span class="steam-sub">${profileName}</span>
                 ${leetifyLine}
+                ${faceitLine}
                 ${tags.length ? `<div class="badge-row">${tags.join("")}</div>` : ""}
               </div>
             </div>
@@ -280,20 +304,37 @@ function renderScan(scan) {
           <td data-label="K/D">${Number(p.kd).toFixed(2)}</td>
           <td data-label="HS%">${Number(p.hs).toFixed(0)}%</td>
           <td data-label="Lvl">${p.level >= 0 ? p.level : "?"}</td>
-          <td data-label="Ймовірність" class="prob-cell">
-            <div class="prob-top">
-              <span class="prob-num">${p.cheat_probability}%</span>
-              <span class="risk-pill risk-${escapeHtml(p.risk_level)}">${escapeHtml(riskLabel)}</span>
+          <td data-label="Результати аналізу" class="prob-cell">
+            <div class="dual-prob-list">
+              <div class="dual-prob-item">
+                <div class="prob-top">
+                  <span class="dual-prob-label">Ймовірний чітер</span>
+                  <span class="prob-num">${cheatProb}%</span>
+                  <span class="risk-pill risk-${escapeHtml(cheatRiskLevel)}">${escapeHtml(riskLabel)}</span>
+                </div>
+                <div class="prob-bar" aria-hidden="true">
+                  <div class="prob-fill fill-${escapeHtml(cheatRiskLevel)}" style="width: ${Math.min(100, Math.max(0, cheatProb))}%"></div>
+                </div>
+              </div>
+              <div class="dual-prob-item">
+                <div class="prob-top">
+                  <span class="dual-prob-label">Ймовірний смурф</span>
+                  <span class="prob-num">${smurfProb}%</span>
+                  <span class="risk-pill risk-${escapeHtml(smurfRiskLevel)}">${escapeHtml(smurfRiskLabel)}</span>
+                </div>
+                <div class="prob-bar" aria-hidden="true">
+                  <div class="prob-fill fill-smurf" style="width: ${Math.min(100, Math.max(0, smurfProb))}%"></div>
+                </div>
+              </div>
             </div>
-            <div class="prob-bar" aria-hidden="true">
-              <div class="prob-fill fill-${escapeHtml(p.risk_level)}" style="width: ${Math.min(100, Math.max(0, p.cheat_probability))}%"></div>
-            </div>
+            ${uncertaintyNote}
             <div class="reasons-text">${reasons}</div>
             ${aiBadge}
           </td>
           <td data-label="Посилання">
             <div class="links-cell">
               ${leetifyLink}
+              ${faceitLink}
               <a class="link-btn link-btn-rip" href="${escapeHtml(ripUrl)}" target="_blank" rel="noopener noreferrer">rip</a>
               ${steamLink}
             </div>
@@ -309,8 +350,35 @@ function renderScan(scan) {
 function renderPlayerDetailsRow(p) {
   const steam = p.steam || {};
   const lf = steam.leetify || {};
+  const fc = steam.faceit || {};
+  const cs2 = steam.cs2_stats || {};
+  const ew = p.effective_weights || {};
   const ai = p.ai_analysis || null;
   const allReasons = (p.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+
+  const weightsText =
+    ew.scoreboard != null || ew.leetify != null || ew.steam_account != null
+      ? `Рахунок: ${Math.round((ew.scoreboard ?? 0) * 100)}%, Leetify/FACEIT: ${Math.round((ew.leetify ?? 0) * 100)}%, Steam: ${Math.round((ew.steam_account ?? 0) * 100)}%`
+      : "—";
+
+  const faceitStatsHtml =
+    fc.found || fc.skill_level != null
+      ? `
+        <div class="detail-kv"><span>FACEIT Lvl / ELO</span><strong>${fc.skill_level != null ? `Lvl ${escapeHtml(fc.skill_level)}` : "—"} / ${fc.faceit_elo != null ? `${escapeHtml(fc.faceit_elo)} ELO` : "—"}</strong></div>
+        <div class="detail-kv"><span>FACEIT K/D / WR / Матчі</span><strong>${fc.kd != null ? Number(fc.kd).toFixed(2) : "—"} / ${fc.winrate != null ? `${Number(fc.winrate).toFixed(1)}%` : "—"} / ${fc.matches != null ? fc.matches : "—"}</strong></div>`
+      : "";
+
+  const cs2StatsHtml =
+    cs2.kd != null || cs2.hs_pct != null || cs2.total_kills != null || cs2.total_matches_played != null
+      ? `
+        <div class="detail-kv"><span>Steam CS2 K/D / HS%</span><strong>${cs2.kd != null ? Number(cs2.kd).toFixed(2) : "—"} / ${cs2.hs_pct != null ? `${Number(cs2.hs_pct).toFixed(1)}%` : "—"}</strong></div>
+        <div class="detail-kv"><span>Steam CS2 Kills / Матчі</span><strong>${cs2.total_kills != null ? cs2.total_kills : "—"} / ${cs2.total_matches_played != null ? cs2.total_matches_played : "—"}</strong></div>`
+      : "";
+
+  const aiProbsNote =
+    ai && (ai.cheat_probability != null || ai.smurf_probability != null)
+      ? `<div class="ai-meta-note">Чітер: ${escapeHtml(ai.cheat_probability ?? "—")}% · Смурф: ${escapeHtml(ai.smurf_probability ?? "—")}%</div>`
+      : "";
 
   const aiCardBody = ai
     ? `
@@ -321,6 +389,7 @@ function renderPlayerDetailsRow(p) {
         </span>
       </div>
       <div class="ai-meta-note">Провайдер: ${escapeHtml(ai.provider || "claude_cli")} · Модель: ${escapeHtml(ai.model || "sonnet")} · ${escapeHtml((ai.analyzed_at || "").replace("T", " "))}</div>
+      ${aiProbsNote}
       <div>
         <div class="ai-meta-note" style="margin-bottom:4px;">Chain of Thought:</div>
         <div class="ai-cot-block">${escapeHtml(ai.chain_of_thought || "—")}</div>
@@ -351,6 +420,8 @@ function renderPlayerDetailsRow(p) {
                 <h4>Детальний аналіз (Steam + Leetify + Рахунок)</h4>
               </div>
               <div class="detail-kv-list">
+                <div class="detail-kv"><span>Невизначеність</span><strong>${Math.round(p.uncertainty ?? 50)}%</strong></div>
+                <div class="detail-kv"><span>Ефективні ваги</span><strong>${escapeHtml(weightsText)}</strong></div>
                 <div class="detail-kv"><span>SteamID64</span><strong>${escapeHtml(steam.steamid64 || "Не знайдено")}</strong></div>
                 <div class="detail-kv"><span>Метод пошуку</span><strong>${escapeHtml(steam.lookup_method || "—")}</strong></div>
                 <div class="detail-kv"><span>Вік акаунта</span><strong>${steam.account_age_years != null ? `${steam.account_age_years} р.` : "—"}</strong></div>
@@ -360,6 +431,8 @@ function renderPlayerDetailsRow(p) {
                 <div class="detail-kv"><span>Leetify Aim / RT</span><strong>${lf.aim != null ? Number(lf.aim).toFixed(1) : "—"} / ${lf.reaction_time_ms != null ? `${lf.reaction_time_ms}ms` : "—"}</strong></div>
                 <div class="detail-kv"><span>Leetify Winrate</span><strong>${lf.winrate != null ? `${(lf.winrate <= 1 ? lf.winrate * 100 : lf.winrate).toFixed(0)}%` : "—"}</strong></div>
                 <div class="detail-kv"><span>Premier / Faceit</span><strong>${lf.premier_rank || "—"} / ${lf.faceit_level ? `Lvl ${lf.faceit_level}` : "—"}</strong></div>
+                ${faceitStatsHtml}
+                ${cs2StatsHtml}
               </div>
               ${allReasons ? `<ul class="detail-reasons">${allReasons}</ul>` : ""}
             </div>
@@ -852,6 +925,7 @@ els.closeSetupBtn.addEventListener("click", () => {
 });
 
 let pendingClearSteamKey = false;
+let pendingClearFaceitKey = false;
 let pendingClearAnthropicKey = false;
 
 function populateSettingsDialog(data) {
@@ -868,6 +942,8 @@ function populateSettingsDialog(data) {
   els.cfgScreenshotTool.value = cfg.screenshot_tool || "auto";
   els.cfgSteamApiKey.value = "";
   pendingClearSteamKey = false;
+  if (els.cfgFaceitApiKey) els.cfgFaceitApiKey.value = "";
+  pendingClearFaceitKey = false;
 
   els.cfgAiEnabled.checked = Boolean(cfg.ai_enabled);
   els.cfgAiProvider.value = cfg.ai_provider || "claude_cli";
@@ -908,6 +984,15 @@ function populateSettingsDialog(data) {
   } else {
     els.cfgSteamKeyStatus.textContent = "(не задано)";
   }
+  if (els.cfgFaceitKeyStatus) {
+    if (data.faceit_api_key_source === "config") {
+      els.cfgFaceitKeyStatus.textContent = `(збережено в config.json: ${data.faceit_api_key_masked})`;
+    } else if (data.faceit_api_key_source === "env") {
+      els.cfgFaceitKeyStatus.textContent = "(підключено зі змінної середовища)";
+    } else {
+      els.cfgFaceitKeyStatus.textContent = "(не задано)";
+    }
+  }
   els.settingsSaveMsg.textContent = "";
   els.settingsSaveMsg.classList.remove("error");
 }
@@ -937,6 +1022,14 @@ els.clearSteamKeyBtn?.addEventListener("click", () => {
   els.cfgSteamApiKey.value = "";
   pendingClearSteamKey = true;
   els.cfgSteamKeyStatus.textContent = "(буде видалено з config.json після збереження)";
+});
+
+els.clearFaceitKeyBtn?.addEventListener("click", () => {
+  if (els.cfgFaceitApiKey) els.cfgFaceitApiKey.value = "";
+  pendingClearFaceitKey = true;
+  if (els.cfgFaceitKeyStatus) {
+    els.cfgFaceitKeyStatus.textContent = "(буде видалено з config.json після збереження)";
+  }
 });
 
 els.clearAnthropicKeyBtn?.addEventListener("click", () => {
@@ -987,6 +1080,8 @@ els.settingsForm?.addEventListener("submit", async (e) => {
       screenshot_tool: els.cfgScreenshotTool.value,
       steam_api_key: els.cfgSteamApiKey.value.trim(),
       clear_steam_api_key: pendingClearSteamKey,
+      faceit_api_key: els.cfgFaceitApiKey ? els.cfgFaceitApiKey.value.trim() : "",
+      clear_faceit_api_key: pendingClearFaceitKey,
       ai_enabled: els.cfgAiEnabled.checked,
       ai_provider: els.cfgAiProvider.value,
       ai_model: els.cfgAiModel.value,
