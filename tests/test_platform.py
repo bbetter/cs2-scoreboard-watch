@@ -223,20 +223,20 @@ class ImportHygieneTests(unittest.TestCase):
 
         cfg = {"tab_delay_sec": 1.5, "tab_cooldown_sec": 9.0, "cs2_only": False, "notify_enabled": False}
         with mock.patch.object(server, "load_config", return_value=cfg), \
-                mock.patch.object(server, "_TAB_DELAY_SEC", server._TAB_DELAY_SEC), \
-                mock.patch.object(server, "_TAB_COOLDOWN_SEC", server._TAB_COOLDOWN_SEC), \
-                mock.patch.object(server, "_CS2_ONLY", server._CS2_ONLY), \
-                mock.patch.object(server, "_NOTIFY_ENABLED", server._NOTIFY_ENABLED):
+                mock.patch.object(server.TAB, "delay_sec", server.TAB.delay_sec), \
+                mock.patch.object(server.TAB, "cooldown_sec", server.TAB.cooldown_sec), \
+                mock.patch.object(server.TAB, "cs2_only", server.TAB.cs2_only), \
+                mock.patch.object(server.TAB, "notify_enabled", server.TAB.notify_enabled):
             server.init()
-            self.assertEqual(server._TAB_DELAY_SEC, 1.5)
-            self.assertEqual(server._TAB_COOLDOWN_SEC, 9.0)
-            self.assertFalse(server._CS2_ONLY)
-            self.assertFalse(server._NOTIFY_ENABLED)
+            self.assertEqual(server.TAB.delay_sec, 1.5)
+            self.assertEqual(server.TAB.cooldown_sec, 9.0)
+            self.assertFalse(server.TAB.cs2_only)
+            self.assertFalse(server.TAB.notify_enabled)
 
     def test_server_notify_wrapper_respects_enabled_flag(self):
         import app.server as server
 
-        with mock.patch.object(server, "_NOTIFY_ENABLED", False), \
+        with mock.patch.object(server.TAB, "notify_enabled", False), \
                 mock.patch.object(server, "send_notification") as send:
             server._send_notification("T", "M")
         send.assert_not_called()

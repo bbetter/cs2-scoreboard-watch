@@ -6,7 +6,6 @@ import argparse
 import json
 import queue
 import shutil
-import threading
 import time
 from datetime import datetime
 from http import HTTPStatus
@@ -32,6 +31,7 @@ from app.events import EventBus
 from app.pipeline import ScanPipeline
 from app.scan_store import ScanStore
 from app.sse import SseHub
+from app.tab_watcher import TabWatcher
 from app.web_router import (
     JsonBodyError,
     Router,
@@ -61,21 +61,17 @@ HISTORY_FILE = DATA_DIR / "scans_history.json"
 _MAX_HISTORY = 100
 SSE = SseHub()
 STORE = ScanStore(HISTORY_FILE, _MAX_HISTORY)
-_TAB_LOCK = threading.Lock()
-_LAST_TAB_TS = 0.0
-_TAB_COOLDOWN_SEC = 4.0
-_CS2_ONLY = True
-_TAB_DELAY_SEC = 0.5
-_NOTIFY_ENABLED = True
+# Lambdas, not bound functions: tests patch `_is_cs2_active`, `run_scan` and `send_notification` on this module.
+TAB = TabWatcher(
+    is_cs2_active=lambda: _is_cs2_active(),
+    run_scan=lambda: run_scan(),
+    notify=lambda title, msg: send_notification(title, msg),
+)
 
 
 def _apply_runtime_config() -> dict:
-    global _TAB_DELAY_SEC, _TAB_COOLDOWN_SEC, _CS2_ONLY, _NOTIFY_ENABLED
     cfg = load_config()
-    _TAB_DELAY_SEC = float(cfg.get("tab_delay_sec", 0.5))
-    _TAB_COOLDOWN_SEC = float(cfg.get("tab_cooldown_sec", 4.0))
-    _CS2_ONLY = bool(cfg.get("cs2_only", True))
-    _NOTIFY_ENABLED = bool(cfg.get("notify_enabled", True))
+    TAB.apply_config(cfg)
     return cfg
 
 
@@ -85,10 +81,7 @@ def init() -> None:
 
 
 def configure_tab_watcher(delay_sec: float = 0.5, cooldown_sec: float = 4.0, cs2_only: bool = True) -> None:
-    global _TAB_DELAY_SEC, _TAB_COOLDOWN_SEC, _CS2_ONLY
-    _TAB_DELAY_SEC = delay_sec
-    _TAB_COOLDOWN_SEC = cooldown_sec
-    _CS2_ONLY = cs2_only
+    TAB.configure(delay_sec, cooldown_sec, cs2_only)
 
 
 def _broadcast_event(event: str, payload: dict) -> None:
@@ -258,39 +251,11 @@ def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dic
 
 
 def _send_notification(title: str, msg: str) -> None:
-    if not _NOTIFY_ENABLED:
-        return
-    send_notification(title, msg)
+    TAB.notify(title, msg)
 
 
 def schedule_tab_scan() -> dict:
-    if _CS2_ONLY and not _is_cs2_active():
-        return {"status": "ignored", "reason": "cs2_not_focused"}
-    now = time.time()
-    with _TAB_LOCK:
-        global _LAST_TAB_TS
-        if now - _LAST_TAB_TS < _TAB_COOLDOWN_SEC:
-            return {"status": "debounced"}
-        _LAST_TAB_TS = now
-    threading.Thread(target=_delayed_tab_scan, daemon=True).start()
-    return {"status": "scheduled", "delay_sec": _TAB_DELAY_SEC}
-
-
-def _delayed_tab_scan() -> None:
-    time.sleep(_TAB_DELAY_SEC)
-    try:
-        if _CS2_ONLY and not _is_cs2_active():
-            return
-        result = run_scan()
-        players = result.get("players", [])
-        if players:
-            top = players[0]
-            msg = f"Знайдено {len(players)} гравців. Топ: {top['nick']} ({top['cheat_probability']}%)"
-        else:
-            msg = "Гравців не знайдено на скріншоті"
-        _send_notification("CS2 Scoreboard Watch", msg)
-    except Exception as exc:
-        print(f"[tab-scan error] {exc}")
+    return TAB.schedule()
 
 
 def _source_choices_text(ids: list[str]) -> str:
