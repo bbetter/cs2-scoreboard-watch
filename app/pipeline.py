@@ -10,6 +10,7 @@ the real ones, tests wire fakes.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 import uuid
@@ -102,6 +103,7 @@ class ScanPipeline:
             "player_count": len(initial),
             "players": initial,
             "ai_error": None,
+            "enrich_error": None,
             "scan_status": "loading_steam" if will_stream else "done",
             "progress": {"done": 0 if will_stream else len(initial), "total": len(initial)},
         }
@@ -126,6 +128,7 @@ class ScanPipeline:
             scan_rec["player_count"] = len(initial)
             scan_rec["duration_ms"] = round((time.time() - started) * 1000)
             scan_rec["ai_error"] = None
+            scan_rec["enrich_error"] = None
             scan_rec["scan_status"] = "loading_steam" if players else "done"
             scan_rec["progress"] = {"done": 0, "total": len(initial)}
             self.repo.save_locked()
@@ -177,7 +180,28 @@ class ScanPipeline:
                 },
             )
 
-        reports = self._enrich(players, fetch_steam=True, on_player_ready=_on_player)
+        try:
+            reports = self._enrich(players, fetch_steam=True, on_player_ready=_on_player)
+        except Exception as exc:
+            logging.getLogger(__name__).exception("enrichment failed for scan %s", scan_id)
+            with progress_lock:
+                cur_done = done_count
+            with self.repo.lock:
+                scan_rec = self._find(scan_id)
+                if not scan_rec:
+                    return
+                for row in scan_rec.get("players", []):
+                    if row.get("loading"):  # rows that _on_player already replaced are final
+                        row["loading"] = False
+                        row["loading_stage"] = "done"
+                scan_rec["enrich_error"] = f"{type(exc).__name__}: {exc}"
+                scan_rec["scan_status"] = "done"
+                scan_rec["progress"] = {"done": cur_done, "total": total}
+                scan_rec["duration_ms"] = round((time.time() - started) * 1000)
+                self.repo.save_locked()
+                failed_snapshot = dict(scan_rec)
+            self.bus.publish("scan.finished", failed_snapshot)
+            return
         player_dicts = []
         for r in reports:
             d = asdict(r)
@@ -198,7 +222,10 @@ class ScanPipeline:
                     snapshot = None
             if snapshot:
                 self.bus.publish("scan.updated", snapshot)
-            player_dicts, ai_error = self._analyze_ai(player_dicts)
+            try:
+                player_dicts, ai_error = self._analyze_ai(player_dicts)
+            except Exception as exc:
+                ai_error = f"{type(exc).__name__}: {exc}"
 
         for d in player_dicts:
             d["loading"] = False
