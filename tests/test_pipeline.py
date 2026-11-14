@@ -323,5 +323,79 @@ class RemovalAndLegacyTests(unittest.TestCase):
         self.assertEqual(record["scan_status"], "done")
 
 
+class FailingEnrich(FakeEnrich):
+    """Steam pass raises `error` after `ready_before_fail` on_player_ready calls. The initial pass (fetch_steam=False) works."""
+
+    def __init__(self, error, ready_before_fail=0):
+        super().__init__()
+        self.error = error
+        self.ready_before_fail = ready_before_fail
+
+    def __call__(self, players, fetch_steam=True, on_player_ready=None):
+        if not fetch_steam:
+            return super().__call__(players, fetch_steam=False)
+        reports = [build_report(p) for p in players]
+        for i in range(self.ready_before_fail):
+            on_player_ready(reports[i])
+        raise self.error
+
+
+class RaisingAI:
+    def __init__(self, error):
+        self.error = error
+
+    def __call__(self, dicts):
+        raise self.error
+
+
+class EnrichmentFailureTests(unittest.TestCase):
+    def test_enrich_raising_at_once_still_finishes_the_scan(self):
+        h = Harness(enrich=FailingEnrich(RuntimeError("boom")))
+        with self.assertLogs("app.pipeline", level="ERROR"):
+            rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        self.assertEqual(rec["scan_status"], "done")
+        self.assertEqual(rec["enrich_error"], "RuntimeError: boom")
+        self.assertIsNone(rec["ai_error"])
+        for row in rec["players"]:
+            self.assertIs(row["loading"], False)
+            self.assertEqual(row["loading_stage"], "done")
+        self.assertEqual(h.topics().count("scan.finished"), 1)
+        self.assertEqual(h.repo.saves, 2)  # once at creation, once when the failure is recorded
+
+    def test_enrich_failing_after_first_player_keeps_enriched_row(self):
+        h = Harness(enrich=FailingEnrich(RuntimeError("boom"), ready_before_fail=1))
+        with self.assertLogs("app.pipeline", level="ERROR"):
+            rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        first, rest = rec["players"][0], rec["players"][1:]
+        self.assertIs(first["loading"], False)
+        self.assertEqual(first["steam"]["profile_name"], f"prof-{first['player_uid']}")  # enriched by on_player_ready
+        for row in rest:
+            self.assertIs(row["loading"], False)
+            self.assertEqual(row["loading_stage"], "done")
+        self.assertEqual(rec["progress"], {"done": 1, "total": 3})
+        self.assertEqual(rec["enrich_error"], "RuntimeError: boom")
+        self.assertEqual(rec["scan_status"], "done")
+
+    def test_ai_raising_keeps_enrichment_and_sets_ai_error(self):
+        h = Harness(ai=True, ai_fn=RaisingAI(RuntimeError("ai exploded")))
+        rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        self.assertEqual(rec["scan_status"], "done")
+        self.assertEqual(rec["ai_error"], "RuntimeError: ai exploded")
+        self.assertIsNone(rec["enrich_error"])
+        self.assertEqual(rec["progress"], {"done": 3, "total": 3})
+        for row in rec["players"]:
+            self.assertIs(row["loading"], False)
+            self.assertEqual(row["loading_stage"], "done")
+            self.assertNotIn("ai_marker", row)  # AI did not run, so the rows are the enriched ones
+            self.assertIn("steam", row)
+        self.assertEqual(h.topics().count("scan.finished"), 1)
+
+    def test_success_path_has_no_enrich_error(self):
+        h = Harness()
+        rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        self.assertEqual(rec["scan_status"], "done")
+        self.assertIsNone(rec["enrich_error"])
+
+
 if __name__ == "__main__":
     unittest.main()
