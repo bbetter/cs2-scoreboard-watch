@@ -265,9 +265,9 @@ class AiAnalyzeUidTests(_LiveServer):
 
 
 class RaceExpectedFailureTests(_LiveServer):
-    """Known races, reproduced deterministically. Each test documents the correct behaviour and is expected to fail."""
+    """Races reproduced deterministically. The stale-enrichment case is fixed by the run_id guard and runs as a
+    regular test; the remaining cases still document known bugs and are expected to fail."""
 
-    @unittest.expectedFailure
     def test_stale_enrichment_of_an_old_run_does_not_overwrite_a_rescan(self):
         from app.events import EventBus
         from tests.test_pipeline import FakeEnrich, FakeRepo

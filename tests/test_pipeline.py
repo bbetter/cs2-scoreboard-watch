@@ -397,5 +397,71 @@ class EnrichmentFailureTests(unittest.TestCase):
         self.assertIsNone(rec["enrich_error"])
 
 
+class RunGenerationTests(unittest.TestCase):
+    """A rescan keeps the scan id (and so the player uids), so a deferred enrichment of an older run must not
+    write into the newer run that now owns the same record."""
+
+    TOPICS = ("scan.created", "scan.updated", "player.enriched", "scan.finished")
+
+    def _harness(self, players_factory=dup_players, ai=False, ai_fn=None):
+        deferred = []
+        h = Harness(players_factory=players_factory, ai=ai, ai_fn=ai_fn, spawn=deferred.append)
+        published = []
+        for topic in self.TOPICS:
+            h.bus.subscribe(topic, lambda t, payload: published.append((t, payload)))
+        return h, deferred, published
+
+    def test_run_new_and_rescan_assign_distinct_run_ids(self):
+        h, _, _ = self._harness()
+        rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        first = rec["run_id"]
+        self.assertEqual(len(first), 8)
+        h.pipeline.rescan(rec, IMG)
+        self.assertEqual(len(rec["run_id"]), 8)
+        self.assertNotEqual(rec["run_id"], first)
+
+    def test_stale_enrichment_publishes_nothing_and_does_not_save(self):
+        h, deferred, published = self._harness()
+        rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        h.pipeline.rescan(rec, IMG)
+        published.clear()
+        saves_before = h.repo.saves
+        deferred[0]()                                  # run 1 finishes late
+        self.assertEqual(published, [])
+        self.assertEqual(h.repo.saves, saves_before)
+        self.assertEqual(rec["scan_status"], "loading_steam")
+        self.assertTrue(all(p["loading"] for p in rec["players"]))
+
+    def test_new_run_still_completes_after_the_stale_one_was_skipped(self):
+        runs = iter([
+            [Player(nick="dup", kills=10, deaths=5, kd=2.0, hs=40.0, level=10, score=30.0)],
+            [Player(nick="dup", kills=99, deaths=1, kd=9.0, hs=40.0, level=10, score=30.0)],
+        ])
+        h, deferred, published = self._harness(players_factory=lambda: next(runs), ai=True)
+        rec = h.pipeline.run_new(IMG, fetch_steam=True)
+        h.pipeline.rescan(rec, IMG)
+        deferred[0]()                                  # stale run: no AI spend, no writes
+        self.assertEqual(h.ai.calls, 0)
+        deferred[1]()                                  # current run
+        self.assertEqual(rec["scan_status"], "done")
+        self.assertEqual(rec["progress"], {"done": 1, "total": 1})
+        self.assertEqual([p["kills"] for p in rec["players"]], [99])
+        self.assertEqual(h.ai.calls, 1)
+        finished = [p for t, p in published if t == "scan.finished"]
+        self.assertEqual(len(finished), 1)
+        self.assertEqual(finished[0]["players"][0]["kills"], 99)
+
+    def test_enrich_scan_with_run_id_none_writes_to_the_record(self):
+        h, _, _ = self._harness()
+        record = {"id": "legacy2", "run_id": "abcdef12",
+                  "players": [{"nick": "alpha", "kills": 0}], "player_count": 1, "ai_error": None,
+                  "scan_status": "loading_steam", "progress": {"done": 0, "total": 1}}
+        h.repo.scans.append(record)
+        alpha = [Player(nick="alpha", kills=5, deaths=5, kd=1.0, hs=30.0, level=3, score=10.0)]
+        h.pipeline.enrich_scan("legacy2", alpha, 0.0, None)
+        self.assertEqual(record["scan_status"], "done")
+        self.assertEqual(record["players"][0]["kills"], 5)
+
+
 if __name__ == "__main__":
     unittest.main()
