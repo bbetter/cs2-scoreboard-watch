@@ -15,10 +15,12 @@ from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 from storage.profile_cache import ProfileCache
-from lookup.http_client import USER_AGENT, http_get as _http_get, http_get_status as _http_get_status  # noqa: F401
+from lookup.http_client import http_get as _http_get
 from vision.scoreboard_scan import Player
 from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
+from scoring import thresholds as _T
 from sources import REGISTRY
+from storage.api_keys import _get_steam_api_key
 from storage.config_store import DEFAULT_AI_WEIGHTS
 from storage.paths import DATA_DIR, LOG_DIR
 
@@ -26,23 +28,7 @@ import sources.cstracker as cstracker_source
 import sources.faceit as faceit_source
 import sources.leetify as leetify_source
 import sources.steam_stats as steam_stats_source
-from sources.leetify import _num  # noqa: F401  # re-exported: scoring/rules.py imports it from here
 from lookup import steam_search
-from lookup.steam_search import (  # noqa: F401  # re-exported: app/server.py and tests import these names from here
-    _STEAM_RL_LOCK,
-    _STEAM_RL_STATE,
-    STEAM_COOLDOWN_MAX_SEC,
-    _search_candidates,
-    _search_steam_community,
-    _steam_record_search_status,
-    get_steam_search_status,
-)
-from storage.api_keys import (  # noqa: F401  # re-exported: app/server.py and tests import these names from here
-    _get_faceit_api_key,
-    _get_steam_api_key,
-    reset_faceit_api_key_cache,
-    reset_steam_api_key_cache,
-)
 
 _LOG = logging.getLogger("pton")
 
@@ -379,9 +365,6 @@ def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[s
 
 
 # Thresholds and rules live in scoring/ (thresholds.py, rules.py, engine.py).
-from scoring import thresholds as _T  # noqa: E402
-from scoring.rules import _pick_recent_metric  # noqa: E402,F401
-
 AIM_ELITE_RECENT_POINTS = _T.AIM_ELITE_RECENT_POINTS
 AIM_ELITE_SMURF_BONUS = _T.AIM_ELITE_SMURF_BONUS
 _recent_aim_signals = recent_aim_signals

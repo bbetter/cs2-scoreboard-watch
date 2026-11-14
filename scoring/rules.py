@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from scoring import thresholds as T
+from sources._util import round_num
 
 
 @dataclass
@@ -84,13 +85,11 @@ def _pick_recent_metric(
     lf: Optional[dict], cst_sections: dict, leetify_key: str, cst_key: Optional[str] = None
 ) -> tuple[Optional[float], str]:
     """Return (value, source) for one metric: Leetify first, cstracker as fallback (no double counting)."""
-    from lookup.steam_lookup import _num  # shared number rounding helper
-
     if lf:
         raw = lf.get(leetify_key)
         if raw is None:
             raw = (lf.get("stats") or {}).get(leetify_key)
-        val = _num(raw, 1)
+        val = round_num(raw, 1)
         if val is not None:
             return float(val), "Leetify"
     if cst_key:

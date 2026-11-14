@@ -12,6 +12,15 @@ def num_or_none(val: Any) -> Optional[float]:
     return round(float(val), 2)
 
 
+def round_num(val: Any, nd: Optional[int] = None) -> Optional[Any]:
+    """Number rounding for source payloads: bools and non-numbers give None; nd=0 gives int, nd=None keeps float."""
+    if isinstance(val, bool) or not isinstance(val, (int, float)):
+        return None
+    if nd == 0:
+        return int(round(val))
+    return round(float(val), nd) if nd is not None else float(val)
+
+
 def _safe_float(val: object) -> Optional[float]:
     if val is None or val == "":
         return None

@@ -69,7 +69,6 @@ class SteamQueueTests(unittest.TestCase):
             mock.patch.object(steam_search, "STEAM_SEARCH_MIN_INTERVAL_SEC", 0.0),
             mock.patch.object(steam_search, "STEAM_COOLDOWN_BASE_SEC", 0.2),
             mock.patch.object(steam_search, "STEAM_COOLDOWN_MAX_SEC", 1.0),
-            mock.patch.object(sl, "STEAM_COOLDOWN_MAX_SEC", 1.0),
             mock.patch.object(sl, "STEAM_RETRY_ROUNDS", 3),
             mock.patch.object(sl, "STEAM_RETRY_BUDGET_SEC", 10.0),
         ]
@@ -84,8 +83,8 @@ class SteamQueueTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def _reset_state(self) -> None:
-        with sl._STEAM_RL_LOCK:
-            sl._STEAM_RL_STATE.update({"until": 0.0, "streak": 0.0})
+        with steam_search._STEAM_RL_LOCK:
+            steam_search._STEAM_RL_STATE.update({"until": 0.0, "streak": 0.0})
         steam_search._LAST_SEARCH_TS = 0.0
         with sl.PROFILE_CACHE.lock:
             sl.PROFILE_CACHE.clear()
@@ -104,44 +103,44 @@ class SteamQueueTests(unittest.TestCase):
 
     def test_429_starts_cooldown_and_blocks_next_search_without_network(self) -> None:
         fake = self._http([429])
-        status, found = sl._search_candidates("Nick")
+        status, found = steam_search._search_candidates("Nick")
         self.assertEqual(status, 429)
         self.assertEqual(found, [])
         self.assertEqual(len(fake.search_calls), 1)
 
-        st = sl.get_steam_search_status()
+        st = steam_search.get_steam_search_status()
         self.assertTrue(st["limited"])
         self.assertGreater(st["retry_in_sec"], 0)
 
         # During cooldown a new search must not reach Steam at all.
-        status2, _ = sl._search_candidates("Other")
+        status2, _ = steam_search._search_candidates("Other")
         self.assertEqual(status2, 429)
         self.assertEqual(len(fake.search_calls), 1)
 
     def test_cooldown_doubles_per_consecutive_429_and_resets_on_200(self) -> None:
         self._http([429])
-        sl._steam_record_search_status(429)
-        first = sl._STEAM_RL_STATE["until"] - time.monotonic()
-        sl._steam_record_search_status(429)
-        second = sl._STEAM_RL_STATE["until"] - time.monotonic()
+        steam_search._steam_record_search_status(429)
+        first = steam_search._STEAM_RL_STATE["until"] - time.monotonic()
+        steam_search._steam_record_search_status(429)
+        second = steam_search._STEAM_RL_STATE["until"] - time.monotonic()
         self.assertGreater(second, first)
-        self.assertLessEqual(second, sl.STEAM_COOLDOWN_MAX_SEC + 0.05)
+        self.assertLessEqual(second, steam_search.STEAM_COOLDOWN_MAX_SEC + 0.05)
 
-        with sl._STEAM_RL_LOCK:
-            sl._STEAM_RL_STATE["until"] = 0.0  # cooldown expired
-        sl._steam_record_search_status(200)
-        self.assertEqual(sl._STEAM_RL_STATE["streak"], 0.0)
+        with steam_search._STEAM_RL_LOCK:
+            steam_search._STEAM_RL_STATE["until"] = 0.0  # cooldown expired
+        steam_search._steam_record_search_status(200)
+        self.assertEqual(steam_search._STEAM_RL_STATE["streak"], 0.0)
 
     def test_status_reports_not_limited_without_429(self) -> None:
-        self.assertEqual(sl.get_steam_search_status(), {"limited": False, "retry_in_sec": 0})
+        self.assertEqual(steam_search.get_steam_search_status(), {"limited": False, "retry_in_sec": 0})
 
     def test_normal_search_without_429_unchanged(self) -> None:
         fake = self._http([200])
-        result, log, cands = sl._search_steam_community("Nick")
+        result, log, cands = steam_search._search_steam_community("Nick")
         self.assertIsNotNone(result)
         self.assertEqual(result["lookup_source"], "search")
         self.assertEqual(len(fake.search_calls), 1)
-        self.assertFalse(sl.get_steam_search_status()["limited"])
+        self.assertFalse(steam_search.get_steam_search_status()["limited"])
         self.assertEqual(len(cands), 1)
 
     def test_enrich_retries_rate_limited_lookup_after_cooldown(self) -> None:
