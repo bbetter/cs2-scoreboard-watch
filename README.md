@@ -10,7 +10,7 @@
   - Реєструє non-consuming бінд `Tab` у Hyprland (таблиця в CS2 відкривається як завжди), перевіряє, що активне вікно — CS2, чекає `0.5` с, робить скріншот **тільки з монітора, на якому запущена CS2** (`grim -o <monitor>`), та оновлює веб-інтерфейс у реальному часі через SSE.
 - **Точне розпізнавання таблиці (`vision/scoreboard_scan.py`):**
   - Адаптується до роздільної здатності екрана (якір за колонкою `K/D` та висотою екрана), зчитує нікнейми, `Kills`, `Deaths`, `K/D`, `HS%`, `Level`, а також вирізає аватарку кожного гравця зі скріншоту.
-- **Пошук реального профілю та звірка аватарок (`lookup/steam_lookup.py`):**
+- **Пошук реального профілю та звірка аватарок (`lookup/steam_search.py`, оркестрація в `lookup/steam_lookup.py`):**
   - Шукає кандидатів у Steam Community, пакетно підтягує дані через **Steam Web API** (`GetPlayerSummaries`, `GetPlayerBans`, `GetOwnedGames`), перевіряє статус `In CS2`, візуальну схожість аватарки зі скріншоту та статистику з **Leetify Public API v3** (`Aim`, `Reaction Time`, `Winrate`, `Premier`, `FACEIT`, бани).
   - Зберігає постійний кеш знайдених профілів у `data/profile_cache.json`.
 - **Оцінка ймовірності ризику:**
@@ -40,6 +40,8 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
+Для розробки (тести і `ruff`): `.venv/bin/pip install -r requirements-dev.txt`.
+
 *(Опціонально, але рекомендовано для стабільної роботи без `HTTP 429` від Steam)* — отримайте безкоштовний ключ на [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) та додайте в оточення:
 
 ```zsh
@@ -61,6 +63,8 @@ python -m venv .venv
 ```
 
 Після запуску відкрийте `http://127.0.0.1:8765` у браузері (можна на другому моніторі) та натискайте `TAB` у грі.
+
+Локальний сервер приймає запити лише з хостом `localhost` або IP-адресою і відхиляє міжсайтові запити (захист від DNS rebinding, перевірка `Origin` і `Sec-Fetch-Site`). Автентифікації немає, тому не відкривайте порт назовні. Деталі — у `docs/ARCHITECTURE.md`, розділ «Security model of the local server».
 
 ---
 
