@@ -82,6 +82,7 @@ const els = {
   statusMsg: document.getElementById("statusMsg"),
   statPlayers: document.getElementById("statPlayers"),
   statSuspects: document.getElementById("statSuspects"),
+  statSusLabel: document.getElementById("statSusLabel"),
   statTopSuspect: document.getElementById("statTopSuspect"),
   statLastScan: document.getElementById("statLastScan"),
   playersTable: document.getElementById("playersTable"),
@@ -275,7 +276,8 @@ function renderScan(scan) {
 
   els.statPlayers.textContent = String(players.length);
   els.statSuspects.textContent = String(suspects.length);
-  if (els.statSusLabel) els.statSusLabel.textContent = suspects.length ? "Ризик ⚠" : "Гравців";
+  els.statSusLabel.textContent = "Ризик ≥55%";
+  els.statSusLabel?.closest(".risk-indicator")?.classList.toggle("is-zero", suspects.length === 0);
   els.statTopSuspect.textContent = top ? `${top.nick} (${top.cheat_probability}%)` : "—";
   els.statLastScan.textContent = `${scan.created_at.replace("T", " ")} (${scan.duration_ms} мс)`;
 
@@ -309,7 +311,7 @@ function renderScan(scan) {
       sorted.length === players.length ? String(players.length) : `${sorted.length}/${players.length}`;
   }
   if (els.tabCountLogs) {
-    els.tabCountLogs.textContent = String(players.length);
+    els.tabCountLogs.textContent = String(players.filter((p) => attentionReason(p)).length);
   }
   if (!sorted.length) {
     els.playersBody.innerHTML = `
@@ -365,9 +367,6 @@ function renderScan(scan) {
       const smurfRiskLevel = p.smurf_risk_level || "low";
       const riskLabel = RISK_LABELS[cheatRiskLevel] || cheatRiskLevel;
       const smurfRiskLabel = RISK_LABELS[smurfRiskLevel] || smurfRiskLevel;
-      const uncertaintyNote = p.uncertainty != null
-        ? `<div class="uncertainty-note">Невизначеність даних: ${Math.round(p.uncertainty)}%</div>`
-        : "";
       const reasons = (p.reasons || []).slice(0, 3).map(escapeHtml).join(" · ");
       const ripUrl = steam.rip_url || `https://steamcommunity.rip/id/${encodeURIComponent(p.nick)}/`;
       const steamLink = steam.profile_url
@@ -402,6 +401,7 @@ function renderScan(scan) {
               <div class="player-names">
                 <div class="nick-row">
                   <span class="nick-main">${escapeHtml(p.nick)}</span>
+                  ${attentionReason(p) ? `<button type="button" class="attention-flag" data-nick="${escapeHtml(p.nick)}" title="Потребує уваги: ${escapeHtml(attentionReason(p))}">⚠</button>` : ""}
                   <button type="button" class="edit-nick-btn" data-nick="${escapeHtml(p.nick)}" title="Виправити нік або вставити Steam URL / SteamID64">✎</button>
                 </div>
                 <span class="steam-sub">${profileName}</span>
@@ -439,7 +439,6 @@ function renderScan(scan) {
                 </div>
               </div>
             </div>
-            ${uncertaintyNote}
             <div class="reasons-text">${reasons}</div>
             ${aiBadge}
           </td>
@@ -447,13 +446,19 @@ function renderScan(scan) {
             <div class="source-badges">
               ${(() => {
                 const sources = playerDataSources(p);
-                let badges = '';
-                if (sources.leetify) badges += '<span class="source-badge source-leetify" title="Leetify">L</span>';
-                if (sources.cstracker) badges += '<span class="source-badge source-cstracker" title="CSTracker">C</span>';
-                if (sources.cs2) badges += '<span class="source-badge source-cs2" title="Steam CS2">S</span>';
-                if (!badges) badges = '<span class="source-badge source-none" title="Немає даних">—</span>';
-                return badges;
+                const recheck = (key, letter, label, ok) =>
+                  `<button type="button" class="source-badge source-recheck ${ok ? `source-${key}` : "source-none"}" data-nick="${escapeHtml(p.nick)}" data-source="${key}" title="${label}: ${ok ? "є дані" : "немає даних"}. Натисніть, щоб перевірити повторно">${letter}</button>`;
+                const cs2 = sources.cs2
+                  ? '<span class="source-badge source-cs2" title="Steam CS2: дані є">S</span>'
+                  : '<span class="source-badge source-none" title="Steam CS2: немає даних">S</span>';
+                return recheck("leetify", "L", "Leetify", sources.leetify) + recheck("cstracker", "C", "CSTracker", sources.cstracker) + cs2;
               })()}
+            </div>
+            <div class="links-cell">
+              ${leetifyLink}
+              ${faceitLink}
+              <a class="link-btn link-btn-rip" href="${escapeHtml(ripUrl)}" target="_blank" rel="noopener noreferrer">rip</a>
+              ${steamLink}
             </div>
           </td>
         </tr>`;
@@ -850,6 +855,18 @@ function renderAiPanel(p) {
       </div>`;
 }
 
+function renderAiLead(p) {
+  const ai = p.ai_analysis || null;
+  if (ai) {
+    const cls = `ai-${escapeHtml(String(ai.decision || "uncertain").toLowerCase())}`;
+    return `<div class="ai-lead"><span class="ai-decision-badge ${cls}">AI: ${escapeHtml(ai.decision)} (${escapeHtml(ai.confidence)}%)</span><span class="ai-lead-text">${escapeHtml(ai.summary || "—")}</span></div>`;
+  }
+  if (p.loading_stage === "ai") {
+    return `<div class="ai-lead"><span class="ai-loading-pill"><span class="spinner-dot" aria-hidden="true"></span>AI аналізує...</span></div>`;
+  }
+  return `<div class="ai-lead ai-lead-empty"><span class="ai-lead-text">AI-висновку ще немає. Запустити можна в рядку гравця або на вкладці AI.</span></div>`;
+}
+
 function renderPlayerDetailsRow(p) {
   const steam = p.steam || {};
   const panels = {
@@ -863,6 +880,7 @@ function renderPlayerDetailsRow(p) {
     <tr class="player-details-row">
       <td colspan="8">
         <div class="player-details-box">
+          ${renderAiLead(p)}
           ${renderSourceStrip(p)}
           ${renderPlayerTabs(p, panels)}
         </div>
@@ -1132,6 +1150,12 @@ els.playersBody.addEventListener("keydown", (e) => {
 });
 
 els.playersBody.addEventListener("click", async (e) => {
+  const flag = e.target.closest(".attention-flag");
+  if (flag) {
+    showMainTab("logs");
+    document.querySelector(`.triage-card[data-nick="${CSS.escape(flag.dataset.nick)}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
   const tabBtn = e.target.closest(".player-tab");
   if (tabBtn) {
     selectPlayerTab(tabBtn);
@@ -1161,7 +1185,7 @@ els.playersBody.addEventListener("click", async (e) => {
     return;
   }
 
-  const retryBtn = e.target.closest(".source-retry-btn");
+  const retryBtn = e.target.closest(".source-retry-btn, .source-recheck");
   if (retryBtn && state.currentScan) {
     retrySource(retryBtn);
     return;
@@ -1240,74 +1264,171 @@ els.playersBody.addEventListener("click", async (e) => {
   });
 });
 
+const ATTENTION_AVATAR_MIN = 0.5;
+const ATTENTION_BETTER_GAP = 0.3;
+
+function attentionReason(p) {
+  const steam = p.steam || {};
+  const cands = steam.candidates || [];
+  if (!cands.length) return "Кандидатів не знайдено";
+  const best = cands.reduce((a, b) => ((b.avatar_match || 0) > (a.avatar_match || 0) ? b : a));
+  if (!steam.steamid64) return "Профіль не обрано";
+  const chosen = cands.find((c) => c.steamid64 === steam.steamid64);
+  if (!chosen) return null;
+  const chosenAv = chosen.avatar_match || 0;
+  if (chosenAv < ATTENTION_AVATAR_MIN) return `Низький збіг аватара (${Math.round(chosenAv * 100)}%)`;
+  if (best.steamid64 !== chosen.steamid64 && (best.avatar_match || 0) - chosenAv > ATTENTION_BETTER_GAP) {
+    return `Є кращий збіг: ${Math.round((best.avatar_match || 0) * 100)}%`;
+  }
+  return null;
+}
+
+function candidateStatusText(c) {
+  if (c.in_cs2) return "грає в CS2";
+  return c.online_state === "online" ? "онлайн" : "офлайн";
+}
+
+function renderCandidateRow(p, c, selectedId) {
+  const isSelected = Boolean(selectedId) && c.steamid64 === selectedId;
+  const av = Math.round((c.avatar_match || 0) * 100);
+  const hrs = c.cs2_hours != null ? ` · ${Math.round(c.cs2_hours)} год у CS2` : "";
+  const age = c.account_age_years != null ? ` · акаунт ${c.account_age_years} р.` : "";
+  const vac = c.vac_banned ? " · VAC" : "";
+  const img = c.avatar_url
+    ? `<img src="${escapeHtml(c.avatar_url)}" alt="" loading="lazy" />`
+    : '<span class="cand-noimg" aria-hidden="true"></span>';
+  return `
+    <div class="cand-row${isSelected ? " is-selected" : ""}">
+      <div class="cand-left">
+        ${img}
+        <div class="cand-text">
+          <a href="${escapeHtml(c.profile_url)}" target="_blank" rel="noopener noreferrer" title="Відкрити профіль у Steam">${escapeHtml(c.profile_name || "?")}</a>
+          <div class="cand-meta">${candidateStatusText(c)} · збіг аватара ${av}%${hrs}${age}${vac}</div>
+        </div>
+      </div>
+      <div class="cand-actions">
+        <button type="button" class="btn btn-secondary recheck-submit compare-cand-btn"
+          data-nick="${escapeHtml(p.nick)}" data-steamid64="${escapeHtml(c.steamid64)}"
+          ${c.avatar_url ? "" : "disabled"}>Порівняти</button>
+        <button type="button" class="btn btn-secondary recheck-submit pick-cand-btn"
+          data-old-nick="${escapeHtml(p.nick)}"
+          data-url="${escapeHtml(c.profile_url)}"
+          ${isSelected ? "disabled" : ""}>
+          ${isSelected ? "Обрано" : "Вибрати"}
+        </button>
+      </div>
+    </div>`;
+}
+
+function renderAttentionCard(p) {
+  const steam = p.steam || {};
+  const cands = [...(steam.candidates || [])].sort((a, b) => (b.avatar_match || 0) - (a.avatar_match || 0));
+  const logs = (steam.search_log || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+  return `
+    <article class="triage-card" data-nick="${escapeHtml(p.nick)}">
+      <header class="triage-head">
+        <strong>${escapeHtml(p.nick)}</strong>
+        <span class="triage-reason">${escapeHtml(attentionReason(p) || "")}</span>
+      </header>
+      ${cands.length ? `<div class="cand-list">${cands.map((c) => renderCandidateRow(p, c, steam.steamid64)).join("")}</div>` : ""}
+      ${logs ? `<details class="search-log"><summary>Журнал пошуку</summary><ul class="log-steps">${logs}</ul></details>` : ""}
+      <div class="triage-foot">
+        <button type="button" class="btn btn-secondary btn-sm open-nick-editor-btn" data-nick="${escapeHtml(p.nick)}">Це не він? Ввести нік, SteamID або URL</button>
+      </div>
+    </article>`;
+}
+
+function renderConfidentRow(p) {
+  const steam = p.steam || {};
+  const name = escapeHtml(steam.profile_name || "—");
+  const who = steam.profile_url
+    ? `<a href="${escapeHtml(steam.profile_url)}" target="_blank" rel="noopener noreferrer">${name}</a>`
+    : name;
+  return `<div class="confident-row"><strong>${escapeHtml(p.nick)}</strong><span>${who}</span></div>`;
+}
+
 function renderLogs(scan) {
   const players = scan?.players || [];
   if (!players.length) {
     els.logsContainer.innerHTML = '<p class="logs-empty">Немає даних сканування.</p>';
     return;
   }
+  const attention = players.filter((p) => attentionReason(p));
+  const confident = players.filter((p) => !attentionReason(p));
+  const attentionHtml = attention.length
+    ? attention.map(renderAttentionCard).join("")
+    : '<p class="logs-empty">Усі профілі знайдено з упевненим збігом.</p>';
+  const confidentHtml = confident.length
+    ? `<details class="confident-block"><summary>Упевнені збіги (${confident.length})</summary><div class="confident-list">${confident.map(renderConfidentRow).join("")}</div></details>`
+    : "";
+  els.logsContainer.innerHTML = `<div class="triage-list">${attentionHtml}</div>${confidentHtml}`;
+}
 
-  els.logsContainer.innerHTML = players
-    .map((p) => {
-      const steam = p.steam || {};
-      const logs = (steam.search_log || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
-      const cands = steam.candidates || [];
-      const candHtml = cands.length
-        ? `<div class="cand-list">${cands
-            .map((c) => {
-              const st = c.in_cs2 ? "In CS2" : c.online_state || "offline";
-              const avPct = Math.round((c.avatar_match || 0) * 100);
-              const hrs = c.cs2_hours != null ? ` · ${Math.round(c.cs2_hours)}h` : "";
-              const isSelected = steam.steamid64 && c.steamid64 === steam.steamid64;
-              const imgHtml = c.avatar_url
-                ? `<img src="${escapeHtml(c.avatar_url)}" alt="" loading="lazy" />`
-                : "";
-              return `
-                <div class="cand-row">
-                  <div class="cand-left">
-                    ${imgHtml}
-                    <div>
-                      <div><a href="${escapeHtml(c.profile_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(
-                c.profile_name || "?"
-              )}</a></div>
-                      <div class="cand-meta">${escapeHtml(st)} · av ${avPct}%${hrs} · score ${c.score}</div>
-                    </div>
-                  </div>
-                  <button type="button" class="btn btn-secondary recheck-submit pick-cand-btn"
-                    data-old-nick="${escapeHtml(p.nick)}"
-                    data-url="${escapeHtml(c.profile_url)}"
-                    ${isSelected ? "disabled" : ""}>
-                    ${isSelected ? "Обрано" : "Вибрати"}
-                  </button>
-                </div>`;
-            })
-            .join("")}</div>`
-        : '<div class="cand-meta">Кандидатів не знайдено</div>';
-
-      return `
-        <article class="log-card">
-          <div class="log-card-head">
-            <strong>${escapeHtml(p.nick)}</strong>
-            <span class="cand-meta">${escapeHtml(steam.profile_name || "Не знайдено")}</span>
-          </div>
-          ${logs ? `<ul class="log-steps">${logs}</ul>` : ""}
-          ${candHtml}
-        </article>`;
-    })
-    .join("");
+function showMainTab(target) {
+  document.querySelectorAll(".tab-btn").forEach((b) => {
+    const active = b.dataset.tab === target;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", String(active));
+  });
+  els.tabPanelTable.hidden = target !== "table";
+  els.tabPanelLogs.hidden = target !== "logs";
 }
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.tab;
-    document.querySelectorAll(".tab-btn").forEach((b) => {
-      const active = b.dataset.tab === target;
-      b.classList.toggle("active", active);
-      b.setAttribute("aria-selected", String(active));
-    });
-    els.tabPanelTable.hidden = target !== "table";
-    els.tabPanelLogs.hidden = target !== "logs";
-  });
+  btn.addEventListener("click", () => showMainTab(btn.dataset.tab));
+});
+
+function openNickEditor(nick) {
+  showMainTab("table");
+  const find = () => [...els.playersBody.querySelectorAll(".edit-nick-btn")].find((b) => b.dataset.nick === nick);
+  let editBtn = find();
+  if (!editBtn && state.currentScan) {
+    state.riskFilter = "all";
+    els.riskFilter.value = "all";
+    saveLobbyPrefs();
+    renderScan(state.currentScan);
+    editBtn = find();
+  }
+  if (!editBtn) return;
+  editBtn.closest("tr")?.scrollIntoView({ block: "center" });
+  editBtn.click();
+}
+
+function openAvatarCompare(nick, steamid64) {
+  const p = (state.currentScan?.players || []).find((x) => x.nick === nick);
+  const c = (p?.steam?.candidates || []).find((x) => x.steamid64 === steamid64);
+  if (!p || !c) return;
+  const shotImg = document.getElementById("compareShot");
+  const candImg = document.getElementById("compareCand");
+  const shot = p.steam?.screenshot_avatar;
+  shotImg.hidden = !shot;
+  if (shot) shotImg.src = shot;
+  candImg.hidden = !c.avatar_url;
+  if (c.avatar_url) candImg.src = c.avatar_url;
+  document.getElementById("compareTitle").textContent = `${p.nick} ↔ ${c.profile_name || "?"}`;
+  document.getElementById("compareShotNote").textContent = shot ? "" : "Аватар зі скріншота не збережено";
+  const facts = [
+    `збіг ${Math.round((c.avatar_match || 0) * 100)}%`,
+    candidateStatusText(c),
+    c.account_age_years != null ? `акаунт ${c.account_age_years} р.` : null,
+    c.cs2_hours != null ? `${Math.round(c.cs2_hours)} год у CS2` : null,
+    c.vac_banned ? "VAC" : null,
+  ].filter(Boolean);
+  document.getElementById("compareMeta").textContent = facts.join(" · ");
+  document.getElementById("avatarCompareDialog").showModal();
+}
+
+document.getElementById("closeCompareBtn").addEventListener("click", () => document.getElementById("avatarCompareDialog").close());
+document.getElementById("closeCompareXBtn").addEventListener("click", () => document.getElementById("avatarCompareDialog").close());
+
+els.logsContainer.addEventListener("click", (e) => {
+  const cmp = e.target.closest(".compare-cand-btn");
+  if (cmp) {
+    openAvatarCompare(cmp.dataset.nick, cmp.dataset.steamid64);
+    return;
+  }
+  const ed = e.target.closest(".open-nick-editor-btn");
+  if (ed) openNickEditor(ed.dataset.nick);
 });
 
 els.logsContainer.addEventListener("click", async (e) => {
@@ -1424,6 +1545,7 @@ els.copyLaunchBtn.addEventListener("click", async () => {
   els.copyLaunchBtn.textContent = "Скопійовано!";
 });
 
+document.getElementById("closeSetupXBtn")?.addEventListener("click", () => els.cs2SetupDialog.close());
 els.closeSetupBtn.addEventListener("click", () => {
   els.cs2SetupDialog.close();
 });
