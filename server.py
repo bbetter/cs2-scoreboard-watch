@@ -661,6 +661,8 @@ class CsWatchHandler(BaseHTTPRequestHandler):
             return
         if path == "/app.js":
             self._send_file(WEB_DIR / "app.js", "application/javascript; charset=utf-8")
+        if path == "/table-view.js":
+            self._send_file(WEB_DIR / "table-view.js", "application/javascript; charset=utf-8")
             return
 
         if path == "/api/steam-status":

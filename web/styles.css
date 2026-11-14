@@ -1395,4 +1395,124 @@ tr.player-details-row td {
 
 .leetify-attribution a {
   color: inherit;
+/* ===== U1: компактний режим таблиці, вибір колонок, липкий заголовок ===== */
+
+.table-view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.columns-menu {
+  position: relative;
+}
+
+.columns-menu > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.88rem;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  list-style: none;
+}
+
+.columns-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.columns-menu[open] > summary {
+  color: var(--text);
+}
+
+.columns-menu-list {
+  position: absolute;
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + 6px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.columns-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+/* Липкий заголовок: закріплюємо кожну клітинку, щоб працювало й без thead */
+#playersTable thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--surface-2);
+}
+
+/* Компактний режим: менші відступи, без другорядних підрядків у клітинці гравця */
+#playersTable.is-compact th,
+#playersTable.is-compact td {
+  padding: 5px 8px;
+}
+
+#playersTable.is-compact th:has(> button) {
+  padding: 0;
+}
+
+#playersTable.is-compact th > button {
+  min-height: 30px;
+  padding: 5px 8px;
+}
+
+#playersTable.is-compact {
+  font-size: 0.84rem;
+}
+
+#playersTable.is-compact .steam-sub,
+#playersTable.is-compact .badge-row,
+#playersTable.is-compact .skeleton-line {
+  display: none;
+}
+
+#playersTable.is-compact .player-cell {
+  gap: 8px;
+}
+
+/* Приховані колонки (налаштовуються в меню «Колонки») */
+#playersTable.hide-col-2 > thead > tr > th:nth-child(2),
+#playersTable.hide-col-2 > tbody > tr > td:nth-child(2),
+#playersTable.hide-col-3 > thead > tr > th:nth-child(3),
+#playersTable.hide-col-3 > tbody > tr > td:nth-child(3),
+#playersTable.hide-col-4 > thead > tr > th:nth-child(4),
+#playersTable.hide-col-4 > tbody > tr > td:nth-child(4),
+#playersTable.hide-col-5 > thead > tr > th:nth-child(5),
+#playersTable.hide-col-5 > tbody > tr > td:nth-child(5),
+#playersTable.hide-col-6 > thead > tr > th:nth-child(6),
+#playersTable.hide-col-6 > tbody > tr > td:nth-child(6),
+#playersTable.hide-col-7 > thead > tr > th:nth-child(7),
+#playersTable.hide-col-7 > tbody > tr > td:nth-child(7),
+#playersTable.hide-col-8 > thead > tr > th:nth-child(8),
+#playersTable.hide-col-8 > tbody > tr > td:nth-child(8) {
+  display: none;
 }

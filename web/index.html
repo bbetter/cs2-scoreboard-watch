@@ -128,6 +128,16 @@
 
     <main class="main-panel" id="dropZone">
       <div id="tabPanelTable" class="tab-panel">
+      <div class="table-view-bar">
+        <label class="view-toggle">
+          <input type="checkbox" id="compactToggle" />
+          Компактно
+        </label>
+        <details class="columns-menu" id="columnsMenu">
+          <summary>Колонки</summary>
+          <div class="columns-menu-list" id="columnsMenuList"></div>
+        </details>
+      </div>
       <div tabindex="0" role="region" aria-labelledby="players-caption" class="table-wrapper">
         <table id="playersTable">
           <caption id="players-caption">Таблиця гравців останнього скану</caption>
@@ -387,5 +397,6 @@
   </dialog>
 
   <script src="/app.js"></script>
+  <script src="/table-view.js"></script>
 </body>
 </html>
