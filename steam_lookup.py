@@ -30,6 +30,7 @@ _PROFILE_CACHE: dict[str, tuple[float, dict]] = {}
 _SEARCH_LOCK = threading.Lock()
 _LAST_SEARCH_TS = 0.0
 _STEAM_API_KEY_CACHE: Optional[str] = None
+_FACEIT_API_KEY_CACHE: Optional[str] = None
 
 
 def _load_profile_cache() -> None:
@@ -64,6 +65,39 @@ _load_profile_cache()
 def reset_steam_api_key_cache() -> None:
     global _STEAM_API_KEY_CACHE
     _STEAM_API_KEY_CACHE = None
+
+
+def reset_faceit_api_key_cache() -> None:
+    global _FACEIT_API_KEY_CACHE
+    _FACEIT_API_KEY_CACHE = None
+
+
+def _get_faceit_api_key() -> Optional[str]:
+    global _FACEIT_API_KEY_CACHE
+    if _FACEIT_API_KEY_CACHE is not None:
+        return _FACEIT_API_KEY_CACHE or None
+    try:
+        from config_store import load_config
+
+        cfg_key = str(load_config().get("faceit_api_key") or "").strip()
+        if cfg_key:
+            _FACEIT_API_KEY_CACHE = cfg_key
+            return cfg_key
+    except Exception:
+        pass
+    key = os.environ.get("FACEIT_API_KEY", "").strip()
+    if not key:
+        env_path = Path(__file__).resolve().parent / ".env"
+        if env_path.is_file():
+            try:
+                txt = env_path.read_text(encoding="utf-8", errors="ignore")
+                m = re.search(r'(?:export\s+)?FACEIT_API_KEY\s*=\s*["\']?([A-Za-z0-9_-]{16,128})["\']?', txt)
+                if m:
+                    key = m.group(1).strip()
+            except OSError:
+                pass
+    _FACEIT_API_KEY_CACHE = key
+    return key or None
 
 
 def _get_steam_api_key() -> Optional[str]:
@@ -117,6 +151,8 @@ class SteamProfile:
     rip_url: str = ""
     rip_nick_url: str = ""
     leetify: Optional[dict] = None
+    faceit: dict = field(default_factory=dict)
+    cs2_stats: dict = field(default_factory=dict)
     search_log: list[str] = field(default_factory=list)
     candidates: list[dict] = field(default_factory=list)
 
@@ -134,9 +170,18 @@ class PlayerReport:
     risk_level: str
     reasons: list[str] = field(default_factory=list)
     steam: dict = field(default_factory=dict)
+    smurf_probability: float = 0.0
+    smurf_risk_level: str = "low"
+    uncertainty: float = 50.0
+    effective_weights: dict = field(default_factory=dict)
 
 
-def _http_get_status(url: str, timeout: float = 4.0, cookies: Optional[str] = None) -> tuple[int, Optional[bytes]]:
+def _http_get_status(
+    url: str,
+    timeout: float = 4.0,
+    cookies: Optional[str] = None,
+    headers: Optional[dict[str, str]] = None,
+) -> tuple[int, Optional[bytes]]:
     import shutil
     import subprocess
 
@@ -144,6 +189,9 @@ def _http_get_status(url: str, timeout: float = 4.0, cookies: Optional[str] = No
         cmd = ["curl", "-sL", "--max-time", str(timeout), "-w", "\n%{http_code}"]
         if cookies:
             cmd.extend(["-b", cookies])
+        if headers:
+            for k, v in headers.items():
+                cmd.extend(["-H", f"{k}: {v}"])
         cmd.append(url)
         try:
             res = subprocess.run(cmd, capture_output=True, timeout=timeout + 2)
@@ -158,10 +206,12 @@ def _http_get_status(url: str, timeout: float = 4.0, cookies: Optional[str] = No
         except Exception:
             pass
 
-    headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
+    req_headers = {"User-Agent": USER_AGENT, "Accept-Language": "en-US,en;q=0.9"}
     if cookies:
-        headers["Cookie"] = cookies
-    req = urllib.request.Request(url, headers=headers)
+        req_headers["Cookie"] = cookies
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, headers=req_headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.status, resp.read()
@@ -171,8 +221,13 @@ def _http_get_status(url: str, timeout: float = 4.0, cookies: Optional[str] = No
         return 0, None
 
 
-def _http_get(url: str, timeout: float = 4.0, cookies: Optional[str] = None) -> Optional[bytes]:
-    status, data = _http_get_status(url, timeout=timeout, cookies=cookies)
+def _http_get(
+    url: str,
+    timeout: float = 4.0,
+    cookies: Optional[str] = None,
+    headers: Optional[dict[str, str]] = None,
+) -> Optional[bytes]:
+    status, data = _http_get_status(url, timeout=timeout, cookies=cookies, headers=headers)
     return data if status == 200 else None
 
 
@@ -286,6 +341,144 @@ def _fetch_leetify(steamid64: str) -> Optional[dict]:
         "preaim": round(float(stats["preaim"]), 1) if isinstance(stats.get("preaim"), (int, float)) else None,
         "accuracy_head": round(float(stats["accuracy_head"]), 1) if isinstance(stats.get("accuracy_head"), (int, float)) else None,
     }
+
+
+def _safe_float(val: object) -> Optional[float]:
+    if val is None or val == "":
+        return None
+    try:
+        return float(str(val).replace(",", "").replace("%", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_int(val: object) -> Optional[int]:
+    num = _safe_float(val)
+    return int(round(num)) if num is not None else None
+
+
+def _fetch_faceit_stats(steamid64: str) -> dict:
+    api_key = _get_faceit_api_key()
+    if not api_key or not steamid64:
+        return {}
+    headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+    player_url = (
+        f"https://open.faceit.com/data/v4/players"
+        f"?game=cs2&game_player_id={urllib.parse.quote(steamid64)}"
+    )
+    raw = _http_get(player_url, timeout=4.5, headers=headers)
+    if not raw:
+        return {}
+    try:
+        d = json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(d, dict) or not d.get("player_id"):
+        return {}
+
+    player_id = str(d["player_id"])
+    cs2_info = (d.get("games") or {}).get("cs2") or {}
+    raw_url = str(d.get("faceit_url") or "")
+    faceit_url = raw_url.replace("{lang}", "en") if raw_url else None
+
+    result: dict = {
+        "found": True,
+        "player_id": player_id,
+        "nickname": d.get("nickname"),
+        "faceit_url": faceit_url,
+        "skill_level": _safe_int(cs2_info.get("skill_level")),
+        "faceit_elo": _safe_int(cs2_info.get("faceit_elo")),
+        "matches": None,
+        "winrate": None,
+        "kd": None,
+        "hs_pct": None,
+    }
+
+    stats_url = f"https://open.faceit.com/data/v4/players/{urllib.parse.quote(player_id)}/stats/cs2"
+    raw_stats = _http_get(stats_url, timeout=4.5, headers=headers)
+    if raw_stats:
+        try:
+            sd = json.loads(raw_stats.decode("utf-8", errors="replace"))
+            lifetime = sd.get("lifetime") if isinstance(sd, dict) else None
+            if isinstance(lifetime, dict):
+                result["matches"] = _safe_int(lifetime.get("Matches"))
+                wr = _safe_float(lifetime.get("Win Rate %"))
+                kd = _safe_float(lifetime.get("Average K/D Ratio"))
+                hs = _safe_float(lifetime.get("Average Headshots %"))
+                result["winrate"] = round(wr, 1) if wr is not None else None
+                result["kd"] = round(kd, 2) if kd is not None else None
+                result["hs_pct"] = round(hs, 1) if hs is not None else None
+        except json.JSONDecodeError:
+            pass
+
+    return result
+
+
+def _fetch_steam_cs2_stats(steamid64: str, api_key: str) -> dict:
+    if not steamid64 or not api_key:
+        return {}
+    url = (
+        f"https://api.steampowered.com/ISteamUserStats/GetUserStatsForGame/v2/"
+        f"?appid=730&key={urllib.parse.quote(api_key)}&steamid={urllib.parse.quote(steamid64)}"
+    )
+    raw = _http_get(url, timeout=4.0)
+    if not raw:
+        return {}
+    try:
+        payload = json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return {}
+    stats_list = (payload.get("playerstats") or {}).get("stats")
+    if not isinstance(stats_list, list) or not stats_list:
+        return {}
+
+    raw_map: dict[str, float] = {}
+    for item in stats_list:
+        if isinstance(item, dict) and item.get("name"):
+            val = _safe_float(item.get("value"))
+            if val is not None:
+                raw_map[str(item["name"])] = val
+
+    total_kills = _safe_int(raw_map.get("total_kills"))
+    total_deaths = _safe_int(raw_map.get("total_deaths"))
+    total_hs = _safe_int(raw_map.get("total_kills_headshot"))
+    total_wins = _safe_int(raw_map.get("total_wins"))
+    total_matches = _safe_int(raw_map.get("total_matches_played"))
+
+    if total_kills is None and total_deaths is None and total_matches is None:
+        return {}
+
+    kd: Optional[float] = None
+    if total_kills is not None and total_deaths is not None:
+        kd = round(total_kills / total_deaths, 2) if total_deaths > 0 else float(total_kills)
+
+    hs_pct: Optional[float] = None
+    if total_kills is not None and total_kills > 0 and total_hs is not None:
+        hs_pct = round((total_hs / total_kills) * 100.0, 1)
+
+    return {
+        "total_kills": total_kills,
+        "total_deaths": total_deaths,
+        "total_kills_headshot": total_hs,
+        "total_wins": total_wins,
+        "total_matches_played": total_matches,
+        "kd": kd,
+        "hs_pct": hs_pct,
+    }
+
+
+def _fetch_external_stats(steamid64: Optional[str]) -> tuple[Optional[dict], dict, dict]:
+    if not steamid64:
+        return None, {}, {}
+    steam_api_key = _get_steam_api_key()
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_leetify = pool.submit(_fetch_leetify, steamid64)
+        f_faceit = pool.submit(_fetch_faceit_stats, steamid64)
+        f_cs2 = pool.submit(_fetch_steam_cs2_stats, steamid64, steam_api_key) if steam_api_key else None
+        leetify_data = f_leetify.result()
+        faceit_data = f_faceit.result()
+        cs2_stats = f_cs2.result() if f_cs2 else {}
+    return leetify_data, faceit_data, cs2_stats
 
 
 def _avatar_similarity(thumb: object, avatar_url: Optional[str]) -> float:
@@ -634,11 +827,19 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
         )
     else:
         steamid64 = data.get("steamid64")
-        leetify_data = _fetch_leetify(steamid64) if steamid64 else None
+        leetify_data, faceit_data, cs2_stats = _fetch_external_stats(steamid64)
         if leetify_data:
             search_log.append(f"Leetify: знайдено ({leetify_data.get('total_matches') or 0} матчів)")
         elif steamid64:
             search_log.append("Leetify: профіль відсутній або закритий")
+        if faceit_data:
+            search_log.append(
+                f"FACEIT: lvl {faceit_data.get('skill_level') or '?'} ({faceit_data.get('faceit_elo') or '?'} ELO)"
+            )
+        if cs2_stats:
+            search_log.append(
+                f"Steam CS2 stats: K/D {cs2_stats.get('kd')}, HS {cs2_stats.get('hs_pct')}%"
+            )
         rip_target = data.get("vanity") or steamid64 or nick_encoded
         profile = SteamProfile(
             query_nick=clean_nick,
@@ -661,6 +862,8 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(str(rip_target), safe='')}/",
             rip_nick_url=rip_nick_url,
             leetify=leetify_data,
+            faceit=faceit_data,
+            cs2_stats=cs2_stats,
             search_log=search_log,
             candidates=candidates,
         )
@@ -674,122 +877,300 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     return profile
 
 
-def _compute_probability(player: Player, steam: SteamProfile) -> tuple[float, str, list[str]]:
-    reasons: list[str] = []
+def _risk_level(prob: float) -> str:
+    if prob >= 75:
+        return "critical"
+    if prob >= 55:
+        return "high"
+    if prob >= 30:
+        return "medium"
+    return "low"
 
-    # 1. Current lobby contribution (kept low: ~20% max weight)
+
+def _load_base_weights() -> dict[str, float]:
+    defaults = {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30}
+    try:
+        from config_store import load_config
+
+        w = load_config().get("ai_weights")
+        if isinstance(w, dict):
+            return {
+                "scoreboard": max(0.0, float(w.get("scoreboard", defaults["scoreboard"]))),
+                "leetify": max(0.0, float(w.get("leetify", defaults["leetify"]))),
+                "steam_account": max(0.0, float(w.get("steam_account", defaults["steam_account"]))),
+            }
+    except Exception:
+        pass
+    return defaults
+
+
+def _compute_uncertainty_and_weights(steam: SteamProfile) -> tuple[float, dict[str, float]]:
+    base = _load_base_weights()
+
+    if steam.steamid64:
+        has_steam = 1.0 if steam.privacy_state == "public" else 0.45
+    else:
+        has_steam = 0.0
+
+    has_faceit = bool(steam.faceit and steam.faceit.get("found"))
+    has_leetify = bool(steam.leetify)
+    has_cs2_stats = bool(steam.cs2_stats)
+
+    if has_leetify or has_faceit:
+        has_leetify_or_faceit = 1.0
+    elif has_cs2_stats:
+        has_leetify_or_faceit = 0.5
+    else:
+        has_leetify_or_faceit = 0.0
+
+    raw_sb = base["scoreboard"] * 1.0
+    raw_steam = base["steam_account"] * has_steam
+    raw_ext = base["leetify"] * has_leetify_or_faceit
+    total = raw_sb + raw_steam + raw_ext
+
+    if (has_steam == 0.0 and has_leetify_or_faceit == 0.0) or total <= 0.0:
+        effective_weights = {"scoreboard": 1.0, "leetify": 0.0, "steam_account": 0.0}
+    else:
+        effective_weights = {
+            "scoreboard": round(raw_sb / total, 3),
+            "leetify": round(raw_ext / total, 3),
+            "steam_account": round(raw_steam / total, 3),
+        }
+
+    uncertainty = 100.0
+    uncertainty -= 35.0 * has_steam
+    if has_leetify:
+        uncertainty -= 35.0
+    if has_faceit:
+        uncertainty -= 15.0
+    if has_cs2_stats:
+        uncertainty -= 15.0
+    uncertainty = round(max(0.0, min(100.0, uncertainty)), 1)
+
+    return uncertainty, effective_weights
+
+
+def _compute_scores(
+    player: Player, steam: SteamProfile
+) -> tuple[float, str, float, str, float, dict[str, float], list[str]]:
+    reasons: list[str] = []
+    uncertainty, effective_weights = _compute_uncertainty_and_weights(steam)
+
+    # 1. Scoreboard component (0..100)
     has_lobby_score = not math.isnan(player.score)
     if has_lobby_score:
         lobby_raw = float(player.score)
     else:
         lobby_raw = min(100.0, 15.0 + max(0.0, (player.kd - 1.0) * 12.0) + max(0.0, (player.hs - 45.0) * 0.7))
 
-    prob = 8.0 + 0.20 * lobby_raw
+    sb_score = lobby_raw * 0.85
     if lobby_raw >= 70.0:
         reasons.append(f"Високі цифри в цьому лобі ({lobby_raw:.0f}%)")
-
     if 0 <= player.level <= 3 and (player.kd >= 1.8 or player.hs >= 65):
-        prob += 8.0
+        sb_score += 18.0
         reasons.append(f"Низький рівень у грі (lvl {player.level})")
+    sb_score = max(0.0, min(100.0, sb_score))
 
-    # 2. External Steam account signals (~35% weight)
+    # 2. Steam account component (0..100)
+    steam_score = 10.0
     if steam.vac_banned:
-        prob += 45.0
+        steam_score += 75.0
         reasons.append("VAC-бан у Steam")
+    if steam.trade_ban:
+        steam_score += 12.0
+        reasons.append(f"Трейд-бан у Steam ({steam.trade_ban})")
     if steam.is_limited:
-        prob += 14.0
+        steam_score += 22.0
         reasons.append("Обмежений акаунт Steam")
     if steam.account_age_years is not None:
         if steam.account_age_years < 1.0:
-            prob += 14.0
+            steam_score += 24.0
             reasons.append(f"Новий акаунт ({steam.account_age_years} р.)")
         elif steam.account_age_years < 2.0:
-            prob += 7.0
+            steam_score += 12.0
             reasons.append(f"Молодий акаунт ({steam.account_age_years} р.)")
         elif steam.account_age_years >= 6.0:
-            prob -= 5.0
+            steam_score -= 10.0
     if steam.cs2_hours is not None:
         if steam.cs2_hours < 100:
-            prob += 16.0
+            steam_score += 28.0
             reasons.append(f"Мало годин у CS2 ({steam.cs2_hours:.0f} год)")
         elif steam.cs2_hours < 300:
-            prob += 8.0
+            steam_score += 14.0
             reasons.append(f"Небагато годин у CS2 ({steam.cs2_hours:.0f} год)")
         elif steam.cs2_hours >= 1500:
-            prob -= 6.0
+            steam_score -= 12.0
     if steam.privacy_state and steam.privacy_state != "public":
-        prob += 8.0
+        steam_score += 16.0
         reasons.append(f"Закритий профіль ({steam.privacy_state})")
     elif steam.lookup_source == "not_found":
-        prob += 6.0
+        steam_score += 12.0
         reasons.append("Steam-профіль не знайдено")
+    steam_score = max(0.0, min(100.0, steam_score))
 
-    # 3. External Leetify CS2 history & mechanics (~45% weight)
+    # 3. External stats component: Leetify + FACEIT + Steam CS2 stats (0..100)
+    ext_score = 10.0
     lf = steam.leetify
+    faceit = steam.faceit or {}
+    cs2 = steam.cs2_stats or {}
+
+    faceit_lvl = faceit.get("skill_level") or (lf.get("faceit") if lf else None) or 0
+    faceit_elo = faceit.get("faceit_elo") or (lf.get("faceit_elo") if lf else None) or 0
+    premier = (lf.get("premier") if lf else None) or 0
+    high_elo = faceit_lvl >= 8 or faceit_elo >= 1800 or premier >= 20000
+
+    lf_bans = (lf.get("bans") or []) if lf else []
     if lf:
-        bans = lf.get("bans") or []
-        if bans:
-            prob += 45.0
-            reasons.append(f"Бани на Leetify/платформах ({len(bans)})")
+        if lf_bans:
+            ext_score += 80.0
+            reasons.append(f"Бани на Leetify/платформах ({len(lf_bans)})")
 
         matches = lf.get("total_matches") or 0
         winrate = lf.get("winrate")
         aim = lf.get("aim")
         rt = lf.get("reaction_time_ms")
         preaim = lf.get("preaim")
-        faceit_lvl = lf.get("faceit") or 0
-        premier = lf.get("premier") or 0
-        high_elo = faceit_lvl >= 8 or premier >= 20000
 
         if rt is not None:
             if rt < 320:
-                prob += 25.0
+                ext_score += 45.0
                 reasons.append(f"Надлюдська реакція Leetify ({rt} мс)")
             elif rt < 380:
-                prob += 14.0
+                ext_score += 25.0
                 reasons.append(f"Дуже швидка реакція ({rt} мс)")
             elif rt < 420 and not high_elo:
-                prob += 6.0
+                ext_score += 12.0
                 reasons.append(f"Швидка реакція ({rt} мс)")
 
         if aim is not None:
             if aim >= 95 and matches < 150:
-                prob += 16.0
+                ext_score += 30.0
                 reasons.append(f"Aim {aim} при {matches} матчах")
             elif aim >= 92 and not high_elo:
-                prob += 10.0
+                ext_score += 18.0
                 reasons.append(f"Дуже високий Aim ({aim})")
 
         if winrate is not None and matches >= 5:
             if winrate >= 72 and matches < 120:
-                prob += 18.0
+                ext_score += 32.0
                 reasons.append(f"Вінрейт {winrate}% за {matches} матчів")
             elif winrate >= 64 and matches < 100:
-                prob += 12.0
+                ext_score += 20.0
                 reasons.append(f"Високий вінрейт {winrate}% ({matches} матчів)")
 
         if preaim is not None and preaim < 5.0 and matches < 100 and not high_elo:
-            prob += 8.0
+            ext_score += 15.0
             reasons.append(f"Низький preaim ({preaim}°) на новому акаунті")
 
-        if matches >= 400 and (winrate is None or winrate <= 57) and not bans:
-            prob -= 8.0
+        if matches >= 400 and (winrate is None or winrate <= 57) and not lf_bans:
+            ext_score -= 15.0
 
-    prob = max(1.0, min(99.0, round(prob, 1)))
+    if faceit.get("found"):
+        f_matches = faceit.get("matches") or 0
+        f_kd = faceit.get("kd")
+        f_hs = faceit.get("hs_pct")
+        if f_matches >= 300 and (f_kd is None or f_kd <= 1.45) and (f_hs is None or f_hs <= 62.0):
+            ext_score -= 10.0
+
+    if cs2:
+        c_matches = cs2.get("total_matches_played") or 0
+        c_kd = cs2.get("kd")
+        c_hs = cs2.get("hs_pct")
+        if c_kd is not None and c_kd >= 2.3 and c_matches < 150:
+            ext_score += 22.0
+            reasons.append(f"Високий загальний K/D у CS2 ({c_kd})")
+        if c_hs is not None and c_hs >= 72.0:
+            ext_score += 18.0
+            reasons.append(f"Високий загальний HS% у CS2 ({c_hs}%)")
+        if c_matches >= 300 and (c_kd is None or c_kd <= 1.35):
+            ext_score -= 10.0
+
+    ext_score = max(0.0, min(100.0, ext_score))
+
+    # Weighted cheat probability
+    cheat_prob = (
+        effective_weights["scoreboard"] * sb_score
+        + effective_weights["steam_account"] * steam_score
+        + effective_weights["leetify"] * ext_score
+    )
+
+    has_ban = bool(steam.vac_banned or lf_bans)
+    has_extreme_rage = player.kd >= 3.0 and player.hs >= 75.0
+    if has_ban:
+        cheat_prob = max(cheat_prob, 78.0)
+    elif not has_extreme_rage and uncertainty >= 70.0:
+        damp = 1.0 - 0.25 * ((uncertainty - 70.0) / 30.0)
+        cheat_prob *= damp
+        if uncertainty >= 85.0:
+            cheat_prob = min(cheat_prob, 68.0)
+
+    cheat_prob = max(1.0, min(99.0, round(cheat_prob, 1)))
+    cheat_risk = _risk_level(cheat_prob)
+
+    # 4. Smurf probability (0..100)
+    smurf_prob = 5.0
+    young_strong = steam.account_age_years is not None and steam.account_age_years < 1.5
+    young_mod = steam.account_age_years is not None and 1.5 <= steam.account_age_years < 3.0
+    low_hrs_strong = steam.cs2_hours is not None and steam.cs2_hours < 150
+    low_hrs_mod = steam.cs2_hours is not None and 150 <= steam.cs2_hours < 350
+    low_lvl = 0 <= player.level <= 5
+
+    account_smurf_signal = young_strong or young_mod or low_hrs_strong or low_hrs_mod or low_lvl or steam.is_limited
+
+    high_lobby_perf = (player.kd >= 1.35 and player.kills >= 15) or player.kd >= 1.8
+    high_leetify_perf = bool(lf and ((lf.get("aim") or 0) >= 75 or (lf.get("winrate") or 0) > 58))
+    high_faceit_perf = bool(faceit_lvl >= 7 or faceit_elo >= 1500)
+    high_cs2_perf = bool(cs2 and (cs2.get("kd") or 0) >= 1.35)
+    strong_perf = high_lobby_perf or high_leetify_perf or high_faceit_perf or high_cs2_perf
+
+    rage_hs = player.hs > 75.0 and 0 <= player.level <= 3
+
+    if has_ban:
+        smurf_prob = 10.0
+    elif rage_hs:
+        smurf_prob = 18.0
+    elif account_smurf_signal and strong_perf:
+        if young_strong:
+            smurf_prob += 26.0
+        elif young_mod:
+            smurf_prob += 15.0
+        if low_hrs_strong:
+            smurf_prob += 26.0
+        elif low_hrs_mod:
+            smurf_prob += 15.0
+        if low_lvl:
+            smurf_prob += 14.0
+        if steam.is_limited:
+            smurf_prob += 8.0
+
+        if high_lobby_perf:
+            smurf_prob += 20.0
+        if high_leetify_perf:
+            smurf_prob += 15.0
+        if high_faceit_perf:
+            smurf_prob += 18.0
+        if high_cs2_perf:
+            smurf_prob += 10.0
+
+        # Clean-ban bonus for smurf classification
+        smurf_prob += 8.0
+
+        if young_strong or young_mod:
+            reasons.append("Смурф-сигнал: молодий акаунт + високий K/D")
+        if low_hrs_strong or low_hrs_mod:
+            reasons.append("Смурф-сигнал: мало годин у CS2 + сильна гра")
+        if high_faceit_perf and (young_strong or young_mod or low_hrs_strong or low_hrs_mod):
+            reasons.append(f"Смурф-сигнал: високий FACEIT (lvl {faceit_lvl}) на новому акаунті")
+    elif strong_perf:
+        smurf_prob = 22.0 if uncertainty >= 60.0 else 15.0
+
+    smurf_prob = max(0.0, min(99.0, round(smurf_prob, 1)))
+    smurf_risk = _risk_level(smurf_prob)
 
     if not reasons:
         reasons.append("Зовнішні та лобі-показники в нормі")
 
-    if prob >= 75:
-        risk = "critical"
-    elif prob >= 55:
-        risk = "high"
-    elif prob >= 30:
-        risk = "medium"
-    else:
-        risk = "low"
-
-    return prob, risk, reasons
+    return cheat_prob, cheat_risk, smurf_prob, smurf_risk, uncertainty, effective_weights, reasons
 
 
 def enrich_players(players: list[Player], fetch_steam: bool = True) -> list[PlayerReport]:
@@ -814,7 +1195,7 @@ def enrich_players(players: list[Player], fetch_steam: bool = True) -> list[Play
 
     reports: list[PlayerReport] = []
     for p, steam in zip(players, profiles):
-        prob, risk, reasons = _compute_probability(p, steam)
+        prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
         anomaly = None if math.isnan(p.score) else round(p.score, 1)
         reports.append(
             PlayerReport(
@@ -829,6 +1210,10 @@ def enrich_players(players: list[Player], fetch_steam: bool = True) -> list[Play
                 risk_level=risk,
                 reasons=reasons,
                 steam=asdict(steam),
+                smurf_probability=smurf_prob,
+                smurf_risk_level=smurf_risk,
+                uncertainty=uncertainty,
+                effective_weights=eff_weights,
             )
         )
 
@@ -854,7 +1239,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
 
     if data is not None:
         steamid64 = data.get("steamid64")
-        leetify_data = _fetch_leetify(steamid64) if steamid64 else None
+        leetify_data, faceit_data, cs2_stats = _fetch_external_stats(steamid64)
         rip_target = data.get("vanity") or steamid64 or urllib.parse.quote(q, safe="")
         steam = SteamProfile(
             query_nick=q,
@@ -876,6 +1261,8 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             rip_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(str(rip_target), safe='')}/",
             rip_nick_url=f"https://steamcommunity.rip/id/{urllib.parse.quote(q, safe='')}/",
             leetify=leetify_data,
+            faceit=faceit_data,
+            cs2_stats=cs2_stats,
         )
     else:
         steam = lookup_steam_profile(q)
@@ -890,7 +1277,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
         level=int(player_dict.get("level", -1)),
         score=float(anomaly) if anomaly is not None else float("nan"),
     )
-    prob, risk, reasons = _compute_probability(p, steam)
+    prob, risk, smurf_prob, smurf_risk, uncertainty, eff_weights, reasons = _compute_scores(p, steam)
     return asdict(
         PlayerReport(
             nick=p.nick,
@@ -904,5 +1291,9 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             risk_level=risk,
             reasons=reasons,
             steam=asdict(steam),
+            smurf_probability=smurf_prob,
+            smurf_risk_level=smurf_risk,
+            uncertainty=uncertainty,
+            effective_weights=eff_weights,
         )
     )

@@ -31,7 +31,14 @@ from console_parser import (
     setup_autoexec,
 )
 from scoreboard_scan import scan as scan_scoreboard
-from steam_lookup import _get_steam_api_key, enrich_players, recheck_player_report, reset_steam_api_key_cache
+from steam_lookup import (
+    _get_faceit_api_key,
+    _get_steam_api_key,
+    enrich_players,
+    recheck_player_report,
+    reset_faceit_api_key_cache,
+    reset_steam_api_key_cache,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 WEB_DIR = BASE_DIR / "web"
@@ -579,7 +586,13 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 "screenshots_dir": str(get_screenshot_dir()),
                 "claude_cli_available": bool(shutil.which("claude")),
             }
-            self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
+            self._send_json(
+                get_public_config(
+                    resolved=resolved,
+                    env_key_present=bool(_get_steam_api_key()),
+                    env_faceit_key_present=bool(_get_faceit_api_key()),
+                )
+            )
             return
 
         if path == "/api/matches":
@@ -741,7 +754,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
 
                 with _STATE_LOCK:
                     scan_rec["players"][idx] = updated_player
-                    scan_rec["players"].sort(key=lambda r: r["cheat_probability"], reverse=True)
+                    scan_rec["players"].sort(key=lambda r: r.get("cheat_probability", 0), reverse=True)
                     _save_history_locked()
                     snapshot = dict(scan_rec)
 
@@ -801,6 +814,7 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                 save_config(payload)
                 _apply_runtime_config()
                 reset_steam_api_key_cache()
+                reset_faceit_api_key_cache()
                 cs2_dir = find_cs2_game_dir()
                 resolved = {
                     "cs2_game_dir": str(cs2_dir) if cs2_dir else "",
@@ -808,7 +822,13 @@ class CsWatchHandler(BaseHTTPRequestHandler):
                     "screenshots_dir": str(get_screenshot_dir()),
                     "claude_cli_available": bool(shutil.which("claude")),
                 }
-                self._send_json(get_public_config(resolved=resolved, env_key_present=bool(_get_steam_api_key())))
+                self._send_json(
+                    get_public_config(
+                        resolved=resolved,
+                        env_key_present=bool(_get_steam_api_key()),
+                        env_faceit_key_present=bool(_get_faceit_api_key()),
+                    )
+                )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=500)
             return

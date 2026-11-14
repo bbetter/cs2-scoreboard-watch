@@ -41,6 +41,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "screenshot_tool": "auto",
     "notify_enabled": True,
     "steam_api_key": "",
+    "faceit_api_key": "",
     "ai_enabled": False,
     "ai_provider": "claude_cli",
     "ai_model": "sonnet",
@@ -66,7 +67,7 @@ def _normalize_config(raw: dict[str, Any]) -> dict[str, Any]:
     cfg["tab_cooldown_sec"] = _clamp_float(raw.get("tab_cooldown_sec"), 4.0, 0.5, 30.0)
     cfg["cs2_only"] = bool(raw.get("cs2_only", True))
     cfg["notify_enabled"] = bool(raw.get("notify_enabled", True))
-    for key in ("cs2_game_dir", "console_log_path", "screenshots_dir", "steam_api_key"):
+    for key in ("cs2_game_dir", "console_log_path", "screenshots_dir", "steam_api_key", "faceit_api_key"):
         val = raw.get(key, "")
         cfg[key] = str(val).strip() if val is not None else ""
     tool = str(raw.get("screenshot_tool", "auto") or "auto").strip().lower()
@@ -125,6 +126,13 @@ def save_config(updates: dict[str, Any]) -> dict[str, Any]:
                     new_key = str(updates.get("steam_api_key") or "").strip()
                     if new_key:
                         merged["steam_api_key"] = new_key
+            elif key == "faceit_api_key":
+                if updates.get("clear_faceit_api_key"):
+                    merged["faceit_api_key"] = ""
+                else:
+                    new_key = str(updates.get("faceit_api_key") or "").strip()
+                    if new_key:
+                        merged["faceit_api_key"] = new_key
             elif key == "anthropic_api_key":
                 if updates.get("clear_anthropic_api_key"):
                     merged["anthropic_api_key"] = ""
@@ -137,6 +145,8 @@ def save_config(updates: dict[str, Any]) -> dict[str, Any]:
 
         if updates.get("clear_steam_api_key"):
             merged["steam_api_key"] = ""
+        if updates.get("clear_faceit_api_key"):
+            merged["faceit_api_key"] = ""
         if updates.get("clear_anthropic_api_key"):
             merged["anthropic_api_key"] = ""
 
@@ -154,7 +164,11 @@ def _mask_key(key: str) -> str:
     return f"{'*' * (len(key) - 4)}{key[-4:]}"
 
 
-def get_public_config(resolved: Optional[dict[str, Any]] = None, env_key_present: bool = False) -> dict[str, Any]:
+def get_public_config(
+    resolved: Optional[dict[str, Any]] = None,
+    env_key_present: bool = False,
+    env_faceit_key_present: bool = False,
+) -> dict[str, Any]:
     cfg = load_config()
     cfg_key = cfg.pop("steam_api_key", "")
     if cfg_key:
@@ -166,6 +180,17 @@ def get_public_config(resolved: Optional[dict[str, Any]] = None, env_key_present
     else:
         key_source = "none"
         masked = ""
+
+    faceit_key = cfg.pop("faceit_api_key", "")
+    if faceit_key:
+        faceit_source = "config"
+        faceit_masked = _mask_key(faceit_key)
+    elif env_faceit_key_present or os.environ.get("FACEIT_API_KEY", "").strip():
+        faceit_source = "env"
+        faceit_masked = "**** (з середовища)"
+    else:
+        faceit_source = "none"
+        faceit_masked = ""
 
     ant_key = cfg.pop("anthropic_api_key", "")
     if ant_key:
@@ -183,6 +208,9 @@ def get_public_config(resolved: Optional[dict[str, Any]] = None, env_key_present
         "has_steam_api_key": key_source != "none",
         "steam_api_key_source": key_source,
         "steam_api_key_masked": masked,
+        "has_faceit_api_key": faceit_source != "none",
+        "faceit_api_key_source": faceit_source,
+        "faceit_api_key_masked": faceit_masked,
         "has_anthropic_api_key": ant_source != "none",
         "anthropic_api_key_source": ant_source,
         "anthropic_api_key_masked": ant_masked,
