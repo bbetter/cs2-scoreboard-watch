@@ -20,6 +20,11 @@ files and `.env`.
 The watcher takes `--delay` / `--cooldown` from `data/config.json` when the flag is absent. `app.server` uses
 fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
+Runtime paths come from `storage/paths.py`, read once at import: `CS2WATCH_DATA_DIR` replaces `data/` (logs and
+screenshots follow it) and `CS2WATCH_WEB_DIR` replaces `web/`. Unset or empty means the default. Use absolute paths:
+`scripts/cs_scan.sh` uses `CS2WATCH_DATA_DIR` as given, while the server it starts resolves a relative value against
+its own working directory (the repository root).
+
 ## Module map
 
 ### `app/` (web server, pipeline, watcher)
@@ -37,12 +42,13 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 | `app/player_ops.py` | Player-row operations without HTTP: `find_player`, `replace_player_by_uid`, `mark_edited`, `recheck_source` (one source for one player, returns `(status, body)`), source refresh. Takes the store, registry and callbacks as parameters; `app.server` wraps them with the live `STORE` / `REGISTRY` |
 | `app/matches.py` | `build_matches(scans)`: groups scan records into matches by `match_id` (fallback `session_<date>`), pure function |
 | `app/console_parser.py` | Reads CS2 `console.log` for match id, map, and exact nicknames |
+| `app/scan_migrations.py` | Scan record versions: `CURRENT_SCHEMA_VERSION` (2), `MIGRATIONS` (v1 → v2 adds `steam.sources` and `player_uid`), and `migrate(scan, registry)`, applied on load by `app.server._adapt_legacy_scan`. A record with a newer version is left unchanged, with one warning per process |
 
 ### `storage/` (config, databases, runtime paths)
 
 | Module | Role |
 |---|---|
-| `paths.py` | `ROOT`, `DATA_DIR` (`data/`), `LOG_DIR`, `SCREENSHOT_DIR`, `WEB_DIR`: the only place runtime paths are defined |
+| `paths.py` | `ROOT`, `DATA_DIR` (`CS2WATCH_DATA_DIR`, default `data/`), `LOG_DIR` and `SCREENSHOT_DIR` (both under `DATA_DIR`), `WEB_DIR` (`CS2WATCH_WEB_DIR`, default `web/`): the only place runtime paths are defined. Values are computed at import; nothing is created |
 | `storage/config_fields.py` | `Field` / `Secret` descriptors (no dependencies, importable by `sources/`) |
 | `storage/config_schema.py` | The config schema: core keys, source-declared keys, normalize / merge / public-view rules |
 | `storage/config_store.py` | `data/config.json` load/save and the public `GET /api/config` payload, thin over `config_schema` |
@@ -62,8 +68,9 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `lookup/steam_lookup.py` | Orchestration only: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call; no re-exports. Fetchers are in `sources/*`, search in `lookup/steam_search.py` |
-| `lookup/steam_search.py` | Steam Community search, 429 cooldown and rate limit, XML profile parsing, candidate scoring, Web API batch. Does not import `steam_lookup` |
+| `lookup/steam_lookup.py` | Orchestration only: `lookup_steam_profile`, `enrich_players`, `recheck_player_report`, retry of rate-limited lookups, `SteamProfile`, `PlayerReport`, the scoring call; no re-exports. Fetchers are in `sources/*`, search in `lookup/steam_search.py`. The Leetify lookup memo is `LEETIFY_MEMO = TtlMemo()` |
+| `lookup/steam_search.py` | Steam Community search, XML profile parsing, candidate scoring, Web API batch. `SteamRateLimiter` (429 cooldown and minimum interval) is held by the module-level `RATE_LIMITER`. Does not import `steam_lookup` |
+| `lookup/ttl_memo.py` | `TtlMemo`: thread-safe in-memory TTL memo for dict values. Returns copies, never writes to disk, and treats `ttl <= 0` as disabled |
 | `lookup/http_client.py` | Plain HTTP helpers: `http_get`, `http_get_status`, `USER_AGENT` (standard library only). curl gets the URL, headers and cookie through stdin (`-K -`), so API keys are not visible in the process list |
 | `lookup/nick_match.py` | Fuzzy nickname matching for OCR output |
 | `lookup/ai_analyzer.py` | Optional AI stage (Claude CLI or Anthropic API) and the compact payload sent to it. Model aliases are in `ANTHROPIC_MODEL_ALIASES` (`resolve_anthropic_model`) |
@@ -80,8 +87,8 @@ fixed defaults (0.5 s, 4.0 s) and does not register a TAB hook.
 
 | Module | Role |
 |---|---|
-| `base.py` | Contract: `DataSource`, `LegacySlotSource`, `SourceResult`, `SourceContext`, `SourceRegistry` |
-| `registry.py` | `REGISTRY`: the built-in sources, one `register(...)` line each |
+| `base.py` | Contract: `DataSource`, `LegacySlotSource`, `SourceResult`, `SourceContext`, `SourceRegistry`. `payload_key` / `payload_always` control the source's block in the AI payload and feedback features |
+| `registry.py` | `REGISTRY`: the built-in sources, one `register(...)` line each, then third-party plugins from the `cs2watch.sources` entry point group (`load_plugins`). `CS2WATCH_DISABLE_PLUGINS=1` skips plugins |
 | `leetify.py` | Leetify (recheckable; declares `leetify_api_key`); fetcher `fetch_leetify` |
 | `faceit.py` | FACEIT (declares `faceit_api_key`); fetcher `fetch_faceit_stats` |
 | `cstracker.py` | CSTracker.gg (recheckable; status may be `blocked`); fetcher `fetch_cstracker` |
@@ -95,7 +102,7 @@ Each source module holds its own fetcher and does not import `lookup.steam_looku
 | Module | Role |
 |---|---|
 | `thresholds.py` | Every threshold and point value, one table |
-| `rules.py` | One function per rule, registered with `@rule(component, name)` |
+| `rules.py` | One function per rule, registered with `@rule(component, name)` (including `cstracker_trust`) |
 | `engine.py` | Runs the rules per component, applies the cheat/smurf post-processing, returns the breakdown (re-exported by the package as `compute_scores`, which `lookup.steam_lookup` imports) |
 
 ### `cs2watch/`
@@ -156,6 +163,7 @@ Routes (from `app.server.router.routes()`; `tests/test_router.py::RouteTableTest
 | Method | Path | Route function |
 |---|---|---|
 | GET | `/api/steam-status` | `_get_steam_status` |
+| GET | `/api/sources` | `_get_sources` (registry metadata: `id`, `label`, `recheckable`, `in_coverage`) |
 | GET | `/api/latest` | `_get_latest` |
 | GET | `/api/config` | `_get_config` |
 | GET | `/api/config/schema` | `_get_config_schema` |
@@ -177,8 +185,8 @@ stable) or `nick` (first match, legacy). `/api/feedback` accepts `player_uid` or
 ### Scan record (`data/scans_history.json`, `GET /api/latest`, SSE `scan`)
 
 ```
-id, run_id, created_at, date, match_id, map_name, image_name, image_url,
-duration_ms, player_count, players: [PlayerReport dict, ...],
+schema_version (2; a record without it is version 1 and is migrated on load), id, run_id, created_at, date, match_id,
+map_name, image_name, image_url, duration_ms, player_count, players: [PlayerReport dict, ...],
 ai_error, enrich_error (`null` or `"<ExceptionType>: <message>"`), scan_status: "loading_steam" | "loading_ai" | "done",
 progress: {done, total}
 ```
@@ -194,7 +202,7 @@ Newest first, at most `app.server._MAX_HISTORY` (100) records. Written only thro
 `PlayerReport` (lookup/steam_lookup.py), serialised with `asdict`:
 
 - `player_uid`: `"<scan_id>-<row index>"`, assigned by the pipeline (`app.pipeline.assign_player_uids`). Stable through
-  enrichment, rechecks and AI. Legacy rows get the same form on load (`app.server._adapt_legacy_scan`), which can collide
+  enrichment, rechecks and AI. Legacy rows get the same form on load (`app.scan_migrations`, v1 → v2), which can collide
   with the uids of a later rescan of the same scan (see Known limitations).
 - `nick, kills, deaths, kd, hs, level, anomaly_score` (OCR values)
 - `cheat_probability, risk_level, smurf_probability, smurf_risk_level, uncertainty, effective_weights, reasons`
@@ -271,10 +279,27 @@ environment variable also get `*_source` (`config` / `env` / `none`).
    with new keys in `config`. Regenerate its golden only if the change is intentional (see Testing).
 
 What updates automatically: `coverage`, `steam.sources`, `POST /api/recheck-source` (when `recheckable`),
-`GET /api/config/schema` and the config key list.
-What does **not** update automatically: the AI payload (`lookup.ai_analyzer._compact_player_for_ai` names Leetify and
-FACEIT explicitly), feedback features (`storage.feedback_store.build_feedback_entry`), scoring rules, and the frontend
-(`web/*.js` hard-codes source names, e.g. in `scan-table.js` and `player-details.js`). Each of those needs an explicit edit.
+`GET /api/config/schema`, the config key list, the AI payload (`lookup.ai_analyzer`) and the feedback features
+(`storage.feedback_store.build_feedback_entry`), both through `REGISTRY`. A source's block there is named by `payload_key`
+(default: its `id`; `None` = no block) and is emitted when it has content or when `payload_always` is set. The UI label
+of a source without a built-in entry (generic chips, tabs and retry messages) comes from `GET /api/sources`.
+What does **not** update automatically: scoring rules (`scoring/rules.py`, which read the legacy slots), and the names of
+built-in sources in the frontend (`lobby.js`, `scan-table.js` and `player-details.js` still write Leetify, CSTracker, CS2
+stats and FACEIT out by hand). Each of those needs an explicit edit.
+
+#### As a plugin package
+
+A third-party package adds a source without touching this repository. Declare an entry point in the group
+`cs2watch.sources`, pointing at a `DataSource` subclass (or an instance):
+
+```toml
+[project.entry-points."cs2watch.sources"]
+example = "my_package.sources:ExampleSource"
+```
+
+Plugin settings become config keys after the built-in ones in `ORDER`. A key that clashes with an existing one is
+skipped with a warning. Plugins are loaded by `sources.registry.load_plugins`. A plugin that fails to load, or that is
+not a `DataSource`, is logged and skipped, and a duplicate id is skipped too. `CS2WATCH_DISABLE_PLUGINS=1` turns loading off.
 
 ### (b) Add a scoring rule
 
@@ -351,9 +376,12 @@ Run the whole suite from the repository root:
 .venv/bin/python -m unittest discover -s tests
 ```
 
-Lint: `.venv/bin/ruff check .` (rules `F` and `E9`, configured in `pyproject.toml`). Development dependencies, including ruff,
-are in `requirements-dev.txt`. CI (`.github/workflows/tests.yml`) runs the lint and the suite on Python 3.11 and 3.12
-(required) and on 3.13 (non-blocking: `rapidocr-onnxruntime` has no 3.13 wheels, so its install fails there).
+Lint: `.venv/bin/ruff check .` (rules `F`, `E9`, `I`, `UP` and `B`, configured in `pyproject.toml`; import order uses the
+first-party package list there).
+Types: `.venv/bin/mypy` checks `storage`, `sources` and `scoring` (configuration in `pyproject.toml`).
+Development dependencies, including ruff and mypy, are in `requirements-dev.txt`. CI (`.github/workflows/tests.yml`) runs
+the lint, the type check (3.11 only) and the suite on Python 3.11 and 3.12 (required) and on 3.13 (non-blocking:
+`rapidocr-onnxruntime` has no 3.13 wheels, so its install fails there).
 
 Golden files (regenerate only for an intentional change, and review the diff):
 
@@ -386,6 +414,8 @@ cross-site requests. `app.web_router.check_request` runs for every request, befo
   `image/png`, `image/jpeg` and `application/octet-stream`. Anything else gets 415 `Unsupported Content-Type`. Bodyless
   POSTs skip this rule.
 - A rejected request gets a JSON error and its connection is closed.
+- **Plugins:** `cs2watch.sources` entry points run with the same trust as any installed package (`pip install`). A broken
+  plugin is logged and skipped, never fatal (see the recipe for plugin packages).
 - **SSE limit:** at most 8 open `GET /api/events` streams (`app.sse.SseHub`). Each stream holds a server thread, so a
   ninth one gets 503 `Too many event streams` and no stream is opened.
 
@@ -400,11 +430,12 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
 
 ## Known limitations and follow-ups
 
-- **Source names are hard-coded in the frontend.** The frontend is split into modules (`web/*.js`), but Leetify, CSTracker,
-  CS2 stats and FACEIT names are still written into `api.js`, `lobby.js`, `scan-table.js` and `player-details.js`. A new
-  source needs a frontend change.
+- **Built-in source names are hard-coded in the frontend.** Leetify, CSTracker, CS2 stats and FACEIT names are still
+  written into `lobby.js`, `scan-table.js` and `player-details.js`. A new source (built-in or plugin) gets a generic
+  chip and tab with its registry label from `GET /api/sources`, without a frontend change.
 - **Legacy storage slots are canonical** for Leetify, FACEIT, CSTracker and Steam CS2 stats. `steam.sources` is a
-  derived view. Moving to native storage would need a data migration and changes to scoring and the frontend.
+  derived view. Moving to native storage would need a data migration (a future v3 step in `app/scan_migrations.py`) and
+  changes to scoring and the frontend.
 - **Enrichment keeps user edits only for rows matched by `player_uid`, and not during the AI stage.** A row edited
   by a hand-edit route after the run started is kept by the enrichment writes (`ScanPipeline._merge_rows`). The AI
   stage analyzes a snapshot, so a row edited while the AI stage runs keeps the user's version and gets no AI fields
@@ -413,14 +444,10 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
   default weights (see `tests/test_scoring_rules.py`). Both are exercised only with mocked weights.
 - **argparse shows `__main__.py` as the program name** under `python -m cs2watch`. Cosmetic.
 - **`pip install` of this project is not self-contained.** `pyproject.toml` installs the packages listed in
-  `[tool.setuptools]`, but `web/` and `data/` are resolved relative to the repository root (`storage/paths.py`), so an
-  installed copy will not find the UI. `pip install -e .` is intended for development from the checkout. It has not been run.
+  `[tool.setuptools]`, but `web/` and `data/` default to the repository root (`storage/paths.py`). An installed copy needs
+  `CS2WATCH_WEB_DIR` and `CS2WATCH_DATA_DIR` set. `pip install -e .` is intended for development from the checkout. It has not been run.
 - **Python version.** The code parses with the 3.8 feature set (checked with `ast.parse(feature_version=...)`), but
   only Python 3.11.9 is available here, so `requires-python = ">=3.11"` is the tested floor. CI runs 3.11 and 3.12
   (required) and 3.13 (non-blocking).
-- **Tests can write to the real scan history.** `tests/test_player_db.py::DbFailureTests.test_scan_finalization_survives_db_failure`
-  patches `server._save_history_locked` to stop the save. Since `app.server._ServerRepo.save_locked` calls
-  `STORE.save_locked()` directly, the patch does not apply, and each run appends a `failscan01` record (no image name)
-  to `data/scans_history.json` of the checkout it runs in. Found while checking the smoke test; not fixed here.
-- **Scoring pieces with no effect:** scoring never reads cstracker `trust`, `vaclive`, `ttd`, or the medals / veteran
-  coin / xp fields, even though the AI prompt mentions them (see `tests/golden/scoring_golden.json`, fixtures 14 and 20).
+- **Scoring pieces with no effect:** scoring reads cstracker `trust` (rule `cstracker_trust`), but never reads
+  `vaclive`, `ttd`, or the medals / veteran coin / xp fields. The AI prompt does not mention fields that do not exist.
