@@ -6,9 +6,9 @@ import json
 import logging
 import os
 import threading
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
 
 from storage.atomic_io import atomic_write_text
 
@@ -22,7 +22,7 @@ class ScanStore:
         self.history_file = history_file
         self.max_history = max_history
 
-    def load(self, adapt: Optional[Callable[[dict], None]] = None) -> None:
+    def load(self, adapt: Callable[[dict], None] | None = None) -> None:
         if not self.history_file.is_file():
             return
         try:
@@ -65,8 +65,8 @@ class ScanStore:
             return
         _LOG.warning("history %s is unreadable (%s); moved to %s", self.history_file, reason, target)
 
-    def find_locked(self, scan_id: Optional[str]) -> Optional[dict]:
+    def find_locked(self, scan_id: str | None) -> dict | None:
         return next((s for s in self.scans if s["id"] == scan_id), None)
 
-    def latest_locked(self) -> Optional[dict]:
+    def latest_locked(self) -> dict | None:
         return self.scans[0] if self.scans else None

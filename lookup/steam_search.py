@@ -18,9 +18,9 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from typing import Optional
 
-from lookup.http_client import http_get as _http_get, http_get_status as _http_get_status
+from lookup.http_client import http_get as _http_get
+from lookup.http_client import http_get_status as _http_get_status
 from lookup.nick_match import best_match_index
 from storage.api_keys import _get_steam_api_key
 
@@ -57,7 +57,7 @@ class SteamRateLimiter:
         # _state_lock guards the cooldown fields and is never held while sleeping.
         self._seq_lock = threading.Lock()
         self._state_lock = threading.Lock()
-        self._last_start: Optional[float] = None
+        self._last_start: float | None = None
         self._until = 0.0
         self._streak = 0
 
@@ -107,7 +107,7 @@ class SteamRateLimiter:
 RATE_LIMITER = SteamRateLimiter(STEAM_SEARCH_MIN_INTERVAL_SEC, STEAM_COOLDOWN_BASE_SEC, STEAM_COOLDOWN_MAX_SEC)
 
 
-def _parse_member_age_years(member_since: Optional[str]) -> Optional[float]:
+def _parse_member_age_years(member_since: str | None) -> float | None:
     if not member_since:
         return None
     for fmt in ("%B %d, %Y", "%d %B, %Y", "%b %d, %Y"):
@@ -120,7 +120,7 @@ def _parse_member_age_years(member_since: Optional[str]) -> Optional[float]:
     if m:
         return max(0.0, float(datetime.now().year - int(m.group())))
     return None
-def _parse_steam_xml(xml_bytes: bytes, vanity: Optional[str] = None, source: str = "xml") -> Optional[dict]:
+def _parse_steam_xml(xml_bytes: bytes, vanity: str | None = None, source: str = "xml") -> dict | None:
     try:
         root = ET.fromstring(xml_bytes)
     except ET.ParseError:
@@ -178,7 +178,7 @@ def _parse_steam_xml(xml_bytes: bytes, vanity: Optional[str] = None, source: str
         "cs2_hours": cs2_hours,
         "lookup_source": source,
     }
-def _avatar_similarity(thumb: object, avatar_url: Optional[str]) -> float:
+def _avatar_similarity(thumb: object, avatar_url: str | None) -> float:
     if thumb is None or not avatar_url:
         return 0.0
     raw = _http_get(avatar_url, timeout=3.0)
@@ -186,6 +186,7 @@ def _avatar_similarity(thumb: object, avatar_url: Optional[str]) -> float:
         return 0.0
     try:
         import io
+
         import numpy as np
         from PIL import Image
 
@@ -223,7 +224,7 @@ def _score_candidate(data: dict, target_nick: str) -> float:
     if data.get("privacy_state") == "public":
         score += 20.0
     return score
-def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], Optional[str], str]]]:
+def _search_candidates(query: str) -> tuple[int, list[tuple[str, str | None, str | None, str]]]:
     session_id = "a1b2c3d4e5f6789012345678"
     q = urllib.parse.quote(query)
     url = (
@@ -276,10 +277,10 @@ def get_steam_search_status() -> dict:
     """Current Steam search cooldown state for the UI: {limited: bool, retry_in_sec: int}."""
     return RATE_LIMITER.status()
 def _fetch_batch_via_web_api(
-    candidates: list[tuple[str, Optional[str], Optional[str], str]],
+    candidates: list[tuple[str, str | None, str | None, str]],
     api_key: str,
     avatar_thumb: object,
-) -> Optional[list[dict]]:
+) -> list[dict] | None:
     steamids = [c[2] for c in candidates if c[2]]
     if not steamids:
         return None
@@ -354,7 +355,7 @@ def _fetch_batch_via_web_api(
     with ThreadPoolExecutor(max_workers=min(5, len(candidates))) as pool:
         built = [r for r in pool.map(_build, candidates) if r is not None]
     return built or None
-def _fetch_cs2_hours_web_api(steamid64: str, api_key: str) -> Optional[float]:
+def _fetch_cs2_hours_web_api(steamid64: str, api_key: str) -> float | None:
     url = (
         f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
         f"?key={api_key}&steamid={steamid64}&include_played_free_games=1&appids_filter[0]=730"
@@ -384,7 +385,7 @@ def _prefer_unambiguous_name_match(enriched: list[dict], nick: str, log: list[st
     chosen = enriched.pop(idx)
     enriched.insert(0, chosen)
     log.append(f"Нечітке співпадіння імені: {names[idx]!r} обрано для OCR-ніка {nick!r}")
-def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[Optional[dict], list[str], list[dict]]:
+def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[dict | None, list[str], list[dict]]:
     log: list[str] = [f"OCR нік: {nick!r}"]
     variants = [nick]
     for alt in (

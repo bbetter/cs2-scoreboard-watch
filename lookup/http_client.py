@@ -7,12 +7,11 @@ from __future__ import annotations
 
 import urllib.error
 import urllib.request
-from typing import Optional
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 
-def _curl_config(url: str, cookies: Optional[str], headers: Optional[dict[str, str]]) -> str:
+def _curl_config(url: str, cookies: str | None, headers: dict[str, str] | None) -> str:
     """Render URL, cookie and headers as a curl config file (read via `curl -K -`).
 
     Keeping secrets out of argv: other local processes can read /proc/<pid>/cmdline, but not stdin.
@@ -35,9 +34,9 @@ def _curl_config(url: str, cookies: Optional[str], headers: Optional[dict[str, s
 def http_get_status(
     url: str,
     timeout: float = 4.0,
-    cookies: Optional[str] = None,
-    headers: Optional[dict[str, str]] = None,
-) -> tuple[int, Optional[bytes]]:
+    cookies: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> tuple[int, bytes | None]:
     import shutil
     import subprocess
 
@@ -77,8 +76,8 @@ def http_get_status(
 def http_get(
     url: str,
     timeout: float = 4.0,
-    cookies: Optional[str] = None,
-    headers: Optional[dict[str, str]] = None,
-) -> Optional[bytes]:
+    cookies: str | None = None,
+    headers: dict[str, str] | None = None,
+) -> bytes | None:
     status, data = http_get_status(url, timeout=timeout, cookies=cookies, headers=headers)
     return data if status == 200 else None

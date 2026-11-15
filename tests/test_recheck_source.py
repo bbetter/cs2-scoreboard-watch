@@ -12,17 +12,17 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
-from pathlib import Path
 from http.server import ThreadingHTTPServer
+from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
-from app.scan_store import ScanStore  # noqa: E402
 import sources.cstracker as cstracker_source  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 
 
 def _make_scan(scan_id: str = "scan-1") -> dict:

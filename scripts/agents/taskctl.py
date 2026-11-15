@@ -31,7 +31,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 TASKS_DIR = ROOT / "docs" / "improvements" / "tasks"
@@ -104,7 +104,7 @@ def parse_task(path: Path) -> Task:
     if not m:
         raise GateError(f"{path.name}: missing front matter")
     meta: dict[str, Any] = {}
-    current_list: Optional[str] = None
+    current_list: str | None = None
     for line in m.group(1).splitlines():
         if not line.strip():
             continue
@@ -286,7 +286,7 @@ def cmd_order(_args) -> int:
 
 # ----------------------------------------------------------------------------------------------- gh helpers
 
-def gh(*args: str, input_text: Optional[str] = None, check: bool = True) -> str:
+def gh(*args: str, input_text: str | None = None, check: bool = True) -> str:
     if not shutil.which("gh"):
         raise GateError("gh CLI not found")
     proc = subprocess.run(["gh", *args], input=input_text, capture_output=True, text=True, cwd=ROOT)
@@ -308,7 +308,7 @@ def graphql(query: str, variables: dict) -> dict:
     return data["data"]
 
 
-def find_project() -> Optional[dict]:
+def find_project() -> dict | None:
     data = gh_json("project", "list", "--owner", OWNER, "--format", "json", "--limit", "100")
     for p in (data or {}).get("projects", []):
         if p.get("title") == PROJECT_TITLE:
@@ -604,7 +604,7 @@ def main_ci_green() -> tuple[bool, str]:
     return (r.get("status") == "completed" and r.get("conclusion") == "success"), f"{r.get('conclusion')} {r.get('url')}"
 
 
-def open_pr_for(tid: str) -> Optional[int]:
+def open_pr_for(tid: str) -> int | None:
     prs = gh_json("pr", "list", "--repo", REPO, "--state", "open", "--search", f"{tid} in:title",
                   "--json", "number,title") or []
     for pr in prs:
@@ -809,7 +809,7 @@ def cmd_check_pr(args) -> int:
 
 # ----------------------------------------------------------------------------------------------- main
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="taskctl", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("validate").set_defaults(fn=cmd_validate)

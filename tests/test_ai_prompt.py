@@ -13,8 +13,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 from parity_cases import cases, jsonable  # noqa: E402
+
+import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 
 OPEN_TAG = "<players_data>"
 CLOSE_TAG = "</players_data>"

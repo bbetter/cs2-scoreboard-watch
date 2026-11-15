@@ -10,11 +10,12 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
-from storage.config_fields import Field, Secret, describe
 from sources import REGISTRY
 from sources.base import SourceRegistry
+from storage.config_fields import Field, Secret, describe
 
 DEFAULT_AI_PROMPT = (
     "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: "
@@ -72,7 +73,7 @@ ORDER: tuple[str, ...] = (
 _LOG = logging.getLogger("cs2watch.sources")
 
 
-def _build_schema(registry: Optional[SourceRegistry] = None) -> list:
+def _build_schema(registry: SourceRegistry | None = None) -> list:
     registry = REGISTRY if registry is None else registry
     # Core and built-in keys are fixed: ORDER must match them exactly (a mismatch is a repo bug, fail at import).
     declared: list = list(CORE_FIELDS)
@@ -119,7 +120,7 @@ def default_config() -> dict[str, Any]:
     return {f.name: (dict(f.default) if isinstance(f.default, dict) else f.default) for f in SCHEMA}
 
 
-def _finite_number(val: Any) -> Optional[float]:
+def _finite_number(val: Any) -> float | None:
     """`val` as a float when it is a finite number or a numeric string; None otherwise (inf, nan, text, None...)."""
     try:
         num = float(val)
@@ -194,7 +195,7 @@ def mask_key(key: str) -> str:
     return f"{'*' * (len(key) - 4)}{key[-4:]}"
 
 
-def public_view(cfg: Mapping, env_present: Optional[Mapping[str, bool]] = None, *, resolved: Optional[dict] = None,
+def public_view(cfg: Mapping, env_present: Mapping[str, bool] | None = None, *, resolved: dict | None = None,
                 platform: str = "") -> dict[str, Any]:
     """The config payload returned by GET /api/config (key order is part of the contract)."""
     env_present = dict(env_present or {})

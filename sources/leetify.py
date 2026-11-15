@@ -7,12 +7,12 @@ import logging
 import time
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any
 
 from lookup.http_client import http_get_status as _http_get_status
 from sources._util import num_or_none, round_num
-from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
+from storage.config_fields import Secret
 
 _LOG = logging.getLogger("pton")
 
@@ -56,7 +56,7 @@ def _round_stats(d: dict) -> dict:
     return out
 
 
-def fetch_leetify(steamid64: str) -> Optional[dict]:
+def fetch_leetify(steamid64: str) -> dict | None:
     """Fetch the full Leetify picture: profile, stats, ranks, and per-match history.
 
     Uses the API key from config.json (leetify_api_key) when set. Without a key the
@@ -175,7 +175,7 @@ class LeetifySource(LegacySlotSource):
         ),
     )
 
-    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
+    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> dict | None:
         return fetch_leetify(steamid64)
 
     def normalize(self, raw: Any) -> SourceResult:

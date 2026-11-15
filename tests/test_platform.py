@@ -200,7 +200,7 @@ class ImportHygieneTests(unittest.TestCase):
         # Run in a fresh interpreter: guard Path.mkdir for 'screenshots' and make load_config fail if
         # anything reads it at import time. Importing server must still succeed.
         code = (
-            "import sys, pathlib; sys.path.insert(0, %r)\n"
+            f"import sys, pathlib; sys.path.insert(0, {str(ROOT)!r})\n"
             "orig = pathlib.Path.mkdir\n"
             "def guard(self, *a, **k):\n"
             "    if self.name == 'screenshots':\n"
@@ -213,7 +213,7 @@ class ImportHygieneTests(unittest.TestCase):
             "config_store.load_config = boom\n"
             "import app.server as server\n"
             "print('IMPORT_OK')\n"
-        ) % str(ROOT)
+        )
         res = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120)
         self.assertEqual(res.returncode, 0, res.stderr[-2000:])
         self.assertIn("IMPORT_OK", res.stdout)

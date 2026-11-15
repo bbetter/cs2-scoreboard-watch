@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 
 class TtlMemo:
@@ -16,7 +16,7 @@ class TtlMemo:
         self._lock = threading.Lock()
         self._items: dict[str, tuple[float, dict]] = {}
 
-    def get(self, key: Optional[str], ttl: float) -> Optional[dict]:
+    def get(self, key: str | None, ttl: float) -> dict | None:
         if not key or ttl <= 0:
             return None
         with self._lock:
@@ -25,7 +25,7 @@ class TtlMemo:
             return dict(item[1])
         return None
 
-    def put(self, key: Optional[str], value: Optional[dict], ttl: float) -> None:
+    def put(self, key: str | None, value: dict | None, ttl: float) -> None:
         if not key or ttl <= 0 or not value:
             return
         with self._lock:

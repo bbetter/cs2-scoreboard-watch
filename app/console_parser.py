@@ -8,10 +8,9 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
-from storage.config_store import load_config
 from lookup.nick_match import pick_best
+from storage.config_store import load_config
 
 DEFAULT_CONSOLE_LOG = Path(
     "/media/andrii/Entertainment/SteamLibrary/steamapps/common/Counter-Strike Global Offensive/game/csgo/console.log"
@@ -20,9 +19,9 @@ DEFAULT_CONSOLE_LOG = Path(
 
 @dataclass
 class ConsoleStatus:
-    match_id: Optional[str] = None
-    map_name: Optional[str] = None
-    server_addr: Optional[str] = None
+    match_id: str | None = None
+    map_name: str | None = None
+    server_addr: str | None = None
     nicks: list[str] = None  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
@@ -30,7 +29,7 @@ class ConsoleStatus:
             self.nicks = []
 
 
-def find_cs2_game_dir() -> Optional[Path]:
+def find_cs2_game_dir() -> Path | None:
     configured_dir = load_config().get("cs2_game_dir", "").strip()
     if configured_dir:
         p = Path(configured_dir).expanduser()
@@ -116,7 +115,7 @@ def setup_autoexec() -> dict:
     }
 
 
-def parse_latest_status(max_age_sec: float = 120.0) -> Optional[ConsoleStatus]:
+def parse_latest_status(max_age_sec: float = 120.0) -> ConsoleStatus | None:
     log_path = get_console_log_path()
     if not log_path.is_file():
         return None

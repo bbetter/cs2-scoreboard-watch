@@ -11,8 +11,9 @@ numbers to thresholds.py and a unit test in tests/test_scoring_rules.py.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any
 
 from scoring import thresholds as T
 from sources._util import round_num
@@ -21,7 +22,7 @@ from sources._util import round_num
 @dataclass
 class Hit:
     points: float
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class ScoreContext:
@@ -31,7 +32,7 @@ class ScoreContext:
         self.player = player
         self.steam = steam
         self.uncertainty = uncertainty
-        self.lf: Optional[dict] = steam.leetify
+        self.lf: dict | None = steam.leetify
         self.faceit: dict = steam.faceit or {}
         self.cs2: dict = steam.cs2_stats or {}
         lf = self.lf
@@ -45,7 +46,7 @@ class ScoreContext:
         )
         self.lf_bans: list = (lf.get("bans") or []) if lf else []
         self.has_ban = bool(steam.vac_banned or self.lf_bans)
-        self._recent: Optional[list[Hit]] = None
+        self._recent: list[Hit] | None = None
 
     @property
     def lobby_raw(self) -> float:
@@ -82,8 +83,8 @@ def rule(component: str, name: str) -> Callable[[Rule], Rule]:
 # ============================================================ recent-window aim (Leetify / cstracker)
 
 def _pick_recent_metric(
-    lf: Optional[dict], cst_sections: dict, leetify_key: str, cst_key: Optional[str] = None
-) -> tuple[Optional[float], str]:
+    lf: dict | None, cst_sections: dict, leetify_key: str, cst_key: str | None = None
+) -> tuple[float | None, str]:
     """Return (value, source) for one metric: Leetify first, cstracker as fallback (no double counting)."""
     if lf:
         raw = lf.get(leetify_key)
@@ -99,7 +100,7 @@ def _pick_recent_metric(
     return None, ""
 
 
-def recent_aim_hits(lf: Optional[dict], extra_stats: dict, high_elo: bool) -> list[Hit]:
+def recent_aim_hits(lf: dict | None, extra_stats: dict, high_elo: bool) -> list[Hit]:
     """Hits for recent-window aim metrics. Only adds points; missing data contributes nothing.
 
     High-ELO players are skipped, matching the reaction/aim rules. Lifetime Steam cs2_stats are not used.
@@ -139,7 +140,7 @@ def recent_aim_hits(lf: Optional[dict], extra_stats: dict, high_elo: bool) -> li
     return hits
 
 
-def recent_aim_signals(lf: Optional[dict], extra_stats: dict, high_elo: bool) -> tuple[float, bool, list[str]]:
+def recent_aim_signals(lf: dict | None, extra_stats: dict, high_elo: bool) -> tuple[float, bool, list[str]]:
     """Legacy tuple form: (points, elite_recent flag, reasons)."""
     points = 0.0
     reasons: list[str] = []

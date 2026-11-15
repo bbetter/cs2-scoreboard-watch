@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from storage.atomic_io import atomic_write_text
 from sources import REGISTRY
-
+from storage.atomic_io import atomic_write_text
 from storage.paths import DATA_DIR
 
 FEEDBACK_FILE = DATA_DIR / "feedback.json"
@@ -26,7 +25,7 @@ MAX_PLAYER_UID_LEN = 64
 _FEEDBACK_LOCK = threading.Lock()
 
 
-def validate_feedback_payload(payload: Any) -> tuple[Optional[dict], Optional[str]]:
+def validate_feedback_payload(payload: Any) -> tuple[dict | None, str | None]:
     """Return (clean_fields, None) or (None, error_message). Does not touch any state.
 
     A valid `nick` or a valid `player_uid` is enough; at least one of the two must be present. `nick` is returned as
@@ -54,7 +53,7 @@ def validate_feedback_payload(payload: Any) -> tuple[Optional[dict], Optional[st
     }, None
 
 
-def _num_or_none(val: Any) -> Optional[float]:
+def _num_or_none(val: Any) -> float | None:
     if isinstance(val, bool) or not isinstance(val, (int, float)):
         return None
     return round(float(val), 2)
@@ -85,7 +84,7 @@ def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
             features[name] = {"present": res.ok, **block}
     features["cstracker_status"] = cst.get("status")
     return {
-        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "ts": datetime.now(UTC).isoformat(timespec="seconds"),
         "scan_id": scan_id,
         "nick": player.get("nick"),
         "steamid64": steam.get("steamid64"),

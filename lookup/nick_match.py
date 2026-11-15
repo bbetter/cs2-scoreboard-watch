@@ -13,7 +13,7 @@ the OCR nick unchanged.
 from __future__ import annotations
 
 import re
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 # Similarity (0..1) the best candidate must reach.
 MIN_SIMILARITY = 0.8
@@ -78,7 +78,7 @@ def _literal_count(text: str) -> int:
     return sum(1 for ch in canonical_key(text) if ch not in WILDCARDS)
 
 
-def best_match_index(query: str, candidates: Sequence[str]) -> Optional[int]:
+def best_match_index(query: str, candidates: Sequence[str]) -> int | None:
     """Index of the unambiguous best candidate, or None.
 
     An exact case-insensitive match (on the raw, un-normalized text) always wins.
@@ -105,7 +105,7 @@ def best_match_index(query: str, candidates: Sequence[str]) -> Optional[int]:
     return best_idx
 
 
-def pick_best(query: str, candidates: Sequence[str]) -> Optional[str]:
+def pick_best(query: str, candidates: Sequence[str]) -> str | None:
     """Unambiguous best-matching candidate string, or None."""
     idx = best_match_index(query, candidates)
     return candidates[idx] if idx is not None else None

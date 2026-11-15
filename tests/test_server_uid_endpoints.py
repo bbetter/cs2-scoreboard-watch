@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
-from sources import REGISTRY  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
+from sources import REGISTRY  # noqa: E402
 from tests.test_player_uid import SID0, SID1, _LiveServer  # noqa: E402
 
 

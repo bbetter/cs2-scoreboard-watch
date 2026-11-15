@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from storage.atomic_io import atomic_write_text
 

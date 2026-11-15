@@ -8,7 +8,8 @@ code is returned untouched, with one warning per process.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 CURRENT_SCHEMA_VERSION = 2
 

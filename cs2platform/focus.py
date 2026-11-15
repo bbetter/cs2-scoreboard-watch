@@ -8,7 +8,6 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Optional
 
 
 def is_cs2_client(c: dict) -> bool:
@@ -71,7 +70,7 @@ def win32_find_cs2_hwnd() -> int:
     return int(user32.FindWindowW(None, "Counter-Strike 2") or 0)
 
 
-def win32_get_window_center(hwnd: int) -> Optional[tuple[int, int]]:
+def win32_get_window_center(hwnd: int) -> tuple[int, int] | None:
     if not hwnd:
         return None
     from ctypes import wintypes

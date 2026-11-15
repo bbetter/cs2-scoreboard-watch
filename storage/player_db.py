@@ -12,7 +12,7 @@ import sqlite3
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from storage.paths import DATA_DIR
 
@@ -71,13 +71,13 @@ class PlayerDB:
         with self._lock:
             self._conn.close()
 
-    def upsert_player(self, steamid64: str, nick: Optional[str], seen_at: Optional[str] = None) -> None:
+    def upsert_player(self, steamid64: str, nick: str | None, seen_at: str | None = None) -> None:
         """Create the player or refresh last_nick/last_seen; first_seen is never overwritten."""
         seen_at = seen_at or _now_iso()
         with self._lock, self._conn:
             self._upsert_player_locked(steamid64, nick, seen_at)
 
-    def _upsert_player_locked(self, steamid64: str, nick: Optional[str], seen_at: str) -> None:
+    def _upsert_player_locked(self, steamid64: str, nick: str | None, seen_at: str) -> None:
         self._conn.execute(
             """
             INSERT INTO players (steamid64, last_nick, first_seen, last_seen)
@@ -89,7 +89,7 @@ class PlayerDB:
             (steamid64, nick, seen_at, seen_at),
         )
 
-    def record_sightings(self, scan_id: str, players: list[dict], seen_at: Optional[str] = None) -> int:
+    def record_sightings(self, scan_id: str, players: list[dict], seen_at: str | None = None) -> int:
         """Store one sighting per player that has a SteamID64, in a single transaction.
 
         Re-recording the same (scan_id, steamid64) is ignored. Returns the number of
@@ -123,7 +123,7 @@ class PlayerDB:
                 inserted += cur.rowcount
         return inserted
 
-    def set_player_meta(self, steamid64: str, **fields: Optional[str]) -> bool:
+    def set_player_meta(self, steamid64: str, **fields: str | None) -> bool:
         """Update tag and/or notes of an existing player; fields not passed are left as-is.
         Returns False if the player is unknown."""
         unknown = set(fields) - {"tag", "notes"}
@@ -139,7 +139,7 @@ class PlayerDB:
             )
             return cur.rowcount > 0
 
-    def get_player(self, steamid64: str, sightings_limit: int = 50) -> Optional[dict[str, Any]]:
+    def get_player(self, steamid64: str, sightings_limit: int = 50) -> dict[str, Any] | None:
         """Return the player profile plus the newest `sightings_limit` sightings, or None."""
         with self._lock:
             row = self._conn.execute(
@@ -165,7 +165,7 @@ class PlayerDB:
         return profile
 
 
-_default_db: Optional[PlayerDB] = None
+_default_db: PlayerDB | None = None
 _default_lock = threading.Lock()
 
 

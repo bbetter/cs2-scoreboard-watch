@@ -13,8 +13,8 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import storage.config_schema as config_schema  # noqa: E402
 import sources.registry as registry_mod  # noqa: E402
+import storage.config_schema as config_schema  # noqa: E402
 from sources import DataSource, SourceRegistry  # noqa: E402
 from sources.registry import DISABLE_ENV, PLUGIN_GROUP, REGISTRY, load_plugins  # noqa: E402
 from storage.config_fields import Field, Secret  # noqa: E402

@@ -7,7 +7,7 @@ Kept dependency-free so that sources/ can declare their own settings without imp
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -18,8 +18,8 @@ class Field:
     label: str = ""
     group: str = "general"
     help: str = ""
-    min: Optional[float] = None
-    max: Optional[float] = None
+    min: float | None = None
+    max: float | None = None
     choices: tuple = ()
     # Public-view key that lists the choices (e.g. "allowed_ai_providers"); empty = not listed.
     allowed_key: str = ""
@@ -39,7 +39,7 @@ class Secret(Field):
     masked: bool = True
 
     @property
-    def clear_flag(self) -> Optional[str]:
+    def clear_flag(self) -> str | None:
         return f"clear_{self.name}" if self.keep_on_empty else None
 
 
