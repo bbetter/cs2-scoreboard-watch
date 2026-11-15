@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
 from app.events import EventBus
+from app.scan_migrations import CURRENT_SCHEMA_VERSION
 
 
 class ScanRepo(Protocol):
@@ -93,6 +94,7 @@ class ScanPipeline:
         match_id, map_name = self._match_meta(now_dt, console_status)
         will_stream = bool(fetch_steam and players)
         record = {
+            "schema_version": CURRENT_SCHEMA_VERSION,
             "id": scan_id,
             "run_id": run_id,
             "created_at": now_dt.isoformat(timespec="seconds"),
