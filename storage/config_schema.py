@@ -7,12 +7,14 @@ normalize / apply_updates / public_view are generic and driven by SCHEMA; config
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 from typing import Any, Mapping, Optional
 
 from storage.config_fields import Field, Secret, describe
 from sources import REGISTRY
+from sources.base import SourceRegistry
 
 DEFAULT_AI_PROMPT = (
     "Ти аналітик античіт- і смурф-телеметрії CS2. Оціни кожного гравця за двома осями: "
@@ -67,10 +69,16 @@ ORDER: tuple[str, ...] = (
 )
 
 
-def _build_schema() -> list:
+_LOG = logging.getLogger("cs2watch.sources")
+
+
+def _build_schema(registry: Optional[SourceRegistry] = None) -> list:
+    registry = REGISTRY if registry is None else registry
+    # Core and built-in keys are fixed: ORDER must match them exactly (a mismatch is a repo bug, fail at import).
     declared: list = list(CORE_FIELDS)
-    for source in REGISTRY:
-        declared.extend(source.settings)
+    for source in registry:
+        if registry.is_builtin(source.id):
+            declared.extend(source.settings)
     by_name: dict = {}
     for f in declared:
         if f.name in by_name:
@@ -78,7 +86,28 @@ def _build_schema() -> list:
         by_name[f.name] = f
     if set(by_name) != set(ORDER):
         raise ValueError(f"schema/ORDER mismatch: {sorted(set(by_name) ^ set(ORDER))}")
-    return [by_name[name] for name in ORDER]
+    schema = [by_name[name] for name in ORDER]
+    # Plugin keys follow ORDER in registration order. A plugin cannot break the app: a bad or clashing key is
+    # skipped with a warning and its source stays registered.
+    taken = set(ORDER)
+    for source in registry:
+        if registry.is_builtin(source.id):
+            continue
+        try:
+            fields = list(source.settings)
+        except Exception as exc:
+            _LOG.warning("plugin source %s: settings unreadable, ignored: %s", source.id, exc)
+            continue
+        for f in fields:
+            name = getattr(f, "name", "")
+            if not isinstance(f, Field) or not name:
+                _LOG.warning("plugin source %s: setting %r is not a Field; skipped", source.id, f)
+            elif name in taken:
+                _LOG.warning("plugin source %s: config key %s is already in use; skipped", source.id, name)
+            else:
+                taken.add(name)
+                schema.append(f)
+    return schema
 
 
 SCHEMA: list = _build_schema()
