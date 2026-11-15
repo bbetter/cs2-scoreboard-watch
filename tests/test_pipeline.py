@@ -18,8 +18,8 @@ import lookup.steam_lookup as steam_lookup  # noqa: E402
 from app.events import EventBus  # noqa: E402
 from app.pipeline import ScanPipeline  # noqa: E402
 from app.scan_migrations import CURRENT_SCHEMA_VERSION  # noqa: E402
-from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import SteamProfile  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 
 class FakeRepo:

@@ -6,19 +6,20 @@ Routes in `app.server` call these with the live STORE / REGISTRY and pass the ca
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from sources.base import SourceContext
 
 
-def player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
+def player_matches(p: dict, uid: str | None, nick: str | None) -> bool:
     """Match a stored player by its stable player_uid when the caller sent one, else by nick (legacy API)."""
     if uid:
         return p.get("player_uid") == uid
     return p.get("nick") == nick
 
 
-def find_player(scan_rec: dict, uid: Optional[str], nick: Optional[str]) -> Optional[dict]:
+def find_player(scan_rec: dict, uid: str | None, nick: str | None) -> dict | None:
     """First row of the scan that `player_matches`, or None. Caller holds the store lock."""
     return next((p for p in scan_rec.get("players", []) if player_matches(p, uid, nick)), None)
 
@@ -69,10 +70,10 @@ def refresh_source_entry(steam: dict, src: Any, registry: Any) -> None:
 def recheck_source(
     store: Any,
     registry: Any,
-    scan_id: Optional[str],
+    scan_id: str | None,
     nick: str,
     source: Any,
-    player_uid: Optional[str],
+    player_uid: str | None,
     *,
     make_ctx: Callable[[], SourceContext],
     save_locked: Callable[[], None],

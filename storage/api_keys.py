@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Optional
 
 from storage.paths import ROOT
 
-_STEAM_API_KEY_CACHE: Optional[str] = None
-_FACEIT_API_KEY_CACHE: Optional[str] = None
+_STEAM_API_KEY_CACHE: str | None = None
+_FACEIT_API_KEY_CACHE: str | None = None
 
 
 def reset_steam_api_key_cache() -> None:
@@ -26,7 +25,7 @@ def reset_faceit_api_key_cache() -> None:
     _FACEIT_API_KEY_CACHE = None
 
 
-def _get_faceit_api_key() -> Optional[str]:
+def _get_faceit_api_key() -> str | None:
     global _FACEIT_API_KEY_CACHE
     if _FACEIT_API_KEY_CACHE is not None:
         return _FACEIT_API_KEY_CACHE or None
@@ -54,7 +53,7 @@ def _get_faceit_api_key() -> Optional[str]:
     return key or None
 
 
-def _get_steam_api_key() -> Optional[str]:
+def _get_steam_api_key() -> str | None:
     global _STEAM_API_KEY_CACHE
     if _STEAM_API_KEY_CACHE is not None:
         return _STEAM_API_KEY_CACHE or None

@@ -10,10 +10,10 @@ import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from storage.config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
 from sources import REGISTRY
+from storage.config_store import DEFAULT_AI_PROMPT, DEFAULT_AI_WEIGHTS, load_config
 
 ALLOWED_DECISIONS = ("LEGIT", "UNCERTAIN", "SMURF", "SUSPICIOUS", "BLATANT")
 
@@ -136,7 +136,7 @@ def _data_block(payload: dict[str, Any]) -> str:
     return f"<players_data>\n{text}\n</players_data>"
 
 
-def _extract_json_object(text: str) -> Optional[dict[str, Any]]:
+def _extract_json_object(text: str) -> dict[str, Any] | None:
     raw = (text or "").strip()
     if not raw:
         return None
@@ -221,7 +221,7 @@ ANTHROPIC_MODEL_ALIASES: dict[str, str] = {
 DEFAULT_ANTHROPIC_MODEL = ANTHROPIC_MODEL_ALIASES["sonnet"]
 
 
-def resolve_anthropic_model(model: Optional[str]) -> str:
+def resolve_anthropic_model(model: str | None) -> str:
     """Alias (any case, surrounding spaces) -> full id; a full id passes through; empty -> default."""
     value = (model or "").strip()
     if not value:
@@ -277,7 +277,7 @@ def _clamp_pct(val: Any, default: int = 50) -> int:
 def analyze_players_with_ai(
     players: list[dict[str, Any]],
     force: bool = False,
-) -> tuple[list[dict[str, Any]], Optional[str]]:
+) -> tuple[list[dict[str, Any]], str | None]:
     cfg = load_config()
     if not force and not cfg.get("ai_enabled"):
         return players, None

@@ -27,8 +27,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import lookup.steam_lookup as sl  # noqa: E402
-from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import SteamProfile, _build_player_report  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 GOLDEN_PATH = Path(__file__).resolve().parent / "golden" / "scoring_golden.json"
 PINNED_WEIGHTS = {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30}

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import urllib.parse
-from typing import Any, Optional
+from typing import Any
 
 import storage.api_keys as api_keys
 from lookup.http_client import http_get as _http_get
 from sources._util import _safe_float, _safe_int
-from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
+from storage.config_fields import Secret
 
 
 def fetch_faceit_stats(steamid64: str) -> dict:
@@ -84,7 +84,7 @@ class FaceitSource(LegacySlotSource):
         ),
     )
 
-    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
+    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> dict | None:
         return fetch_faceit_stats(steamid64)
 
     def is_enabled(self, ctx: SourceContext) -> bool:
@@ -94,6 +94,6 @@ class FaceitSource(LegacySlotSource):
         data = raw if isinstance(raw, dict) else {}
         return SourceResult("ok" if data.get("found") else "not_found", data)
 
-    def ai_compact(self, result: SourceResult) -> Optional[dict]:
+    def ai_compact(self, result: SourceResult) -> dict | None:
         # ai_analyzer adds data["faceit"] only when the raw dict is truthy; this returns that dict or None.
         return result.data or None

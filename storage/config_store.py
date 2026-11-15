@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import threading
-from typing import Any, Optional
+from typing import Any
 
 import storage.config_schema as _schema
 from storage.config_schema import (  # noqa: F401  (re-exported: other modules import these names from config_store)
@@ -14,7 +14,6 @@ from storage.config_schema import (  # noqa: F401  (re-exported: other modules i
     DEFAULT_AI_PROMPT,
     DEFAULT_AI_WEIGHTS,
 )
-
 from storage.paths import DATA_DIR
 
 CONFIG_FILE = DATA_DIR / "config.json"
@@ -62,7 +61,7 @@ def save_config(updates: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_public_config(
-    resolved: Optional[dict[str, Any]] = None,
+    resolved: dict[str, Any] | None = None,
     env_key_present: bool = False,
     env_faceit_key_present: bool = False,
 ) -> dict[str, Any]:

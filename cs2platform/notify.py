@@ -6,16 +6,16 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Callable, Mapping, Optional
+from collections.abc import Callable, Mapping
 
 
 def build_notification_command(
     title: str,
     msg: str,
     platform_name: str = sys.platform,
-    which: Callable[[str], Optional[str]] = shutil.which,
+    which: Callable[[str], str | None] = shutil.which,
     environ: Mapping[str, str] = os.environ,
-) -> Optional[tuple[list[str], dict]]:
+) -> tuple[list[str], dict] | None:
     """Return (argv, subprocess kwargs) for the notification, or None when nothing should run."""
     if platform_name.startswith("linux"):
         if which("notify-send"):

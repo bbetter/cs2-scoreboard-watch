@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import queue
 import threading
-from typing import Optional
 
 
 class SseHub:
@@ -21,7 +20,7 @@ class SseHub:
         self._lock = threading.Lock()
         self._queues: list[queue.Queue[str]] = []
 
-    def subscribe(self) -> Optional[queue.Queue[str]]:
+    def subscribe(self) -> queue.Queue[str] | None:
         with self._lock:
             if len(self._queues) >= self._max_subscribers:
                 return None
@@ -29,7 +28,7 @@ class SseHub:
             self._queues.append(q)
             return q
 
-    def unsubscribe(self, q: Optional[queue.Queue[str]]) -> None:
+    def unsubscribe(self, q: queue.Queue[str] | None) -> None:
         if q is None:
             return
         with self._lock:

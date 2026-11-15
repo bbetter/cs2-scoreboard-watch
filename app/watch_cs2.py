@@ -11,8 +11,14 @@ import subprocess
 import sys
 from http.server import ThreadingHTTPServer
 
+from app.server import (
+    CsWatchHandler,
+    _load_history,
+    configure_tab_watcher,
+    init,
+    schedule_tab_scan,
+)
 from storage.config_store import load_config
-from app.server import CsWatchHandler, _load_history, configure_tab_watcher, init, schedule_tab_scan
 
 
 def is_hyprland() -> bool:

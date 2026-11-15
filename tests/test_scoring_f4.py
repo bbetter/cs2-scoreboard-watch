@@ -12,7 +12,6 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import (  # noqa: E402
     AIM_ELITE_RECENT_POINTS,
     SteamProfile,
@@ -20,6 +19,7 @@ from lookup.steam_lookup import (  # noqa: E402
     _recent_aim_signals,
 )
 from storage import config_store  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 _config_patch = None
 

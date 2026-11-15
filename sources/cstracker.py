@@ -6,7 +6,7 @@ import logging
 import re
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from lookup.http_client import http_get_status as _http_get_status
 from sources.base import LegacySlotSource, SourceContext, SourceResult
@@ -37,7 +37,7 @@ def _num_or_raw(text: str) -> Any:
     return float(m.group(1)) if m else text
 
 
-def _norm_text(text: Optional[str]) -> str:
+def _norm_text(text: str | None) -> str:
     return re.sub(r"\s+", " ", text or "").strip()
 
 
@@ -84,7 +84,7 @@ def _parse_cstracker_html(html_text: str) -> dict:
             cells = [_norm_text(td.get_text(" ")) for td in tr.find_all("td")]
             if len(cells) != len(headers) or not cells:
                 continue
-            rec = dict(zip(headers, cells))
+            rec = dict(zip(headers, cells, strict=False))
             kda = [int(x) for x in re.findall(r"\d+", rec.get("K / D / A", ""))[:3]]
             kills, deaths, assists = (kda + [None, None, None])[:3]
             matches.append({
@@ -148,7 +148,7 @@ class CsTrackerSource(LegacySlotSource):
     in_coverage = True
     payload_key = None  # rides inside the AI "extra_stats" block, not a block of its own
 
-    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
+    def fetch_raw(self, steamid64: str, ctx: SourceContext) -> dict | None:
         return fetch_cstracker(steamid64)
 
     def normalize(self, raw: Any) -> SourceResult:
@@ -160,6 +160,6 @@ class CsTrackerSource(LegacySlotSource):
         status = _STATUS_MAP.get(raw_status, "error") if isinstance(raw_status, str) else "error"
         return SourceResult(status, raw)
 
-    def ai_compact(self, result: SourceResult) -> Optional[dict]:
+    def ai_compact(self, result: SourceResult) -> dict | None:
         # ai_analyzer today sends the whole extra_stats dict; this is the cstracker part of it.
         return result.data or None

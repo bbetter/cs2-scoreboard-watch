@@ -15,9 +15,10 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from parity_cases import GOLDEN_DIR, cases, jsonable  # noqa: E402
+
 import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import storage.feedback_store as feedback_store  # noqa: E402
-from parity_cases import GOLDEN_DIR, cases, jsonable  # noqa: E402
 from sources import REGISTRY  # noqa: E402
 from sources.base import DataSource, SourceRegistry, SourceResult  # noqa: E402
 

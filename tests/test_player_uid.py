@@ -20,11 +20,11 @@ sys.path.insert(0, str(ROOT))
 
 import app.pipeline as pipeline  # noqa: E402
 import app.server as server  # noqa: E402
-from app.scan_store import ScanStore  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
-from vision.scoreboard_scan import Player  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
 from lookup.steam_lookup import PlayerReport, SteamProfile  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 SID0, SID1, SID2 = "76561198000000001", "76561198000000002", "76561198000000003"
 

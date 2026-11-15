@@ -15,12 +15,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import lookup.ai_analyzer as ai_analyzer  # noqa: E402
-import storage.feedback_store as feedback_store  # noqa: E402
 import lookup.steam_lookup as steam_lookup  # noqa: E402
-import storage.api_keys as api_keys  # noqa: E402
 import sources.cstracker as cstracker_source  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
 import sources.steam_stats as steam_stats_source  # noqa: E402
+import storage.api_keys as api_keys  # noqa: E402
+import storage.feedback_store as feedback_store  # noqa: E402
 from sources import REGISTRY, DataSource, SourceContext, SourceRegistry, SourceResult  # noqa: E402
 from sources.cstracker import CsTrackerSource  # noqa: E402
 from sources.faceit import FaceitSource  # noqa: E402

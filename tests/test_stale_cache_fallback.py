@@ -1,11 +1,16 @@
-import sys, tempfile, time, unittest
+import sys
+import tempfile
+import time
+import unittest
 from pathlib import Path
 from unittest import mock
+
 sys.path.insert(0, __import__("os").path.dirname(__import__("os").path.dirname(__import__("os").path.abspath(__file__))))
 import lookup.steam_lookup as sl
 import lookup.steam_search as steam_search
 from storage import config_store
 from storage.profile_cache import ProfileCache
+
 
 class StaleFallback(unittest.TestCase):
     def setUp(self):

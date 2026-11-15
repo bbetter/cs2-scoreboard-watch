@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import urllib.parse
-from typing import Any, Optional
+from typing import Any
 
 import storage.api_keys as api_keys
 from lookup.http_client import http_get as _http_get
 from sources._util import _safe_float, _safe_int
-from storage.config_fields import Secret
 from sources.base import LegacySlotSource, SourceContext, SourceResult
+from storage.config_fields import Secret
 
 
 def fetch_steam_cs2_stats(steamid64: str, api_key: str) -> dict:
@@ -47,11 +47,11 @@ def fetch_steam_cs2_stats(steamid64: str, api_key: str) -> dict:
     if total_kills is None and total_deaths is None and total_matches is None:
         return {}
 
-    kd: Optional[float] = None
+    kd: float | None = None
     if total_kills is not None and total_deaths is not None:
         kd = round(total_kills / total_deaths, 2) if total_deaths > 0 else float(total_kills)
 
-    hs_pct: Optional[float] = None
+    hs_pct: float | None = None
     if total_kills is not None and total_kills > 0 and total_hs is not None:
         hs_pct = round((total_hs / total_kills) * 100.0, 1)
 

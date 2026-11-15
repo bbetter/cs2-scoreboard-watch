@@ -16,14 +16,19 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import app.server as server  # noqa: E402
-from app.scan_store import ScanStore  # noqa: E402
+import lookup.ai_analyzer as ai_analyzer  # noqa: E402
 import sources.cstracker as cstracker_source  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
-from vision.scoreboard_scan import Player  # noqa: E402
+from app.scan_store import ScanStore  # noqa: E402
+from lookup.steam_lookup import (  # noqa: E402
+    SteamProfile,
+    _build_player_report,
+    _finalize_source_views,
+    _strip_leetify,
+)
 from sources import REGISTRY, DataSource, SourceRegistry, SourceResult  # noqa: E402
-from lookup.steam_lookup import SteamProfile, _build_player_report, _finalize_source_views, _strip_leetify  # noqa: E402
+from vision.scoreboard_scan import Player  # noqa: E402
 
 SID = "76561198000000042"
 

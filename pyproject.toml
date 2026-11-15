@@ -31,7 +31,10 @@ target-version = "py311"
 extend-exclude = [".venv", "data"]
 
 [tool.ruff.lint]
-select = ["F", "E9"]
+select = ["F", "E9", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "cs2watch", "cs2platform", "lookup", "scoring", "sources", "storage", "vision"]
 
 [tool.ruff.lint.per-file-ignores]
 "*/__init__.py" = ["F401"]

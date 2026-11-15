@@ -11,24 +11,27 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
-from typing import Optional
-
-from storage.profile_cache import ProfileCache
-from lookup.http_client import http_get as _http_get
-from vision.scoreboard_scan import Player
-from scoring import compute_scores, compute_uncertainty_and_weights, recent_aim_signals, risk_level
-from scoring import thresholds as _T
-from sources import REGISTRY
-from storage.api_keys import _get_steam_api_key
-from storage.config_store import DEFAULT_AI_WEIGHTS
-from storage.paths import DATA_DIR, LOG_DIR
 
 import sources.cstracker as cstracker_source
 import sources.faceit as faceit_source
 import sources.leetify as leetify_source
 import sources.steam_stats as steam_stats_source
 from lookup import steam_search
+from lookup.http_client import http_get as _http_get
 from lookup.ttl_memo import TtlMemo
+from scoring import (
+    compute_scores,
+    compute_uncertainty_and_weights,
+    recent_aim_signals,
+    risk_level,
+)
+from scoring import thresholds as _T
+from sources import REGISTRY
+from storage.api_keys import _get_steam_api_key
+from storage.config_store import DEFAULT_AI_WEIGHTS
+from storage.paths import DATA_DIR, LOG_DIR
+from storage.profile_cache import ProfileCache
+from vision.scoreboard_scan import Player
 
 _LOG = logging.getLogger("pton")
 
@@ -82,15 +85,15 @@ def _leetify_cache_ttl_sec() -> int:
         return 0
 
 
-def _leetify_mem_get(steamid64: Optional[str], ttl: int) -> Optional[dict]:
+def _leetify_mem_get(steamid64: str | None, ttl: int) -> dict | None:
     return LEETIFY_MEMO.get(steamid64, ttl)
 
 
-def _leetify_mem_put(steamid64: Optional[str], data: Optional[dict], ttl: int) -> None:
+def _leetify_mem_put(steamid64: str | None, data: dict | None, ttl: int) -> None:
     LEETIFY_MEMO.put(steamid64, data, ttl)
 
 
-def _leetify_cached_or_fetch(steamid64: Optional[str], ttl: int) -> Optional[dict]:
+def _leetify_cached_or_fetch(steamid64: str | None, ttl: int) -> dict | None:
     if not steamid64:
         return None
     data = _leetify_mem_get(steamid64, ttl)
@@ -103,25 +106,25 @@ def _leetify_cached_or_fetch(steamid64: Optional[str], ttl: int) -> Optional[dic
 @dataclass
 class SteamProfile:
     query_nick: str
-    profile_name: Optional[str] = None
-    steamid64: Optional[str] = None
-    vanity: Optional[str] = None
-    profile_url: Optional[str] = None
-    avatar_url: Optional[str] = None
-    screenshot_avatar: Optional[str] = None
-    privacy_state: Optional[str] = None
-    online_state: Optional[str] = None
+    profile_name: str | None = None
+    steamid64: str | None = None
+    vanity: str | None = None
+    profile_url: str | None = None
+    avatar_url: str | None = None
+    screenshot_avatar: str | None = None
+    privacy_state: str | None = None
+    online_state: str | None = None
     in_cs2: bool = False
     vac_banned: bool = False
-    trade_ban: Optional[str] = None
+    trade_ban: str | None = None
     is_limited: bool = False
-    member_since: Optional[str] = None
-    account_age_years: Optional[float] = None
-    cs2_hours: Optional[float] = None
+    member_since: str | None = None
+    account_age_years: float | None = None
+    cs2_hours: float | None = None
     lookup_source: str = "none"
     rip_url: str = ""
     rip_nick_url: str = ""
-    leetify: Optional[dict] = None
+    leetify: dict | None = None
     faceit: dict = field(default_factory=dict)
     cs2_stats: dict = field(default_factory=dict)
     extra_stats: dict = field(default_factory=dict)
@@ -133,17 +136,17 @@ class SteamProfile:
     sources: dict = field(default_factory=dict)
 
 
-def _source_coverage(profile: "SteamProfile") -> dict:
+def _source_coverage(profile: SteamProfile) -> dict:
     # Per-source flags come from the registry (sources/); "steam" is the SteamID64 presence flag.
     return {"steam": bool(profile.steamid64), **REGISTRY.coverage(asdict(profile))}
 
 
-def _refresh_sources_view(profile: "SteamProfile") -> None:
+def _refresh_sources_view(profile: SteamProfile) -> None:
     """Set profile.sources to the registry's uniform view of every source that has data."""
     profile.sources = REGISTRY.sources_view(asdict(profile))
 
 
-def _finalize_source_views(profile: "SteamProfile") -> None:
+def _finalize_source_views(profile: SteamProfile) -> None:
     """Single place that derives a profile's coverage flags and uniform sources view."""
     profile.coverage = _source_coverage(profile)
     _refresh_sources_view(profile)
@@ -157,7 +160,7 @@ class PlayerReport:
     kd: float
     hs: float
     level: int
-    anomaly_score: Optional[float]
+    anomaly_score: float | None
     cheat_probability: float
     risk_level: str
     reasons: list[str] = field(default_factory=list)
@@ -172,7 +175,7 @@ class PlayerReport:
     player_uid: str = ""
 
 
-def _cstracker_extra(steamid64: Optional[str]) -> dict:
+def _cstracker_extra(steamid64: str | None) -> dict:
     """extra_stats for a fresh profile: cstracker data plus a marker that CS2 stats were requested.
 
     A public profile can still hide game stats, leaving cs2_stats empty for good; the marker
@@ -183,7 +186,7 @@ def _cstracker_extra(steamid64: Optional[str]) -> dict:
     return {"cstracker": cstracker_source.fetch_cstracker(steamid64), "_cs2_checked": bool(_get_steam_api_key())}
 
 
-def _fetch_external_stats(steamid64: Optional[str]) -> tuple[Optional[dict], dict, dict]:
+def _fetch_external_stats(steamid64: str | None) -> tuple[dict | None, dict, dict]:
     if not steamid64:
         return None, {}, {}
     steam_api_key = _get_steam_api_key()
@@ -217,7 +220,7 @@ def _cache_entry_current(data: dict) -> bool:
     return True
 
 
-def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: Optional[str] = None) -> SteamProfile:
+def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: str | None = None) -> SteamProfile:
     _setup_pton_log()
     clean_nick = nick.strip()
     cache_key = clean_nick.lower()
@@ -233,8 +236,8 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
         _finalize_source_views(cached_profile)
         return cached_profile
 
-    hit: Optional[dict] = None
-    stale: Optional[dict] = None  # within TTL but due a refresh; used if the refresh is rate limited
+    hit: dict | None = None
+    stale: dict | None = None  # within TTL but due a refresh; used if the refresh is rate limited
     with PROFILE_CACHE.lock:
         cached = PROFILE_CACHE.get(cache_key)
         if cached:
@@ -247,7 +250,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     if hit is not None:
         return _from_cache_entry(hit)
 
-    data: Optional[dict] = None
+    data: dict | None = None
     search_log: list[str] = []
     candidates: list[dict] = []
     if clean_nick:
@@ -395,7 +398,7 @@ def _build_player_report(p: Player, steam: SteamProfile) -> PlayerReport:
 
 def _retry_rate_limited(
     players: list[Player],
-    steam_by_idx: dict[int, Optional[SteamProfile]],
+    steam_by_idx: dict[int, SteamProfile | None],
     lookup,
     max_workers: int,
 ) -> None:
@@ -415,9 +418,9 @@ def _retry_rate_limited(
         budget -= wait
         with ThreadPoolExecutor(max_workers=min(max_workers, len(pending))) as pool:
             results = list(pool.map(lookup, pending))
-        for idx, st in zip(pending, results):
+        for idx, st in zip(pending, results, strict=False):
             steam_by_idx[idx] = st
-        pending = [i for i, st in zip(pending, results) if st is not None and st.lookup_source == "rate_limited"]
+        pending = [i for i, st in zip(pending, results, strict=False) if st is not None and st.lookup_source == "rate_limited"]
 
 
 def enrich_players(
@@ -457,7 +460,7 @@ def enrich_players(
             except Exception:
                 pass
 
-    def _lookup(idx: int) -> Optional[SteamProfile]:
+    def _lookup(idx: int) -> SteamProfile | None:
         p = players[idx]
         try:
             return lookup_steam_profile(p.nick, p.avatar_thumb, p.avatar_data_url)
@@ -466,7 +469,7 @@ def enrich_players(
 
     # Rate-limited players are held back and reported once, after their retries,
     # so on_player_ready (scan progress) is called exactly once per player.
-    steam_by_idx: dict[int, Optional[SteamProfile]] = {}
+    steam_by_idx: dict[int, SteamProfile | None] = {}
     with ThreadPoolExecutor(max_workers=max_workers) as pool:
         future_map = {pool.submit(_lookup, idx): idx for idx in range(len(players))}
         for fut in as_completed(future_map):
@@ -493,7 +496,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
     """Re-resolve a single player by corrected nickname, SteamID64, or Steam profile URL."""
     _setup_pton_log()
     q = query.strip()
-    data: Optional[dict] = None
+    data: dict | None = None
 
     url_match = re.search(r"steamcommunity\.com/(id|profiles)/([^/?#]+)", q)
     if url_match:

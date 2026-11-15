@@ -14,11 +14,12 @@ import logging
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Protocol
 
 from app.events import EventBus
 from app.scan_migrations import CURRENT_SCHEMA_VERSION
@@ -50,11 +51,11 @@ class ScanPipeline:
         *,
         ocr: Callable[[Path], tuple[list, Any]],          # image -> (players, console_status)
         enrich: Callable[..., list],                       # steam_lookup.enrich_players
-        analyze_ai: Callable[[list], tuple[list, Optional[str]]],
+        analyze_ai: Callable[[list], tuple[list, str | None]],
         ai_enabled: Callable[[], bool],
-        match_meta: Callable[[datetime, Any], tuple[str, Optional[str]]],
-        screenshot_url: Callable[[Path], Optional[str]],
-        spawn: Optional[Callable[[Callable[[], None]], None]] = None,  # tests pass a synchronous runner
+        match_meta: Callable[[datetime, Any], tuple[str, str | None]],
+        screenshot_url: Callable[[Path], str | None],
+        spawn: Callable[[Callable[[], None]], None] | None = None,  # tests pass a synchronous runner
     ) -> None:
         self.repo = repo
         self.bus = bus
@@ -145,10 +146,10 @@ class ScanPipeline:
         return snapshot
 
     # ------------------------------------------------------------------ background enrichment
-    def _find(self, scan_id: str) -> Optional[dict]:
+    def _find(self, scan_id: str) -> dict | None:
         return next((s for s in self.repo.scans if s["id"] == scan_id), None)
 
-    def _find_run(self, scan_id: str, run_id: Optional[str]) -> Optional[dict]:
+    def _find_run(self, scan_id: str, run_id: str | None) -> dict | None:
         """The record for `scan_id`, but only while it still belongs to run `run_id` (None = no check)."""
         rec = self._find(scan_id)
         if rec is None:
@@ -178,7 +179,7 @@ class ScanPipeline:
             out.append(kept if kept is not None and self._keep_user_row(kept, started) else d)
         return out
 
-    def enrich_scan(self, scan_id: str, players: list, started: float, run_id: Optional[str] = None) -> None:
+    def enrich_scan(self, scan_id: str, players: list, started: float, run_id: str | None = None) -> None:
         ai_enabled = bool(self._ai_enabled())
         total = len(players)
         done_count = 0

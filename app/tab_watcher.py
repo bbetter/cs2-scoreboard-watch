@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 Task = Callable[[], None]
 
@@ -24,7 +24,7 @@ class TabWatcher:
         is_cs2_active: Callable[[], bool],
         run_scan: Callable[[], dict],
         notify: Callable[[str, str], None],
-        spawn: Optional[Callable[[Task], None]] = None,
+        spawn: Callable[[Task], None] | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.time,
     ) -> None:

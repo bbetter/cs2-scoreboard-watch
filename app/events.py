@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import threading
 import traceback
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 Handler = Callable[[str, Any], None]
 

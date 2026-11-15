@@ -11,12 +11,9 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Optional
 from urllib.parse import parse_qs, urlparse
 
 import storage.player_db as player_db
-from lookup.ai_analyzer import analyze_players_with_ai
-from storage.config_store import get_public_config, load_config, save_config
 from app.console_parser import (
     correct_nick_from_console,
     find_cs2_game_dir,
@@ -24,9 +21,6 @@ from app.console_parser import (
     parse_latest_status,
     setup_autoexec,
 )
-from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
-from cs2platform.focus import is_cs2_active as _is_cs2_active
-from cs2platform.notify import send_notification
 from app.events import EventBus
 from app.matches import build_matches
 from app.pipeline import ScanPipeline
@@ -38,6 +32,7 @@ from app.player_ops import (
     replace_player_by_uid,
     source_choices_text,
 )
+from app.scan_migrations import migrate
 from app.scan_store import ScanStore
 from app.sse import SseHub
 from app.tab_watcher import TabWatcher
@@ -49,21 +44,28 @@ from app.web_router import (
     resolve_static_file,
     static_content_type,
 )
-from app.scan_migrations import migrate
-from sources import REGISTRY, SourceContext
-from storage.config_schema import describe_schema
-from storage.feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
-from vision.scoreboard_scan import scan as scan_scoreboard
+from cs2platform.capture import SCREENSHOT_DIR, capture_screenshot, get_screenshot_dir
+from cs2platform.focus import is_cs2_active as _is_cs2_active
+from cs2platform.notify import send_notification
+from lookup.ai_analyzer import analyze_players_with_ai
 from lookup.steam_lookup import enrich_players, recheck_player_report
 from lookup.steam_search import get_steam_search_status
+from sources import REGISTRY, SourceContext
 from storage.api_keys import (
     _get_faceit_api_key,
     _get_steam_api_key,
     reset_faceit_api_key_cache,
     reset_steam_api_key_cache,
 )
-
+from storage.config_schema import describe_schema
+from storage.config_store import get_public_config, load_config, save_config
+from storage.feedback_store import (
+    append_feedback,
+    build_feedback_entry,
+    validate_feedback_payload,
+)
 from storage.paths import DATA_DIR, WEB_DIR
+from vision.scoreboard_scan import scan as scan_scoreboard
 
 HISTORY_FILE = DATA_DIR / "scans_history.json"
 
@@ -110,7 +112,7 @@ def _save_history_locked() -> None:
     STORE.save_locked()
 
 
-def _resolve_match_meta(now_dt: datetime, console_status) -> tuple[str, Optional[str]]:
+def _resolve_match_meta(now_dt: datetime, console_status) -> tuple[str, str | None]:
     if console_status and console_status.match_id:
         return console_status.match_id, console_status.map_name
     date_str = now_dt.strftime("%Y-%m-%d")
@@ -158,7 +160,7 @@ def _ocr_image(image_path: Path) -> tuple[list, object]:
     return players, console_status
 
 
-def _screenshot_url(image_path: Path) -> Optional[str]:
+def _screenshot_url(image_path: Path) -> str | None:
     if image_path.parent.resolve() == get_screenshot_dir().resolve():
         return f"/screenshots/{image_path.name}"
     return None
@@ -205,7 +207,7 @@ def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
     PIPELINE.enrich_scan(scan_id, players, started)
 
 
-def run_scan(image_path: Optional[Path] = None, fetch_steam: bool = True) -> dict:
+def run_scan(image_path: Path | None = None, fetch_steam: bool = True) -> dict:
     if image_path is None:
         image_path = capture_screenshot()
     else:
@@ -231,7 +233,7 @@ def _refresh_source_entry(steam: dict, src) -> None:
     refresh_source_entry(steam, src, REGISTRY)
 
 
-def _player_matches(p: dict, uid: Optional[str], nick: Optional[str]) -> bool:
+def _player_matches(p: dict, uid: str | None, nick: str | None) -> bool:
     return player_matches(p, uid, nick)
 
 
@@ -240,7 +242,7 @@ def _mark_edited(player: dict) -> dict:
 
 
 def recheck_source_for_player(
-    scan_id: Optional[str], nick: str, source: Optional[str], player_uid: Optional[str] = None
+    scan_id: str | None, nick: str, source: str | None, player_uid: str | None = None
 ) -> tuple[int, dict]:
     # Module names are read here, at call time, so tests can patch STORE, REGISTRY, _broadcast_event, ...
     return recheck_source(
@@ -434,7 +436,7 @@ def _post_scan(h: CsWatchHandler) -> None:
         payload = read_json_body(h)
         img_path = payload.get("image_path")
         fetch_steam = payload.get("fetch_steam", True)
-        image_path: Optional[Path] = None
+        image_path: Path | None = None
         if img_path not in (None, ""):
             if not isinstance(img_path, str):
                 h._send_json({"error": "image_path must be a string"}, status=400)
@@ -693,7 +695,7 @@ def _post_player(h: CsWatchHandler, steamid: str) -> None:
         if not isinstance(payload, dict):
             h._send_json({"error": "Invalid player payload"}, status=400)
             return
-        fields: dict[str, Optional[str]] = {}
+        fields: dict[str, str | None] = {}
         for name, max_len in (("tag", player_db.TAG_MAX_LEN), ("notes", player_db.NOTES_MAX_LEN)):
             if name in payload:
                 value = payload[name]

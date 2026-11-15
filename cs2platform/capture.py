@@ -12,18 +12,17 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Mapping, Optional
 
-from storage.config_store import load_config
 from cs2platform.focus import (
     is_cs2_client,
     win32_enable_dpi_awareness,
     win32_find_cs2_hwnd,
     win32_get_window_center,
 )
-
+from storage.config_store import load_config
 from storage.paths import SCREENSHOT_DIR
 
 Capturer = Callable[[Path], Path]
@@ -39,7 +38,7 @@ def get_screenshot_dir() -> Path:
     return SCREENSHOT_DIR
 
 
-def _get_cs2_monitor_name() -> Optional[str]:
+def _get_cs2_monitor_name() -> str | None:
     if not shutil.which("hyprctl"):
         return None
     try:
@@ -67,7 +66,7 @@ def _get_cs2_monitor_name() -> Optional[str]:
     return None
 
 
-def _capture_with_mss_or_pil(out_path: Path, center: Optional[tuple[int, int]] = None) -> None:
+def _capture_with_mss_or_pil(out_path: Path, center: tuple[int, int] | None = None) -> None:
     try:
         import mss
         import mss.tools
@@ -170,7 +169,7 @@ AUTO_CAPTURERS: dict[str, Capturer] = {
 
 def select_auto_tool(
     platform_name: str,
-    which: Callable[[str], Optional[str]],
+    which: Callable[[str], str | None],
     environ: Mapping[str, str],
 ) -> str:
     """Name of the tool auto mode uses: a CAPTURERS key or an AUTO_CAPTURERS key.

@@ -8,7 +8,7 @@ import re
 import statistics
 import sys
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from rapidocr_onnxruntime import RapidOCR
 
@@ -41,7 +41,7 @@ KD_REL_COLS_1080 = {
     "level": 225.0,
 }
 
-_ENGINE: Optional[RapidOCR] = None
+_ENGINE: RapidOCR | None = None
 
 
 def get_engine() -> RapidOCR:
@@ -61,7 +61,7 @@ class Player:
     level: int
     score: float = 0.0
     avatar_thumb: Any = field(default=None, repr=False)
-    avatar_data_url: Optional[str] = field(default=None, repr=False)
+    avatar_data_url: str | None = field(default=None, repr=False)
     # Stable id of this row inside one scan; assigned by the scan pipeline, survives renames/rechecks.
     player_uid: str = ""
 
@@ -84,7 +84,7 @@ def _cluster_rows(ocr_items, row_tol: float):
     return rows
 
 
-def _detect_kd_x(ocr_items) -> Optional[float]:
+def _detect_kd_x(ocr_items) -> float | None:
     kd_xs = [
         x
         for x, _, text, _ in ocr_items
@@ -149,6 +149,7 @@ def parse(ocr_items, img_width: int = REF_WIDTH, img_height: int = REF_HEIGHT, i
         if img is not None and kd_x is not None:
             import base64
             import io
+
             import numpy as np
             from PIL import Image
 

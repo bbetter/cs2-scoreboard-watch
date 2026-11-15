@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterable
 from importlib.metadata import entry_points
-from typing import Any, Iterable, Optional
+from typing import Any
 
 from sources.base import DataSource, SourceRegistry
 from sources.cstracker import CsTrackerSource
@@ -34,7 +35,7 @@ def _plugin_entry_points() -> Iterable[Any]:
     return entry_points(group=PLUGIN_GROUP)
 
 
-def load_plugins(registry: SourceRegistry, entry_points: Optional[Iterable[Any]] = None) -> list[str]:
+def load_plugins(registry: SourceRegistry, entry_points: Iterable[Any] | None = None) -> list[str]:
     """Register every `cs2watch.sources` entry point that yields a DataSource; return the registered ids.
 
     `entry_points` is injectable for tests (objects with `.name` and `.load()`). Any failure is logged as a

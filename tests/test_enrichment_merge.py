@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
-from tests.test_pipeline import FakeEnrich, Harness, IMG  # noqa: E402
+from tests.test_pipeline import IMG, FakeEnrich, Harness  # noqa: E402
 from tests.test_recheck_source import _make_scan, _store  # noqa: E402
 
 

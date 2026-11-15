@@ -13,16 +13,17 @@ default slot `steam.sources[<id>]` and needs no other storage code.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Literal, Mapping, Optional
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 Status = Literal["ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable"]
 STATUSES: tuple[str, ...] = ("ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable")
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass
@@ -43,7 +44,7 @@ class SourceResult:
 class SourceContext:
     """Per-fetch environment. Kept tiny on purpose; extend with fields, not positional args."""
 
-    steam_api_key: Optional[str] = None
+    steam_api_key: str | None = None
     extra: dict = field(default_factory=dict)
 
 
@@ -59,11 +60,11 @@ class DataSource:
     # Declarative settings this source needs (consumed by the config schema in step 6).
     settings: tuple = ()
     # Own block name in the AI payload and feedback features: "" = use `id`, None = no own block.
-    payload_key: Optional[str] = ""
+    payload_key: str | None = ""
     # Always emit the block (even when empty) instead of only when it has content.
     payload_always: bool = False
 
-    def payload_name(self) -> Optional[str]:
+    def payload_name(self) -> str | None:
         """Key of this source's block in the AI payload / feedback features, or None if it has none."""
         if self.payload_key is None:
             return None
@@ -104,7 +105,7 @@ class DataSource:
         sources[self.id] = res.to_dict()
         steam["sources"] = sources
 
-    def result_from(self, steam: Mapping) -> Optional[SourceResult]:
+    def result_from(self, steam: Mapping) -> SourceResult | None:
         """Uniform view of this source for a stored record; None if never fetched."""
         stored = (steam.get("sources") or {}).get(self.id)
         if isinstance(stored, dict) and "status" in stored:
@@ -115,7 +116,7 @@ class DataSource:
         return self.normalize(raw)
 
     # -- features for scoring / AI / feedback ---------------------------------------------
-    def features(self, result: SourceResult) -> dict[str, Optional[float]]:
+    def features(self, result: SourceResult) -> dict[str, float | None]:
         """Flat numeric features (used by feedback entries and, later, scoring rules)."""
         return {}
 
@@ -149,7 +150,7 @@ class LegacySlotSource(DataSource):
             cur = nxt
         cur[self.slot[-1]] = raw
 
-    def result_from(self, steam: Mapping) -> Optional[SourceResult]:
+    def result_from(self, steam: Mapping) -> SourceResult | None:
         raw = self.read_raw(steam)
         if raw is None:
             return None
@@ -171,11 +172,11 @@ class SourceRegistry:
             self._builtin.add(source.id)
         return source
 
-    def is_builtin(self, source_id: Optional[str]) -> bool:
+    def is_builtin(self, source_id: str | None) -> bool:
         """True for sources shipped in this repository; third-party plugins register with builtin=False."""
         return (source_id or "") in self._builtin
 
-    def get(self, source_id: Optional[str]) -> Optional[DataSource]:
+    def get(self, source_id: str | None) -> DataSource | None:
         return self._sources.get(source_id or "")
 
     def __iter__(self):

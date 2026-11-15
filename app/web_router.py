@@ -18,9 +18,9 @@ import ipaddress
 import json
 import re
 import urllib.parse
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 _TOKEN = re.compile(r"\{(\w+)(?::(path))?\}")
 
@@ -123,7 +123,7 @@ STATIC_CONTENT_TYPES: dict[str, str] = {
 }
 
 
-def resolve_static_file(root: Path, url_path: str) -> Optional[Path]:
+def resolve_static_file(root: Path, url_path: str) -> Path | None:
     """Map a raw request path to a file under `root`, or None if it must not be served.
 
     "/" maps to index.html. Anything else is percent-decoded, must be made of plain segments (no empty,
@@ -186,7 +186,7 @@ def _is_allowed_host(host: str) -> bool:
     return True
 
 
-def check_request(method: str, path: str, headers: Mapping[str, str], body_length: int) -> Optional[tuple[int, str]]:
+def check_request(method: str, path: str, headers: Mapping[str, str], body_length: int) -> tuple[int, str] | None:
     """None if the request may proceed, else (http_status, error_message).
 
     Defends the local server against DNS rebinding (Host), cross-site form/fetch POSTs (Origin,
