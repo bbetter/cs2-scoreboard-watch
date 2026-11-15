@@ -90,7 +90,7 @@ its own working directory (the repository root).
 | `base.py` | Contract: `DataSource`, `LegacySlotSource`, `SourceResult`, `SourceContext`, `SourceRegistry`. `payload_key` / `payload_always` control the source's block in the AI payload and feedback features |
 | `registry.py` | `REGISTRY`: the built-in sources, one `register(...)` line each, then third-party plugins from the `cs2watch.sources` entry point group (`load_plugins`). `CS2WATCH_DISABLE_PLUGINS=1` skips plugins |
 | `leetify.py` | Leetify (recheckable; declares `leetify_api_key`); fetcher `fetch_leetify` |
-| `faceit.py` | FACEIT (declares `faceit_api_key`); fetcher `fetch_faceit_stats` |
+| `faceit.py` | FACEIT (declares `faceit_api_key`); fetcher `fetch_faceit_stats`, which also reads the account's active bans (`active_bans`, `None` when unreadable) |
 | `cstracker.py` | CSTracker.gg (recheckable; status may be `blocked`); fetcher `fetch_cstracker` |
 | `steam_stats.py` | Steam CS2 lifetime stats (declares `steam_api_key`); fetcher `fetch_steam_cs2_stats` |
 | `_util.py` | Numeric helpers shared by the source features and `scoring/rules.py` (`num_or_none`, `round_num`, `_safe_float`, `_safe_int`) |

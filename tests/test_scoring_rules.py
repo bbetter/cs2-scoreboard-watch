@@ -232,6 +232,36 @@ class PlatformBans(RuleCase):
         self.assertEqual(pairs(h), [(T.EXT_BAN_POINTS, "Бани на Leetify/платформах (2)")])
 
 
+class FaceitActiveBan(RuleCase):
+    COMPONENT, NAME = "external", "faceit_active_ban"
+
+    def test_no_active_ban_is_not_applicable(self):
+        self.assertEqual(self.hits(ctx(s=steam(faceit={"found": True, "active_bans": []}))), [])
+
+    def test_unknown_bans_are_not_applicable(self):
+        self.assertEqual(self.hits(ctx(s=steam(faceit={"found": True, "active_bans": None}))), [])
+        self.assertEqual(self.hits(ctx(s=steam(faceit=None))), [])
+
+    def test_active_ban_points_and_reason(self):
+        s = steam(faceit={"found": True, "active_bans": [{"reason": "Cheating", "ends_at": "2030-01-01T00:00:00+00:00"}]})
+        self.assertEqual(pairs(self.hits(ctx(s=s))), [(T.EXT_FACEIT_BAN_POINTS, "Активний бан на FACEIT: Cheating")])
+
+    def test_empty_reason_still_names_the_ban(self):
+        s = steam(faceit={"found": True, "active_bans": [{"reason": "", "ends_at": "2030-01-01T00:00:00+00:00"}]})
+        self.assertEqual(pairs(self.hits(ctx(s=s))), [(T.EXT_FACEIT_BAN_POINTS, "Активний бан на FACEIT: без причини")])
+
+    def test_leetify_ban_list_already_counts_it_so_no_double_points(self):
+        s = steam(
+            faceit={"found": True, "active_bans": [{"reason": "x", "ends_at": "2030-01-01T00:00:00+00:00"}]},
+            leetify=lf(bans=[{"platform": "faceit"}]),
+        )
+        self.assertEqual(self.hits(ctx(s=s)), [])
+
+    def test_faceit_ban_does_not_set_the_cheat_ban_floor(self):
+        s = steam(faceit={"found": True, "active_bans": [{"reason": "Abandon", "ends_at": "2030-01-01T00:00:00+00:00"}]})
+        self.assertFalse(ctx(s=s).has_ban)
+
+
 class LeetifyReactionTime(RuleCase):
     COMPONENT, NAME = "external", "leetify_reaction_time"
 

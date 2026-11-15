@@ -45,6 +45,7 @@ class ScoreContext:
             or self.premier >= T.HIGH_ELO_PREMIER
         )
         self.lf_bans: list = (lf.get("bans") or []) if lf else []
+        self.faceit_bans: list = self.faceit.get("active_bans") or []
         self.has_ban = bool(steam.vac_banned or self.lf_bans)
         self._recent: list[Hit] | None = None
 
@@ -231,6 +232,15 @@ def _ext_bans(c: ScoreContext) -> list:
     if c.lf and c.lf_bans:
         return [Hit(T.EXT_BAN_POINTS, f"Бани на Leetify/платформах ({len(c.lf_bans)})")]
     return []
+
+
+@rule("external", "faceit_active_ban")
+def _ext_faceit_ban(c: ScoreContext) -> list:
+    # Leetify's bans list can already carry the FACEIT ban (platform "faceit"); count it once, in platform_bans.
+    if c.lf_bans or not c.faceit_bans:
+        return []
+    reason = str(c.faceit_bans[0].get("reason") or "").strip() or "без причини"
+    return [Hit(T.EXT_FACEIT_BAN_POINTS, f"Активний бан на FACEIT: {reason}")]
 
 
 @rule("external", "leetify_reaction_time")

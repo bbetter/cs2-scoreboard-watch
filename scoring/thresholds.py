@@ -37,6 +37,9 @@ STEAM_NOT_FOUND_POINTS = 12.0
 EXT_BASE = 10.0
 HIGH_ELO_FACEIT_LEVEL, HIGH_ELO_FACEIT_ELO, HIGH_ELO_PREMIER = 8, 1800, 20000
 EXT_BAN_POINTS = 80.0
+# Active FACEIT ban without a Leetify ban record. Lower than EXT_BAN_POINTS and outside the cheat ban floor:
+# FACEIT also bans for leaving matches, so an active FACEIT ban is not proof of cheating.
+EXT_FACEIT_BAN_POINTS = 40.0
 RT_SUPERHUMAN_MS, RT_SUPERHUMAN_POINTS = 320, 45.0
 RT_VERY_FAST_MS, RT_VERY_FAST_POINTS = 380, 25.0
 RT_FAST_MS, RT_FAST_POINTS = 420, 12.0                 # skipped for high_elo

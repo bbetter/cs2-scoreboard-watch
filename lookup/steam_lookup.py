@@ -255,6 +255,9 @@ def _cache_entry_current(data: dict) -> bool:
     stored_sources = data.get("sources") or {}
     if data.get("steamid64") and any(src.id not in stored_sources for src in _extra_sources()):
         return False  # cached before a registry source (e.g. a plugin) was installed: fetch it once
+    faceit = data.get("faceit")
+    if isinstance(faceit, dict) and faceit.get("found") and "active_bans" not in faceit:
+        return False  # cached before FACEIT bans were read: fetch once so the ban rule sees them
     # Profile cache entries never hold Leetify data; it is re-read via _leetify_cached_or_fetch.
     return True
 

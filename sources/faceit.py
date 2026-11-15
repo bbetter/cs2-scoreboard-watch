@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import urllib.parse
+from datetime import UTC, datetime
 from typing import Any
 
 import storage.api_keys as api_keys
@@ -11,6 +12,47 @@ from lookup.http_client import http_get as _http_get
 from sources._util import _safe_float, _safe_int
 from sources.base import LegacySlotSource, SourceContext, SourceResult
 from storage.config_fields import Secret
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return ts if ts.tzinfo else ts.replace(tzinfo=UTC)
+
+
+def fetch_faceit_active_bans(player_id: str, headers: dict) -> list[dict] | None:
+    """Bans on the FACEIT account whose `ends_at` is still in the future.
+
+    Returns [] when the account has no active ban, and None when the bans endpoint could not be read. The two
+    must stay apart: None means "unknown", not "clean".
+    """
+    raw = _http_get(
+        f"https://open.faceit.com/data/v4/players/{urllib.parse.quote(player_id)}/bans",
+        timeout=4.5, headers=headers,
+    )
+    if not raw:
+        return None
+    try:
+        d = json.loads(raw.decode("utf-8", errors="replace"))
+    except json.JSONDecodeError:
+        return None
+    items = d.get("items") if isinstance(d, dict) else None
+    if not isinstance(items, list):
+        return None
+    now = datetime.now(UTC)
+    active: list[dict] = []
+    for ban in items:
+        if not isinstance(ban, dict):
+            continue
+        ends = _parse_ts(ban.get("ends_at"))
+        if ends is None or ends <= now:
+            continue
+        active.append({"reason": str(ban.get("reason") or "")[:200], "ends_at": ends.isoformat(timespec="seconds")})
+    return active
 
 
 def fetch_faceit_stats(steamid64: str) -> dict:
@@ -48,6 +90,7 @@ def fetch_faceit_stats(steamid64: str) -> dict:
         "winrate": None,
         "kd": None,
         "hs_pct": None,
+        "active_bans": fetch_faceit_active_bans(player_id, headers),
     }
 
     stats_url = f"https://open.faceit.com/data/v4/players/{urllib.parse.quote(player_id)}/stats/cs2"
