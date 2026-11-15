@@ -159,14 +159,21 @@ class LegacySlotSource(DataSource):
 class SourceRegistry:
     def __init__(self) -> None:
         self._sources: dict[str, DataSource] = {}
+        self._builtin: set[str] = set()
 
-    def register(self, source: DataSource) -> DataSource:
+    def register(self, source: DataSource, *, builtin: bool = True) -> DataSource:
         if not source.id:
             raise ValueError("DataSource.id is required")
         if source.id in self._sources:
             raise ValueError(f"duplicate source id: {source.id}")
         self._sources[source.id] = source
+        if builtin:
+            self._builtin.add(source.id)
         return source
+
+    def is_builtin(self, source_id: Optional[str]) -> bool:
+        """True for sources shipped in this repository; third-party plugins register with builtin=False."""
+        return (source_id or "") in self._builtin
 
     def get(self, source_id: Optional[str]) -> Optional[DataSource]:
         return self._sources.get(source_id or "")
