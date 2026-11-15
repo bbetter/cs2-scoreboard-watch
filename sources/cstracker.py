@@ -146,6 +146,7 @@ class CsTrackerSource(LegacySlotSource):
     slot = ("extra_stats", "cstracker")
     recheckable = True
     in_coverage = True
+    payload_key = None  # rides inside the AI "extra_stats" block, not a block of its own
 
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Optional[dict]:
         return fetch_cstracker(steamid64)

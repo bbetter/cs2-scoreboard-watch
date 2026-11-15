@@ -72,6 +72,7 @@ class SteamStatsSource(LegacySlotSource):
     slot = ("cs2_stats",)
     recheckable = False
     in_coverage = False  # the legacy steam.coverage map has no such key
+    payload_key = None  # lives in the AI "steam" block as cs2_stats
     # Steam Web API key: also used for profile lookups; declared here because the CS2-stats source needs it.
     settings = (
         Secret(

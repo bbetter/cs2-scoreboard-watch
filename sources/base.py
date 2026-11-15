@@ -58,6 +58,16 @@ class DataSource:
     recheckable: bool = False
     # Declarative settings this source needs (consumed by the config schema in step 6).
     settings: tuple = ()
+    # Own block name in the AI payload and feedback features: "" = use `id`, None = no own block.
+    payload_key: Optional[str] = ""
+    # Always emit the block (even when empty) instead of only when it has content.
+    payload_always: bool = False
+
+    def payload_name(self) -> Optional[str]:
+        """Key of this source's block in the AI payload / feedback features, or None if it has none."""
+        if self.payload_key is None:
+            return None
+        return self.payload_key or self.id
 
     # -- fetching -------------------------------------------------------------------------
     def fetch_raw(self, steamid64: str, ctx: SourceContext) -> Any:
@@ -118,6 +128,8 @@ class LegacySlotSource(DataSource):
     """Source whose raw payload lives at a historical path in the `steam` dict."""
 
     slot: tuple[str, ...] = ()
+    # Legacy slots are not AI/feedback blocks unless a subclass opts in with its own payload_key.
+    payload_key = None
 
     def read_raw(self, steam: Mapping) -> Any:
         cur: Any = steam

@@ -53,8 +53,6 @@ _OUTPUT_SCHEMA = {
 
 def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
     steam = p.get("steam") or {}
-    # Per-source blocks come from the registry; the rest of the payload is unchanged.
-    leetify_block = REGISTRY.get("leetify").ai_compact(REGISTRY.get("leetify").normalize(steam.get("leetify")))
     data: dict[str, Any] = {
         "nick": p.get("nick"),
         "scoreboard": {
@@ -87,11 +85,15 @@ def _compact_player_for_ai(p: dict[str, Any]) -> dict[str, Any]:
             "in_cs2": steam.get("in_cs2"),
             "cs2_stats": steam.get("cs2_stats"),
         },
-        "leetify": leetify_block,
     }
-    faceit_block = REGISTRY.get("faceit").ai_compact(REGISTRY.get("faceit").normalize(steam.get("faceit")))
-    if faceit_block:
-        data["faceit"] = faceit_block
+    # Per-source blocks come from the registry, in registry order (leetify, faceit, then new sources).
+    for src in REGISTRY:
+        name = src.payload_name()
+        if name is None:
+            continue
+        block = src.ai_compact(src.normalize(src.read_raw(steam)))
+        if src.payload_always or block:
+            data[name] = block
     extra_stats = steam.get("extra_stats")
     if extra_stats:
         data["extra_stats"] = extra_stats
