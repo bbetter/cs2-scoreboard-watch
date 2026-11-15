@@ -12,7 +12,8 @@ else
   VENV_PY="python3"
 fi
 SERVER_URL="http://127.0.0.1:8765"
-DATA_DIR="$BASE_DIR/data"
+# CS2WATCH_DATA_DIR overrides the data dir; the server started below inherits it from the environment.
+DATA_DIR="${CS2WATCH_DATA_DIR:-$BASE_DIR/data}"
 SCREENSHOT_DIR="$DATA_DIR/screenshots"
 mkdir -p "$SCREENSHOT_DIR" "$DATA_DIR/logs"
 
