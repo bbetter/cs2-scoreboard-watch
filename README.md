@@ -46,7 +46,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-Для розробки (тести і `ruff`): `.venv/bin/pip install -r requirements-dev.txt`.
+Для розробки (тести, `ruff` і `mypy`): `.venv/bin/pip install -r requirements-dev.txt`.
 
 *(Опціонально, але рекомендовано для стабільної роботи без `HTTP 429` від Steam)* — отримайте безкоштовний ключ на [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey) і задайте його одним із двох способів:
 
