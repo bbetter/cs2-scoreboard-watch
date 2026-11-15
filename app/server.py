@@ -49,6 +49,7 @@ from app.web_router import (
     resolve_static_file,
     static_content_type,
 )
+from app.scan_migrations import migrate
 from sources import REGISTRY, SourceContext
 from storage.config_schema import describe_schema
 from storage.feedback_store import append_feedback, build_feedback_entry, validate_feedback_payload
@@ -97,14 +98,8 @@ def _broadcast_event(event: str, payload: dict) -> None:
 
 
 def _adapt_legacy_scan(scan: dict) -> None:
-    """In memory only: give player records written before `steam.sources` existed their uniform view."""
-    for player in scan.get("players") or []:
-        steam = player.get("steam") if isinstance(player, dict) else None
-        if isinstance(steam, dict) and "sources" not in steam:
-            steam["sources"] = REGISTRY.sources_view(steam)
-    for idx, player in enumerate(scan.get("players") or []):
-        if isinstance(player, dict) and not player.get("player_uid"):
-            player["player_uid"] = f"{scan.get('id')}-{idx}"  # legacy record: assign once, persisted on next save
+    """On load: upgrade a stored scan record to the current schema (see app/scan_migrations.py)."""
+    migrate(scan, REGISTRY)
 
 
 def _load_history() -> None:

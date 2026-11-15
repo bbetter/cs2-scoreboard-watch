@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 import lookup.steam_lookup as steam_lookup  # noqa: E402
 from app.events import EventBus  # noqa: E402
 from app.pipeline import ScanPipeline  # noqa: E402
+from app.scan_migrations import CURRENT_SCHEMA_VERSION  # noqa: E402
 from vision.scoreboard_scan import Player  # noqa: E402
 from lookup.steam_lookup import SteamProfile  # noqa: E402
 
@@ -131,6 +132,7 @@ class RunNewTests(unittest.TestCase):
         self.assertEqual(created["scan_status"], "loading_steam")
         self.assertEqual(created["progress"], {"done": 0, "total": 3})
         self.assertEqual(created["image_url"], "/screenshots/cs2_test_shot.png")
+        self.assertEqual(created["schema_version"], CURRENT_SCHEMA_VERSION)
         self.assertIsNone(created["ai_error"])
         self.assertEqual(created["player_count"], 3)
         for p in created["players"]:
