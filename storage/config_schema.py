@@ -138,14 +138,14 @@ def clamp_float(val: Any, default: float, min_val: float, max_val: float) -> flo
 
 def _normalize_field(f: Field, raw: Mapping) -> Any:
     if f.type == "float":
-        return clamp_float(raw.get(f.name), f.default, f.min, f.max)
+        return clamp_float(raw.get(f.name), f.default, f.min, f.max)  # type: ignore[arg-type]  # numeric fields always set min/max
     if f.type == "int":
         # A missing/empty value still means 0 (historical behaviour); only non-numeric or non-finite values
         # fall back to the field default.
         num = _finite_number(raw.get(f.name) or 0)
         if num is None:
             return f.default
-        return max(int(f.min), min(int(f.max), int(num)))
+        return max(int(f.min), min(int(f.max), int(num)))  # type: ignore[arg-type]  # numeric fields always set min/max
     if f.type == "bool":
         return bool(raw.get(f.name, f.default))
     if f.type == "text":
@@ -159,8 +159,10 @@ def _normalize_field(f: Field, raw: Mapping) -> Any:
     if f.type == "str":
         return str(raw.get(f.name, f.default) or f.default).strip() or f.default
     if f.type == "weights":
-        raw_weights = raw.get(f.name) if isinstance(raw.get(f.name), dict) else {}
-        return {k: clamp_float(raw_weights.get(k), v, f.min, f.max) for k, v in f.default.items()}
+        raw_weights = raw.get(f.name)
+        if not isinstance(raw_weights, dict):
+            raw_weights = {}
+        return {k: clamp_float(raw_weights.get(k), v, f.min, f.max) for k, v in f.default.items()}  # type: ignore[arg-type]  # numeric fields always set min/max
     raise ValueError(f"unknown field type {f.type!r} for {f.name}")
 
 

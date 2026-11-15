@@ -9,7 +9,7 @@ import time
 from typing import Any
 
 from lookup.http_client import http_get_status as _http_get_status
-from sources.base import LegacySlotSource, SourceContext, SourceResult
+from sources.base import LegacySlotSource, SourceContext, SourceResult, Status
 
 _LOG = logging.getLogger("pton")
 
@@ -57,7 +57,7 @@ def _parse_cstracker_html(html_text: str) -> dict:
     trust = None
     label = soup.find(string=re.compile(r"^\s*trust rating\s*$", re.I))
     if label is not None:
-        value_box = label.parent.find_next_sibling()
+        value_box = label.parent.find_next_sibling()  # type: ignore[union-attr]  # bs4: parent is Optional; a matched string always has one
         span = value_box.find("span") if value_box is not None else None
         if span is not None:
             trust = _num_or_raw(_norm_text(span.get_text()))
@@ -66,7 +66,7 @@ def _parse_cstracker_html(html_text: str) -> dict:
     for eyebrow in soup.select(".eyebrow"):
         name = _slug(eyebrow.get_text()).replace("_and_", "_")
         rows: dict[str, Any] = {}
-        for row in eyebrow.parent.find_all("div"):
+        for row in eyebrow.parent.find_all("div"):  # type: ignore[union-attr]  # bs4: parent is Optional; a .eyebrow always has one
             if "justify-between" not in (row.get("class") or []):
                 continue
             spans = row.find_all("span", recursive=False)
@@ -122,7 +122,7 @@ def fetch_cstracker(steamid64: str) -> dict:
     status_code, raw = _http_get_status(url, timeout=10.0, headers={"User-Agent": CSTRACKER_USER_AGENT})
     elapsed = time.monotonic() - started
     if status_code == 404:
-        result = {"status": "not_found"}
+        result: dict[str, Any] = {"status": "not_found"}
     elif raw is None:
         result = {"status": "blocked" if status_code in (403, 429, 503) else "error"}
     else:
@@ -137,7 +137,7 @@ def fetch_cstracker(steamid64: str) -> dict:
     return result
 
 
-_STATUS_MAP = {"ok": "ok", "not_found": "not_found", "blocked": "blocked"}
+_STATUS_MAP: dict[str, Status] = {"ok": "ok", "not_found": "not_found", "blocked": "blocked"}
 
 
 class CsTrackerSource(LegacySlotSource):
@@ -157,7 +157,7 @@ class CsTrackerSource(LegacySlotSource):
         if not isinstance(raw, dict):
             return SourceResult("error", {})
         raw_status = raw.get("status")
-        status = _STATUS_MAP.get(raw_status, "error") if isinstance(raw_status, str) else "error"
+        status: Status = _STATUS_MAP.get(raw_status, "error") if isinstance(raw_status, str) else "error"
         return SourceResult(status, raw)
 
     def ai_compact(self, result: SourceResult) -> dict | None:

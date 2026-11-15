@@ -47,8 +47,8 @@ def validate_feedback_payload(payload: Any) -> tuple[dict | None, str | None]:
         return None, "label must be one of: cheater, legit, unsure"
     return {
         "scan_id": scan_id.strip(),
-        "nick": nick.strip() if nick_ok else "",
-        "player_uid": player_uid.strip() if uid_ok else None,
+        "nick": str(nick).strip() if nick_ok else "",
+        "player_uid": str(player_uid).strip() if uid_ok else None,
         "label": label,
     }, None
 
