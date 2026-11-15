@@ -9,6 +9,12 @@ export function attentionReason(p) {
   if (!steam.steamid64) return "Профіль не обрано";
   const chosen = cands.find((c) => c.steamid64 === steam.steamid64);
   if (!chosen) return null;
+  const confidence = steam.search_confidence || {};
+  if (confidence.level === "low") {
+    return confidence.margin == null
+      ? "Вибрано без точного збігу імені і без сильного збігу аватара"
+      : `Непевний вибір: перевага над наступним кандидатом лише ${Math.round(confidence.margin)} балів`;
+  }
   const chosenAv = chosen.avatar_match || 0;
   if (chosenAv < ATTENTION_AVATAR_MIN) return `Низький збіг аватара (${Math.round(chosenAv * 100)}%)`;
   if (best.steamid64 !== chosen.steamid64 && (best.avatar_match || 0) - chosenAv > ATTENTION_BETTER_GAP) {

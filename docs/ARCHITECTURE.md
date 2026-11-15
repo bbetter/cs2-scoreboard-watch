@@ -55,6 +55,7 @@ its own working directory (the repository root).
 | `storage/atomic_io.py` | `atomic_write_text`: temp file + `os.replace` for all JSON state writes |
 | `storage/player_db.py` | SQLite player history (`data/players.db`, tables `players` and `sightings`) |
 | `storage/feedback_store.py` | Labelled feedback records (`data/feedback.json`) and their feature block |
+| `storage/identity_log.py` | Manual SteamID corrections (`data/identity_corrections.json`): OCR nick, auto-chosen profile, chosen profile, rank in the candidate list. Ground truth for judging the nick search |
 | `storage/profile_cache.py` | `ProfileCache`: Steam profile cache (`data/profile_cache.json`), read on first use, not at import |
 | `storage/api_keys.py` | Steam Web API and FACEIT key lookup: config, then environment, then the root `.env`. Shell rc files are not read. Callers import it from here directly (`lookup/steam_lookup.py` does not re-export it) |
 
@@ -116,7 +117,7 @@ Each source module holds its own fetcher and does not import `lookup.steam_looku
 | Path | Role |
 |---|---|
 | `web/` | Static frontend: `index.html`, `styles.css` and the scripts `app.js`, `api.js`, `state.js`, `sources.js`, `scan-table.js`, `player-details.js`, `lobby.js`, `settings.js`, `attention.js`, `table-view.js`, `util.js`. Served from the repo root |
-| `data/` | Runtime state, gitignored: `config.json`, `players.db`, `profile_cache.json`, `scans_history.json`, `feedback.json`, `screenshots/`, `logs/` |
+| `data/` | Runtime state, gitignored: `config.json`, `players.db`, `profile_cache.json`, `scans_history.json`, `feedback.json`, `identity_corrections.json`, `screenshots/`, `logs/` |
 | `scripts/cs_scan.sh` | Starts `app.server` if needed, takes a screenshot, posts it to `/api/scan` |
 | `tests/` | `unittest` suite and golden files (see "Testing") |
 | `docs/` | This document |

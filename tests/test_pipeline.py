@@ -46,11 +46,14 @@ class FakeEnrich:
 
     def __init__(self, order=None, before_return=None):
         self.calls = []
+        self.live_flags = []
         self.order = order
         self.before_return = before_return
 
-    def __call__(self, players, fetch_steam=True, on_player_ready=None):
+    def __call__(self, players, fetch_steam=True, on_player_ready=None, live=True):
         self.calls.append(fetch_steam)
+        if fetch_steam:
+            self.live_flags.append(live)
         if not fetch_steam:
             return [build_report(p, with_steam=False) for p in players]
         reports = [build_report(p) for p in players]
@@ -333,7 +336,7 @@ class FailingEnrich(FakeEnrich):
         self.error = error
         self.ready_before_fail = ready_before_fail
 
-    def __call__(self, players, fetch_steam=True, on_player_ready=None):
+    def __call__(self, players, fetch_steam=True, on_player_ready=None, live=True):
         if not fetch_steam:
             return super().__call__(players, fetch_steam=False)
         reports = [build_report(p) for p in players]

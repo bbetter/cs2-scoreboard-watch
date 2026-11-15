@@ -78,12 +78,13 @@ class ScanPipeline:
             out.append(d)
         return out
 
-    def _start_enrichment(self, scan_id: str, players: list, started: float, run_id: str) -> None:
-        self._spawn(lambda: self.enrich_scan(scan_id, players, started, run_id))
+    def _start_enrichment(self, scan_id: str, players: list, started: float, run_id: str, live: bool = True) -> None:
+        self._spawn(lambda: self.enrich_scan(scan_id, players, started, run_id, live=live))
 
     # ------------------------------------------------------------------ entry points
-    def run_new(self, image_path: Path, fetch_steam: bool = True) -> dict:
-        """Create a new scan record from an image already on disk."""
+    def run_new(self, image_path: Path, fetch_steam: bool = True, live: bool = True) -> dict:
+        """Create a new scan record from an image already on disk. `live` is False for a file that was not captured
+        just now (an upload), so in-game signals are not used to pick profiles."""
         started = time.time()
         scan_id = uuid.uuid4().hex[:10]
         run_id = uuid.uuid4().hex[:8]
@@ -118,11 +119,12 @@ class ScanPipeline:
             self.repo.save_locked()
         self.bus.publish("scan.created", record)
         if will_stream:
-            self._start_enrichment(scan_id, players, started, run_id)
+            self._start_enrichment(scan_id, players, started, run_id, live=live)
         return record
 
     def rescan(self, scan_rec: dict, image_path: Path) -> dict:
-        """Re-run OCR + enrichment for an existing scan record (same id, new players)."""
+        """Re-run OCR + enrichment for an existing scan record (same id, new players). The screenshot is old, so
+        in-game signals are not used."""
         started = time.time()
         scan_id = scan_rec["id"]
         players, console_status = self._ocr(image_path)
@@ -142,7 +144,7 @@ class ScanPipeline:
             snapshot = dict(scan_rec)
         self.bus.publish("scan.created", snapshot)
         if players:
-            self._start_enrichment(scan_id, players, started, run_id)
+            self._start_enrichment(scan_id, players, started, run_id, live=False)
         return snapshot
 
     # ------------------------------------------------------------------ background enrichment
@@ -179,7 +181,9 @@ class ScanPipeline:
             out.append(kept if kept is not None and self._keep_user_row(kept, started) else d)
         return out
 
-    def enrich_scan(self, scan_id: str, players: list, started: float, run_id: str | None = None) -> None:
+    def enrich_scan(
+        self, scan_id: str, players: list, started: float, run_id: str | None = None, live: bool = True
+    ) -> None:
         ai_enabled = bool(self._ai_enabled())
         total = len(players)
         done_count = 0
@@ -222,7 +226,7 @@ class ScanPipeline:
             )
 
         try:
-            reports = self._enrich(players, fetch_steam=True, on_player_ready=_on_player)
+            reports = self._enrich(players, fetch_steam=True, on_player_ready=_on_player, live=live)
         except Exception as exc:
             logging.getLogger(__name__).exception("enrichment failed for scan %s", scan_id)
             with progress_lock:

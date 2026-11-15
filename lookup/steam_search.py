@@ -26,6 +26,26 @@ from storage.api_keys import _get_steam_api_key
 
 _LOG = logging.getLogger("pton")
 
+# Steam's grey "?" avatar. Its hash is in the URL of every account that never set a picture; two such accounts
+# look alike, so this avatar says nothing about identity (verified: the URL serves that image).
+DEFAULT_AVATAR_HASH = "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb"
+AVATAR_MATCH_STRONG = 0.72
+MAX_CANDIDATES = 8
+# A chosen candidate that is neither an exact name nor a strong avatar match needs this lead over #2, or it is
+# marked as a low-confidence pick (shown in the attention tab).
+SEARCH_LOW_MARGIN = 150.0
+
+# Scoring points. The in-game bonuses apply only to a live capture: an opponent playing right now says nothing
+# about who was on the scoreboard in an old screenshot.
+SCORE_AVATAR_MAX = 1500.0
+SCORE_EXACT_NAME = 500.0
+SCORE_NAME_CONTAINS = 80.0
+SCORE_IN_CS2_LIVE = 300.0
+SCORE_IN_GAME_LIVE = 150.0
+SCORE_ONLINE_LIVE = 75.0
+SCORE_CS2_HOURS = 120.0
+SCORE_PUBLIC_PROFILE = 20.0
+
 
 STEAMID64_BASE = 76561197960265728
 STEAM_SEARCH_MIN_INTERVAL_SEC = 0.55
@@ -178,8 +198,12 @@ def _parse_steam_xml(xml_bytes: bytes, vanity: str | None = None, source: str = 
         "cs2_hours": cs2_hours,
         "lookup_source": source,
     }
+def _is_default_avatar(avatar_url: str | None) -> bool:
+    return bool(avatar_url) and DEFAULT_AVATAR_HASH in avatar_url
+
+
 def _avatar_similarity(thumb: object, avatar_url: str | None) -> float:
-    if thumb is None or not avatar_url:
+    if thumb is None or not avatar_url or _is_default_avatar(avatar_url):
         return 0.0
     raw = _http_get(avatar_url, timeout=3.0)
     if not raw:
@@ -202,28 +226,41 @@ def _avatar_similarity(thumb: object, avatar_url: str | None) -> float:
         return 0.55 * l1_sim + 0.45 * max(0.0, cos_sim)
     except Exception:
         return 0.0
-def _score_candidate(data: dict, target_nick: str) -> float:
+def _score_candidate(data: dict, target_nick: str, live: bool = True) -> float:
     score = 0.0
     av_sim = data.get("avatar_match") or 0.0
-    if av_sim >= 0.72:
-        score += av_sim * 1500.0
+    if av_sim >= AVATAR_MATCH_STRONG:
+        score += av_sim * SCORE_AVATAR_MAX
     pname = (data.get("profile_name") or "").strip().lower()
     tnick = target_nick.strip().lower()
     if pname == tnick:
-        score += 250.0
+        score += SCORE_EXACT_NAME
     elif tnick and tnick in pname:
-        score += 80.0
-    if data.get("in_cs2"):
-        score += 1000.0
-    elif data.get("online_state") == "in-game":
-        score += 350.0
-    elif data.get("online_state") == "online":
-        score += 150.0
+        score += SCORE_NAME_CONTAINS
+    if live:
+        if data.get("in_cs2"):
+            score += SCORE_IN_CS2_LIVE
+        elif data.get("online_state") == "in-game":
+            score += SCORE_IN_GAME_LIVE
+        elif data.get("online_state") == "online":
+            score += SCORE_ONLINE_LIVE
     if data.get("cs2_hours") is not None:
-        score += 120.0
+        score += SCORE_CS2_HOURS
     if data.get("privacy_state") == "public":
-        score += 20.0
+        score += SCORE_PUBLIC_PROFILE
     return score
+
+
+def _nick_variants(nick: str) -> list[str]:
+    """The OCR nick plus the 1/l and 0/o (and I/1, O/0) readings the OCR may have confused, without repeats."""
+    variants = [nick]
+    for alt in (
+        nick.replace("1", "l").replace("0", "o"),
+        nick.replace("l", "1").replace("I", "1").replace("O", "0"),
+    ):
+        if alt not in variants:
+            variants.append(alt)
+    return variants
 def _search_candidates(query: str) -> tuple[int, list[tuple[str, str | None, str | None, str]]]:
     session_id = "a1b2c3d4e5f6789012345678"
     q = urllib.parse.quote(query)
@@ -385,19 +422,16 @@ def _prefer_unambiguous_name_match(enriched: list[dict], nick: str, log: list[st
     chosen = enriched.pop(idx)
     enriched.insert(0, chosen)
     log.append(f"Нечітке співпадіння імені: {names[idx]!r} обрано для OCR-ніка {nick!r}")
-def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[dict | None, list[str], list[dict]]:
+def _search_steam_community(
+    nick: str, avatar_thumb: object = None, live: bool = True
+) -> tuple[dict | None, list[str], list[dict]]:
     log: list[str] = [f"OCR нік: {nick!r}"]
-    variants = [nick]
-    for alt in (
-        nick.replace("1", "l").replace("0", "o"),
-        nick.replace("l", "1").replace("I", "1").replace("O", "0"),
-    ):
-        if alt not in variants:
-            variants.append(alt)
+    target = nick.strip().lower()
 
-    candidates = []
+    candidates: list[tuple] = []
+    seen_urls: set[str] = set()
     rate_limited = False
-    for q in variants:
+    for q in _nick_variants(nick):
         status, found = _search_candidates(q)
         if status == 429:
             rate_limited = True
@@ -407,9 +441,14 @@ def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[dic
             log.append(f"Пошук Steam '{q}': помилка HTTP {status} (не вдалося звернутися до Steam)")
         else:
             log.append(f"Пошук Steam '{q}': знайдено {len(found)} кандидатів")
-        if found:
-            candidates = found
+        for cand in found:
+            if cand[0] not in seen_urls:  # merge by profile URL, keep the first query's order
+                seen_urls.add(cand[0])
+                candidates.append(cand)
+        # Alternative spellings only add noise once an exact name is already in hand.
+        if any(c[3].strip().lower() == target for c in candidates):
             break
+    candidates = candidates[:MAX_CANDIDATES]
     if not candidates:
         if rate_limited:
             log.append("Результат: кандидатів не отримано через rate limit Steam (HTTP 429)")
@@ -456,9 +495,20 @@ def _search_steam_community(nick: str, avatar_thumb: object = None) -> tuple[dic
             enriched = list(pool.map(_fetch_one, candidates))
 
     for d in enriched:
-        d["match_score"] = round(_score_candidate(d, nick), 1)
+        d["match_score"] = round(_score_candidate(d, nick, live=live), 1)
     enriched.sort(key=lambda d: d["match_score"], reverse=True)
     _prefer_unambiguous_name_match(enriched, nick, log)
+
+    chosen = enriched[0]
+    margin = chosen["match_score"] - enriched[1]["match_score"] if len(enriched) > 1 else None
+    exact = (chosen.get("profile_name") or "").strip().lower() == target
+    strong_avatar = (chosen.get("avatar_match") or 0.0) >= AVATAR_MATCH_STRONG
+    low = not exact and not strong_avatar and (margin is None or margin < SEARCH_LOW_MARGIN)
+    chosen["search_confidence"] = {
+        "level": "low" if low else "high",
+        "margin": None if margin is None else round(margin, 1),
+        "exact_name": exact,
+    }
 
     if api_key and enriched[0].get("steamid64") and enriched[0].get("cs2_hours") is None:
         hrs = _fetch_cs2_hours_web_api(enriched[0]["steamid64"], api_key)

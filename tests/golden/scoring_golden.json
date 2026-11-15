@@ -67,6 +67,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -144,6 +145,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -221,6 +223,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -304,6 +307,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -375,6 +379,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -453,6 +458,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -562,6 +568,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -716,6 +723,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -876,6 +884,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1004,6 +1013,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1116,6 +1126,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1201,6 +1212,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1345,6 +1357,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1472,6 +1485,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -1607,6 +1621,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -1711,6 +1726,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -1788,6 +1804,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -1883,6 +1900,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -1985,6 +2003,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -2074,6 +2093,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -2252,6 +2272,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -2404,6 +2425,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -2579,6 +2601,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -2780,6 +2803,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -2894,6 +2918,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -2971,6 +2996,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -3069,6 +3095,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -3193,6 +3220,7 @@
         "rip_nick_url": "https://steamcommunity.rip/id/https%3A%2F%2Fsteamcommunity.com%2Fid%2Fzed_vanity%2F/",
         "rip_url": "https://steamcommunity.rip/id/zed_vanity/",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -3347,6 +3375,7 @@
         "rip_nick_url": "https://steamcommunity.rip/id/76561198000000099/",
         "rip_url": "https://steamcommunity.rip/id/76561198000000099/",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "cstracker": {
@@ -3456,6 +3485,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {
@@ -3568,6 +3598,7 @@
         "rip_nick_url": "",
         "rip_url": "",
         "screenshot_avatar": null,
+        "search_confidence": {},
         "search_log": [],
         "sources": {
           "faceit": {

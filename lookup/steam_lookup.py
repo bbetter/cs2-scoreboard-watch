@@ -132,6 +132,8 @@ class SteamProfile:
     extra_stats: dict = field(default_factory=dict)
     search_log: list[str] = field(default_factory=list)
     candidates: list[dict] = field(default_factory=list)
+    # How sure the automatic nick search is about the chosen profile: {"level": "high"|"low", "margin", "exact_name"}.
+    search_confidence: dict = field(default_factory=dict)
     # Per-source flags: which sources returned data for this player (steam, leetify, faceit, cstracker).
     coverage: dict = field(default_factory=dict)
     # Derived uniform view {source_id: {status, data, fetched_at}} (see _refresh_sources_view).
@@ -262,7 +264,10 @@ def _cache_entry_current(data: dict) -> bool:
     return True
 
 
-def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avatar: str | None = None) -> SteamProfile:
+def lookup_steam_profile(
+    nick: str, avatar_thumb: object = None, screenshot_avatar: str | None = None, live: bool = True
+) -> SteamProfile:
+    """Resolve one nick. `live` is True only for a capture taken now; in-game signals are not used otherwise."""
     _setup_pton_log()
     clean_nick = nick.strip()
     cache_key = clean_nick.lower()
@@ -296,7 +301,9 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     search_log: list[str] = []
     candidates: list[dict] = []
     if clean_nick:
-        data, search_log, candidates = steam_search._search_steam_community(clean_nick, avatar_thumb=avatar_thumb)
+        data, search_log, candidates = steam_search._search_steam_community(
+            clean_nick, avatar_thumb=avatar_thumb, live=live
+        )
 
     if stale is not None and data is not None and data.get("_rate_limited"):
         _LOG.info("steam lookup %r: refresh rate limited, serving cached profile", clean_nick)
@@ -363,6 +370,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             sources=extra_sources,
             search_log=search_log,
             candidates=candidates,
+            search_confidence=data.get("search_confidence") or {},
         )
 
     _finalize_source_views(profile)
@@ -471,6 +479,7 @@ def enrich_players(
     players: list[Player],
     fetch_steam: bool = True,
     on_player_ready=None,
+    live: bool = True,
 ) -> list[PlayerReport]:
     _setup_pton_log()
     if not players:
@@ -507,7 +516,7 @@ def enrich_players(
     def _lookup(idx: int) -> SteamProfile | None:
         p = players[idx]
         try:
-            return lookup_steam_profile(p.nick, p.avatar_thumb, p.avatar_data_url)
+            return lookup_steam_profile(p.nick, p.avatar_thumb, p.avatar_data_url, live=live)
         except Exception:
             return None
 
@@ -584,7 +593,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             sources=extra_sources,
         )
     else:
-        steam = lookup_steam_profile(q)
+        steam = lookup_steam_profile(q, live=False)  # a manual re-check is about a row that already exists
     _finalize_source_views(steam)
 
     anomaly = player_dict.get("anomaly_score")
