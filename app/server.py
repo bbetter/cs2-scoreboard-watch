@@ -237,10 +237,6 @@ def _player_matches(p: dict, uid: str | None, nick: str | None) -> bool:
     return player_matches(p, uid, nick)
 
 
-def _mark_edited(player: dict) -> dict:
-    return mark_edited(player)
-
-
 def recheck_source_for_player(
     scan_id: str | None, nick: str, source: str | None, player_uid: str | None = None
 ) -> tuple[int, dict]:
@@ -392,6 +388,8 @@ def _get_events(h: CsWatchHandler) -> None:
         while True:
             try:
                 msg = q.get(timeout=20)
+                if msg is None:  # dropped by the hub as too slow: end the stream and free the connection
+                    break
                 h.wfile.write(msg.encode("utf-8"))
                 h.wfile.flush()
             except queue.Empty:
@@ -516,7 +514,7 @@ def _post_recheck(h: CsWatchHandler) -> None:
 
         updated_player = recheck_player_report(player_copy, query)
         analyzed_list, _ai_err = analyze_players_with_ai([updated_player])
-        updated_player = _mark_edited(analyzed_list[0])
+        updated_player = mark_edited(analyzed_list[0])
 
         with STORE.lock:
             # The row may have moved or been removed meanwhile: replace it by uid, looked up again under the lock.
@@ -613,7 +611,7 @@ def _post_ai_analyze(h: CsWatchHandler) -> None:
 
         # Results are keyed by player_uid (never by nick, which duplicates), and only the analysed rows are replaced
         # in the current rows, so rows changed in parallel by another route are not overwritten.
-        analyzed_by_uid = {p.get("player_uid"): _mark_edited(p) for p in analyzed}
+        analyzed_by_uid = {p.get("player_uid"): mark_edited(p) for p in analyzed}
         with STORE.lock:
             scan_rec = STORE.find_locked(scan_rec["id"])
             if scan_rec is None:

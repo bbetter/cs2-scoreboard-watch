@@ -87,5 +87,21 @@ class NewerSchemaTests(unittest.TestCase):
         self.assertIn("99", logs.output[0])
 
 
+class BadVersionTests(unittest.TestCase):
+    def test_string_version_raises_value_error_not_type_error(self):
+        scan = _v1_scan()
+        scan["schema_version"] = "2"
+        with self.assertRaises(ValueError):
+            migrate(scan, REGISTRY)
+
+    def test_zero_negative_bool_and_float_versions_are_rejected(self):
+        for bad in (0, -1, True, 2.0, None, [2]):
+            with self.subTest(version=bad):
+                scan = _v1_scan()
+                scan["schema_version"] = bad
+                with self.assertRaises(ValueError):
+                    migrate(scan, REGISTRY)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 import app.server as server  # noqa: E402
 import sources.leetify as leetify_source  # noqa: E402
+from app.player_ops import mark_edited  # noqa: E402
 from tests.test_pipeline import IMG, FakeEnrich, Harness  # noqa: E402
 from tests.test_recheck_source import _make_scan, _store  # noqa: E402
 
@@ -100,7 +101,7 @@ class RouteStampTests(unittest.TestCase):
     def test_mark_edited_sets_timestamp_and_returns_the_row(self):
         row = {"nick": "alpha"}
         with mock.patch.object(server.time, "time", return_value=123.0):
-            out = server._mark_edited(row)
+            out = mark_edited(row)
         self.assertIs(out, row)
         self.assertEqual(row["edited_at"], 123.0)
 

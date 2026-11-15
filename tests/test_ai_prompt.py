@@ -8,6 +8,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -67,7 +68,7 @@ class AiPromptDataBlockTests(unittest.TestCase):
         parsed = json.loads(body)
         expected = jsonable({
             "base_weights": {"scoreboard": 0.30, "leetify": 0.40, "steam_account": 0.30},
-            "players": [ai_analyzer._compact_player_for_ai(p) for p in players],
+            "players": [{"player_uid": p.get("player_uid"), **ai_analyzer._compact_player_for_ai(p)} for p in players],
         })
         self.assertEqual(parsed, expected)
         self.assertEqual(parsed["players"][0]["nick"], nick)
@@ -82,6 +83,39 @@ class AiPromptDataBlockTests(unittest.TestCase):
     def test_custom_ai_prompt_still_starts_the_prompt(self):
         prompt = ai_analyzer._build_prompt(_players(), _cfg())
         self.assertTrue(prompt.startswith(CUSTOM_PROMPT))
+
+
+class AiVerdictMatchingTests(unittest.TestCase):
+    def _run(self, players, results):
+        with mock.patch.object(ai_analyzer, "load_config", return_value={}), \
+                mock.patch.object(ai_analyzer, "_run_claude_cli", return_value={"results": results}):
+            out, err = ai_analyzer.analyze_players_with_ai(players, force=True)
+        self.assertIsNone(err)
+        return out
+
+    def test_same_nick_players_get_their_own_verdicts_by_uid(self):
+        players = [
+            {"nick": "dup", "player_uid": "u1", "kills": 1, "deaths": 1},
+            {"nick": "dup", "player_uid": "u2", "kills": 2, "deaths": 1},
+        ]
+        results = [
+            {"player_uid": "u2", "nick": "dup", "decision": "BLATANT", "confidence": 90},
+            {"player_uid": "u1", "nick": "dup", "decision": "LEGIT", "confidence": 80},
+        ]
+        out = self._run(players, results)
+        self.assertEqual(out[0]["ai_analysis"]["decision"], "LEGIT")
+        self.assertEqual(out[1]["ai_analysis"]["decision"], "BLATANT")
+
+    def test_nick_only_verdict_is_not_applied_when_the_nick_is_ambiguous(self):
+        players = [{"nick": "dup", "player_uid": "u1"}, {"nick": "dup", "player_uid": "u2"}]
+        out = self._run(players, [{"nick": "dup", "decision": "SMURF", "confidence": 70}])
+        self.assertNotIn("ai_analysis", out[0])
+        self.assertNotIn("ai_analysis", out[1])
+
+    def test_unique_nick_without_uid_in_reply_still_matches(self):
+        players = [{"nick": "solo", "player_uid": "u9"}]
+        out = self._run(players, [{"nick": "solo", "decision": "LEGIT", "confidence": 60}])
+        self.assertEqual(out[0]["ai_analysis"]["decision"], "LEGIT")
 
 
 if __name__ == "__main__":
