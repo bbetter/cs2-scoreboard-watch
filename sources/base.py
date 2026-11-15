@@ -130,7 +130,7 @@ class LegacySlotSource(DataSource):
 
     slot: tuple[str, ...] = ()
     # Legacy slots are not AI/feedback blocks unless a subclass opts in with its own payload_key.
-    payload_key = None
+    payload_key: str | None = None
 
     def read_raw(self, steam: Mapping) -> Any:
         cur: Any = steam

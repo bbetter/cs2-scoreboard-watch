@@ -38,3 +38,9 @@ known-first-party = ["app", "cs2watch", "cs2platform", "lookup", "scoring", "sou
 
 [tool.ruff.lint.per-file-ignores]
 "*/__init__.py" = ["F401"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["storage", "sources", "scoring"]
+ignore_missing_imports = true
+warn_unused_ignores = true

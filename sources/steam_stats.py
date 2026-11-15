@@ -13,7 +13,7 @@ from sources.base import LegacySlotSource, SourceContext, SourceResult
 from storage.config_fields import Secret
 
 
-def fetch_steam_cs2_stats(steamid64: str, api_key: str) -> dict:
+def fetch_steam_cs2_stats(steamid64: str, api_key: str | None) -> dict:
     if not steamid64 or not api_key:
         return {}
     url = (
