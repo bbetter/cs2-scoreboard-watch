@@ -64,8 +64,6 @@ def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
     """Build one feedback record from a stored player dict (PlayerReport as dict)."""
     steam = player.get("steam") or {}
     cst = (steam.get("extra_stats") or {}).get("cstracker") or {}
-    leetify = REGISTRY.get("leetify")
-    lf_result = leetify.normalize(steam.get("leetify"))
     features = {
         "kd": _num_or_none(player.get("kd")),
         "hs": _num_or_none(player.get("hs")),
@@ -76,9 +74,16 @@ def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
         "cs2_hours": _num_or_none(steam.get("cs2_hours")),
         "vac_banned": bool(steam.get("vac_banned")),
         "privacy_state": steam.get("privacy_state"),
-        "leetify": {"present": lf_result.ok, **leetify.features(lf_result)},
-        "cstracker_status": cst.get("status"),
     }
+    for src in REGISTRY:
+        name = src.payload_name()
+        if name is None:
+            continue
+        res = src.normalize(src.read_raw(steam))
+        block = src.features(res)
+        if src.payload_always or block:
+            features[name] = {"present": res.ok, **block}
+    features["cstracker_status"] = cst.get("status")
     return {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "scan_id": scan_id,

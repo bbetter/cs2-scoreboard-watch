@@ -76,6 +76,7 @@ class FaceitSource(LegacySlotSource):
     slot = ("faceit",)
     recheckable = False
     in_coverage = True
+    payload_key = "faceit"
     settings = (
         Secret(
             name="faceit_api_key", type="text", default="", label="FACEIT API key", group="api_keys",

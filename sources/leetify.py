@@ -164,6 +164,8 @@ class LeetifySource(LegacySlotSource):
     slot = ("leetify",)
     recheckable = True
     in_coverage = True
+    payload_key = "leetify"
+    payload_always = True
     # Masked like the other API keys: the public view shows only source/has/masked. An empty value in
     # POST /api/config keeps the stored key; `clear_leetify_api_key: true` removes it.
     settings = (
