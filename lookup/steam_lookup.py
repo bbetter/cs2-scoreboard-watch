@@ -11,6 +11,7 @@ import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 
 import sources.cstracker as cstracker_source
 import sources.faceit as faceit_source
@@ -27,6 +28,7 @@ from scoring import (
 )
 from scoring import thresholds as _T
 from sources import REGISTRY
+from sources.base import DataSource, LegacySlotSource, SourceContext, SourceResult
 from storage.api_keys import _get_steam_api_key
 from storage.config_store import DEFAULT_AI_WEIGHTS
 from storage.paths import DATA_DIR, LOG_DIR
@@ -200,6 +202,40 @@ def _fetch_external_stats(steamid64: str | None) -> tuple[dict | None, dict, dic
     return leetify_data, faceit_data, cs2_stats
 
 
+def _extra_sources() -> list[DataSource]:
+    """Registry sources without a legacy slot: third-party plugins and any new built-in source."""
+    return [s for s in REGISTRY if not isinstance(s, LegacySlotSource)]
+
+
+def _fetch_registry_sources(steamid64: str | None) -> dict:
+    """Fetch every extra registry source for one SteamID64; returns the stored `sources` block {id: result-dict}.
+
+    Without this, a source that is not one of the legacy four never runs during a scan and only shows up after a
+    manual recheck. A source that raises is recorded as status "error" and does not affect the others.
+    """
+    extra = _extra_sources()
+    if not steamid64 or not extra:
+        return {}
+    ctx = SourceContext(steam_api_key=_get_steam_api_key())
+    with ThreadPoolExecutor(max_workers=min(4, len(extra))) as pool:
+        futures = {src.id: pool.submit(src.fetch, steamid64, ctx) for src in extra}
+        stored: dict = {}
+        for src in extra:
+            try:
+                result = futures[src.id].result()
+            except Exception:
+                _LOG.exception("source %s failed during scan", src.id)
+                result = SourceResult("error", {}, datetime.now(UTC).isoformat(timespec="seconds"))
+            container: dict = {}
+            try:
+                src.write_raw(container, result)
+            except Exception:
+                _LOG.exception("source %s result could not be stored", src.id)
+                continue
+            stored.update(container.get("sources") or {})
+    return stored
+
+
 def _cache_entry_current(data: dict) -> bool:
     """Refetch when Leetify data is missing or predates the full fetch.
 
@@ -216,6 +252,9 @@ def _cache_entry_current(data: dict) -> bool:
     ct = (data.get("extra_stats") or {}).get("cstracker")
     if data.get("steamid64") and (not isinstance(ct, dict) or ct.get("status") == "error"):
         return False  # cstracker data missing or failed; 'blocked'/'not_found' stay cached
+    stored_sources = data.get("sources") or {}
+    if data.get("steamid64") and any(src.id not in stored_sources for src in _extra_sources()):
+        return False  # cached before a registry source (e.g. a plugin) was installed: fetch it once
     # Profile cache entries never hold Leetify data; it is re-read via _leetify_cached_or_fetch.
     return True
 
@@ -280,6 +319,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
     else:
         steamid64 = data.get("steamid64")
         leetify_data, faceit_data, cs2_stats = _fetch_external_stats(steamid64)
+        extra_sources = _fetch_registry_sources(steamid64)
         if leetify_data:
             search_log.append(f"Leetify: знайдено ({leetify_data.get('total_matches') or 0} матчів)")
         elif steamid64:
@@ -317,6 +357,7 @@ def lookup_steam_profile(nick: str, avatar_thumb: object = None, screenshot_avat
             faceit=faceit_data,
             cs2_stats=cs2_stats,
             extra_stats=_cstracker_extra(steamid64),
+            sources=extra_sources,
             search_log=search_log,
             candidates=candidates,
         )
@@ -512,6 +553,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
     if data is not None:
         steamid64 = data.get("steamid64")
         leetify_data, faceit_data, cs2_stats = _fetch_external_stats(steamid64)
+        extra_sources = _fetch_registry_sources(steamid64)
         rip_target = data.get("vanity") or steamid64 or urllib.parse.quote(q, safe="")
         steam = SteamProfile(
             query_nick=q,
@@ -536,6 +578,7 @@ def recheck_player_report(player_dict: dict, query: str) -> dict:
             faceit=faceit_data,
             cs2_stats=cs2_stats,
             extra_stats=_cstracker_extra(steamid64),
+            sources=extra_sources,
         )
     else:
         steam = lookup_steam_profile(q)

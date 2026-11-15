@@ -33,11 +33,11 @@ its own working directory (the repository root).
 |---|---|
 | `app/server.py` | HTTP server: router table, route functions, the scan store `STORE`, the SSE hub `SSE`, wiring of the pipeline |
 | `app/tab_watcher.py` | `TabWatcher`: state of the TAB watcher (cooldown, delay, CS2-only flag, notification switch) and the delayed scan + notification. Dependencies are passed to the constructor; `app.server` holds the instance as `TAB` |
-| `app/sse.py` | `SseHub`: subscriber queues for `/api/events`, max 8 open streams (`subscribe()` returns `None` when full), overflowing queues dropped on broadcast |
+| `app/sse.py` | `SseHub`: subscriber queues for `/api/events`, max 8 open streams (`subscribe()` returns `None` when full), overflowing queues dropped on broadcast and their stream ends (close marker) |
 | `app/watch_cs2.py` | Entry point for the TAB watcher: registers the Hyprland bind or a pynput listener, then serves `app.server.CsWatchHandler` |
 | `app/web_router.py` | Stdlib router (`Router.route` / `fallback`), JSON body helper, static-file resolution |
 | `app/pipeline.py` | `ScanPipeline`: scan / rescan / enrichment flow, the only code that writes scan records |
-| `app/scan_store.py` | `ScanStore`: scan list (newest first), its lock and the history file `data/scans_history.json`. An unreadable file is moved to `.corrupt` and logged |
+| `app/scan_store.py` | `ScanStore`: scan list (newest first), its lock and the history file `data/scans_history.json`. A file that is unreadable, or whose records fail to adapt on load, is moved to `.corrupt` and logged |
 | `app/events.py` | `EventBus`: in-process topics (`scan.created`, `scan.updated`, `player.enriched`, `scan.finished`) |
 | `app/player_ops.py` | Player-row operations without HTTP: `find_player`, `replace_player_by_uid`, `mark_edited`, `recheck_source` (one source for one player, returns `(status, body)`), source refresh. Takes the store, registry and callbacks as parameters; `app.server` wraps them with the live `STORE` / `REGISTRY` |
 | `app/matches.py` | `build_matches(scans)`: groups scan records into matches by `match_id` (fallback `session_<date>`), pure function |
@@ -278,6 +278,11 @@ environment variable also get `*_source` (`config` / `env` / `none`).
 4. Run `tests/test_sources.py` and `tests/test_config_schema.py`. Then `tests/test_config_parity.py` will fail
    with new keys in `config`. Regenerate its golden only if the change is intentional (see Testing).
 
+A scan fetches every registered `DataSource` that is not a `LegacySlotSource` (`lookup.steam_lookup._fetch_registry_sources`,
+run once per player on the lookup path and on the manual-report path), and stores the result in `steam.sources`. The four
+built-in legacy sources keep their dedicated fetchers (`_fetch_external_stats`). A `LegacySlotSource` is fetched only by its
+own code path, so a new source that needs a historical slot must be wired there too.
+
 What updates automatically: `coverage`, `steam.sources`, `POST /api/recheck-source` (when `recheckable`),
 `GET /api/config/schema`, the config key list, the AI payload (`lookup.ai_analyzer`) and the feedback features
 (`storage.feedback_store.build_feedback_entry`), both through `REGISTRY`. A source's block there is named by `payload_key`
@@ -380,8 +385,7 @@ Lint: `.venv/bin/ruff check .` (rules `F`, `E9`, `I`, `UP` and `B`, configured i
 first-party package list there).
 Types: `.venv/bin/mypy` checks `storage`, `sources` and `scoring` (configuration in `pyproject.toml`).
 Development dependencies, including ruff and mypy, are in `requirements-dev.txt`. CI (`.github/workflows/tests.yml`) runs
-the lint, the type check (3.11 only) and the suite on Python 3.11 and 3.12 (required) and on 3.13 (non-blocking:
-`rapidocr-onnxruntime` has no 3.13 wheels, so its install fails there).
+the lint, the type check (3.11 only) and the suite on Python 3.11 and 3.12 (both required; auto-merge waits for them).
 
 Golden files (regenerate only for an intentional change, and review the diff):
 
@@ -448,6 +452,6 @@ as instructions. Covered by `tests/test_ai_prompt.py`.
   `CS2WATCH_WEB_DIR` and `CS2WATCH_DATA_DIR` set. `pip install -e .` is intended for development from the checkout. It has not been run.
 - **Python version.** The code parses with the 3.8 feature set (checked with `ast.parse(feature_version=...)`), but
   only Python 3.11.9 is available here, so `requires-python = ">=3.11"` is the tested floor. CI runs 3.11 and 3.12
-  (required) and 3.13 (non-blocking).
+  (both required). A 3.13 job was removed because `rapidocr-onnxruntime` has no 3.13 wheels.
 - **Scoring pieces with no effect:** scoring reads cstracker `trust` (rule `cstracker_trust`), but never reads
   `vaclive`, `ttd`, or the medals / veteran coin / xp fields. The AI prompt does not mention fields that do not exist.

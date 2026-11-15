@@ -34,9 +34,15 @@ MIGRATIONS: dict[int, Callable[[dict, Any], None]] = {1: _v1_to_v2}
 
 
 def migrate(scan: dict, registry: Any) -> dict:
-    """Upgrade `scan` in place to CURRENT_SCHEMA_VERSION and return it."""
+    """Upgrade `scan` in place to CURRENT_SCHEMA_VERSION and return it.
+
+    Raises ValueError for a schema_version that is not a positive integer (e.g. the string "2"), so the caller can
+    treat the file as unreadable instead of crashing on a comparison.
+    """
     global _warned_newer
     version = scan.get("schema_version", 1)
+    if isinstance(version, bool) or not isinstance(version, int) or version < 1:
+        raise ValueError(f"unknown scan schema_version {version!r}")
     if version > CURRENT_SCHEMA_VERSION:
         if not _warned_newer:
             _warned_newer = True

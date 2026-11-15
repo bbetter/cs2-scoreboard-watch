@@ -13,6 +13,7 @@ default slot `steam.sources[<id>]` and needs no other storage code.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
@@ -20,6 +21,9 @@ from typing import Any, Literal
 
 Status = Literal["ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable"]
 STATUSES: tuple[str, ...] = ("ok", "not_found", "private", "blocked", "rate_limited", "error", "unavailable")
+
+
+_LOG = logging.getLogger("cs2watch.sources")
 
 
 def _now_iso() -> str:
@@ -88,9 +92,10 @@ class DataSource:
             return SourceResult("unavailable", {}, _now_iso())
         try:
             raw = self.fetch_raw(steamid64, ctx)
+            res = self.normalize(raw)
         except Exception:
+            _LOG.exception("source %s failed to fetch or normalize", self.id)
             return SourceResult("error", {}, _now_iso())
-        res = self.normalize(raw)
         res.fetched_at = res.fetched_at or _now_iso()
         return res
 
@@ -157,6 +162,15 @@ class LegacySlotSource(DataSource):
         return self.normalize(raw)
 
 
+def safe_result_from(source: DataSource, steam: Mapping) -> SourceResult | None:
+    """`result_from` that a broken third-party source cannot break: an exception is logged and treated as no data."""
+    try:
+        return source.result_from(steam)
+    except Exception:
+        _LOG.exception("source %s could not read its stored result", source.id)
+        return None
+
+
 class SourceRegistry:
     def __init__(self) -> None:
         self._sources: dict[str, DataSource] = {}
@@ -192,7 +206,7 @@ class SourceRegistry:
         """Uniform {id: SourceResult-dict} for a stored `steam` dict (works on legacy records)."""
         out: dict[str, dict] = {}
         for s in self:
-            r = s.result_from(steam)
+            r = safe_result_from(s, steam)
             if r is not None:
                 out[s.id] = r.to_dict()
         return out
@@ -202,6 +216,6 @@ class SourceRegistry:
         for s in self:
             if not s.in_coverage:
                 continue
-            r = s.result_from(steam)
+            r = safe_result_from(s, steam)
             out[s.id] = bool(r and r.ok)
         return out

@@ -61,9 +61,20 @@ class SseHubTests(unittest.TestCase):
         hub.broadcast("b", {})
         self.assertEqual(hub.count(), 1)
         self.assertIn("event: b", fast.get_nowait())
-        self.assertEqual(slow.get_nowait(), "event: a\ndata: {}\n\n")
+        # The dropped subscriber keeps only the close marker: the route ends its stream on it.
+        self.assertIsNone(slow.get_nowait())
         with self.assertRaises(queue.Empty):
             slow.get_nowait()
+
+    def test_dropped_subscriber_is_told_to_close_even_with_a_full_queue(self):
+        hub = SseHub(max_subscribers=1, queue_size=2)
+        slow = hub.subscribe()
+        hub.broadcast("a", {})
+        hub.broadcast("b", {})
+        hub.broadcast("c", {})  # overflows: queue is drained and replaced by the close marker
+        self.assertEqual(hub.count(), 0)
+        self.assertIsNone(slow.get_nowait())
+        self.assertTrue(slow.empty())
 
     def test_broadcast_event_in_server_goes_through_the_hub(self):
         hub = SseHub()

@@ -38,8 +38,9 @@ class ScanStore:
             for scan in scans:
                 if isinstance(scan, dict) and adapt is not None:
                     adapt(scan)
-        except Exception:
-            _LOG.exception("failed to adapt history from %s", self.history_file)
+        except Exception as exc:
+            # Keep the whole file aside: the next save would otherwise overwrite every record with the new scan.
+            self._move_corrupt_aside(f"record could not be adapted: {type(exc).__name__}: {exc}")
             return
         with self.lock:
             self.scans[:] = scans

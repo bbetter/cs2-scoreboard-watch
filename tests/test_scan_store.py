@@ -152,5 +152,30 @@ class PersistenceErrorTests(unittest.TestCase):
         self.assertIn("disk full", str(exc))
 
 
+class AdapterFailureTests(unittest.TestCase):
+    def setUp(self) -> None:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.dir = Path(tmp.name)
+        self.path = self.dir / "scans_history.json"
+
+    def test_failing_adapter_moves_the_file_aside_and_keeps_the_data(self) -> None:
+        records = [_scan("good1"), {"id": "bad", "schema_version": "2"}, _scan("good2")]
+        self.path.write_text(json.dumps(records), encoding="utf-8")
+
+        def adapt(scan: dict) -> None:
+            if not isinstance(scan.get("schema_version", 1), int):
+                raise TypeError("'>' not supported")
+
+        store = ScanStore(self.path)
+        with self.assertLogs("cs2watch.scan_store", level="WARNING") as cm:
+            store.load(adapt=adapt)
+        self.assertEqual(store.scans, [])
+        self.assertFalse(self.path.exists())  # a later save must not overwrite the original
+        corrupt = self.dir / "scans_history.json.corrupt"
+        self.assertEqual(json.loads(corrupt.read_text(encoding="utf-8")), records)
+        self.assertIn("could not be adapted", cm.output[0])
+
+
 if __name__ == "__main__":
     unittest.main()

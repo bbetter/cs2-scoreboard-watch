@@ -8,6 +8,7 @@ thresholds in lookup/steam_lookup.py can be checked against real labels later.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +17,8 @@ from typing import Any
 from sources import REGISTRY
 from storage.atomic_io import atomic_write_text
 from storage.paths import DATA_DIR
+
+_LOG = logging.getLogger("cs2watch.feedback")
 
 FEEDBACK_FILE = DATA_DIR / "feedback.json"
 VALID_LABELS = ("cheater", "legit", "unsure")
@@ -75,11 +78,15 @@ def build_feedback_entry(scan_id: str, label: str, player: dict) -> dict:
         "privacy_state": steam.get("privacy_state"),
     }
     for src in REGISTRY:
-        name = src.payload_name()
-        if name is None:
+        try:
+            name = src.payload_name()
+            if name is None:
+                continue
+            res = src.normalize(src.read_raw(steam))
+            block = src.features(res)
+        except Exception:
+            _LOG.exception("source %s could not build its feedback features; left out", src.id)
             continue
-        res = src.normalize(src.read_raw(steam))
-        block = src.features(res)
         if src.payload_always or block:
             features[name] = {"present": res.ok, **block}
     features["cstracker_status"] = cst.get("status")
