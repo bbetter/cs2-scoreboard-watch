@@ -191,6 +191,7 @@ class RouteTableTests(unittest.TestCase):
         ("GET", "/api/steam-status"), ("GET", "/api/latest"), ("GET", "/api/config"),
         ("GET", "/api/matches"), ("GET", "/api/config/schema"), ("GET", "/api/scan/{scan_id:path}"),
         ("GET", "/api/players/{steamid:path}"), ("GET", "/screenshots/{name:path}"), ("GET", "/api/events"),
+        ("GET", "/api/sources"),
         ("POST", "/api/tab-pressed"), ("POST", "/api/scan"), ("POST", "/api/rescan"),
         ("POST", "/api/setup-cs2"), ("POST", "/api/recheck"), ("POST", "/api/feedback"),
         ("POST", "/api/recheck-source"), ("POST", "/api/ai-analyze"), ("POST", "/api/config"),

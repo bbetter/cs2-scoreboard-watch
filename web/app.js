@@ -1,4 +1,4 @@
-import { connectSSE, fetchLatest, retrySource, triggerScan, uploadFile } from "/api.js";
+import { connectSSE, fetchLatest, fetchSourceMeta, retrySource, triggerScan, uploadFile } from "/api.js";
 import { showMainTab } from "/attention.js";
 import { loadLobbyPrefs, saveLobbyPrefs } from "/lobby.js";
 import { renderPlayerDetailsRow, selectPlayerTab } from "/player-details.js";
@@ -478,5 +478,6 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+fetchSourceMeta();
 fetchLatest();
 connectSSE();

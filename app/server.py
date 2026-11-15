@@ -268,6 +268,16 @@ def _get_steam_status(h: CsWatchHandler) -> None:
     h._send_json(get_steam_search_status())
 
 
+@router.route("GET", "/api/sources")
+def _get_sources(h: CsWatchHandler) -> None:
+    h._send_json({
+        "sources": [
+            {"id": s.id, "label": s.label, "recheckable": s.recheckable, "in_coverage": s.in_coverage}
+            for s in REGISTRY
+        ]
+    })
+
+
 @router.route("GET", "/api/latest")
 def _get_latest(h: CsWatchHandler) -> None:
     with STORE.lock:

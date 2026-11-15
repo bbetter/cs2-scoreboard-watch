@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 import { playerDataSources, playerHasAnyData, sourceChipsFor, sourceTabsFor, renderSourceStrip } from "/sources.js";
 import { tabsFor, renderPlayerDetailsRow } from "/player-details.js";
+import { state } from "/state.js";
 
 // sources.js must import without any browser global.
 assert.equal(typeof globalThis.document, "undefined", "test must run without a DOM");
@@ -141,6 +142,20 @@ test("retry buttons carry the uid when the record has one", () => {
   const p = base({ nick: "dup", player_uid: "scan-2-1", steam: {} });
   const html = renderSourceStrip(p);
   assert.match(html, /source-retry-btn" data-nick="dup" data-player-uid="scan-2-1" data-source="leetify"/);
+});
+
+test("generic source label: raw id without metadata, registry label once state.sourceMeta is loaded", () => {
+  const p = base({ steam: { sources: { example: { status: "ok", data: {} } } } });
+  assert.equal(sourceChipsFor(p).find((c) => c.state === "loaded").label, "example");
+  assert.equal(sourceTabsFor(p).find((t) => t.key === "src-example").label, "example");
+  state.sourceMeta.set("example", { id: "example", label: "Example" });
+  try {
+    assert.equal(sourceChipsFor(p).find((c) => c.state === "loaded").label, "Example");
+    assert.equal(sourceTabsFor(p).find((t) => t.key === "src-example").label, "Example");
+  } finally {
+    state.sourceMeta.delete("example");
+  }
+  assert.equal(sourceChipsFor(p).find((c) => c.state === "loaded").label, "example");
 });
 
 let failed = 0;
