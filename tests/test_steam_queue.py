@@ -34,6 +34,17 @@ SEARCH_OK = json.dumps(
 ).encode("utf-8")
 
 
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    def advance(self, sec: float) -> None:
+        self.now += sec
+
+
 class FakeSteamHTTP:
     """Scripted responses for search requests; everything else returns (0, None)."""
 
@@ -65,10 +76,8 @@ class SteamQueueTests(unittest.TestCase):
             mock.patch.object(sl, "_cstracker_extra", return_value={}),
             # Lazy pton.logs handler would append to data/logs; these tests do not assert on logs.
             mock.patch.object(sl, "_setup_pton_log", lambda: None),
-            # Fast timings so the tests stay quick.
-            mock.patch.object(steam_search, "STEAM_SEARCH_MIN_INTERVAL_SEC", 0.0),
-            mock.patch.object(steam_search, "STEAM_COOLDOWN_BASE_SEC", 0.2),
-            mock.patch.object(steam_search, "STEAM_COOLDOWN_MAX_SEC", 1.0),
+            # Fresh limiter per test with fast timings (no spacing, 0.2 s base cooldown, 1 s max).
+            mock.patch.object(steam_search, "RATE_LIMITER", steam_search.SteamRateLimiter(0.0, 0.2, 1.0)),
             mock.patch.object(sl, "STEAM_RETRY_ROUNDS", 3),
             mock.patch.object(sl, "STEAM_RETRY_BUDGET_SEC", 10.0),
         ]
@@ -83,9 +92,6 @@ class SteamQueueTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def _reset_state(self) -> None:
-        with steam_search._STEAM_RL_LOCK:
-            steam_search._STEAM_RL_STATE.update({"until": 0.0, "streak": 0.0})
-        steam_search._LAST_SEARCH_TS = 0.0
         with sl.PROFILE_CACHE.lock:
             sl.PROFILE_CACHE.clear()
 
@@ -118,18 +124,21 @@ class SteamQueueTests(unittest.TestCase):
         self.assertEqual(len(fake.search_calls), 1)
 
     def test_cooldown_doubles_per_consecutive_429_and_resets_on_200(self) -> None:
-        self._http([429])
-        steam_search._steam_record_search_status(429)
-        first = steam_search._STEAM_RL_STATE["until"] - time.monotonic()
-        steam_search._steam_record_search_status(429)
-        second = steam_search._STEAM_RL_STATE["until"] - time.monotonic()
-        self.assertGreater(second, first)
-        self.assertLessEqual(second, steam_search.STEAM_COOLDOWN_MAX_SEC + 0.05)
+        clock = FakeClock()
+        limiter = steam_search.SteamRateLimiter(0.0, 0.2, 1.0, clock=clock)
+        with mock.patch.object(steam_search, "RATE_LIMITER", limiter):
+            self._http([429])
+            steam_search._steam_record_search_status(429)
+            first = limiter.cooldown_remaining()
+            steam_search._steam_record_search_status(429)
+            second = limiter.cooldown_remaining()
+            self.assertGreater(second, first)
+            self.assertLessEqual(second, limiter.cooldown_max_sec + 0.05)
+            self.assertEqual(limiter.streak, 2)
 
-        with steam_search._STEAM_RL_LOCK:
-            steam_search._STEAM_RL_STATE["until"] = 0.0  # cooldown expired
-        steam_search._steam_record_search_status(200)
-        self.assertEqual(steam_search._STEAM_RL_STATE["streak"], 0.0)
+            clock.advance(limiter.cooldown_max_sec)  # cooldown expired
+            steam_search._steam_record_search_status(200)
+            self.assertEqual(limiter.streak, 0)
 
     def test_status_reports_not_limited_without_429(self) -> None:
         self.assertEqual(steam_search.get_steam_search_status(), {"limited": False, "retry_in_sec": 0})

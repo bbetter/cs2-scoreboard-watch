@@ -28,13 +28,85 @@ _LOG = logging.getLogger("pton")
 
 
 STEAMID64_BASE = 76561197960265728
-_SEARCH_LOCK = threading.Lock()
-_LAST_SEARCH_TS = 0.0
 STEAM_SEARCH_MIN_INTERVAL_SEC = 0.55
 STEAM_COOLDOWN_BASE_SEC = 5.0
 STEAM_COOLDOWN_MAX_SEC = 120.0
-_STEAM_RL_LOCK = threading.Lock()
-_STEAM_RL_STATE: dict[str, float] = {"until": 0.0, "streak": 0.0}
+
+
+class SteamRateLimiter:
+    """Steam Community search queue state: minimum spacing between request starts and a 429 cooldown.
+
+    One injected clock drives both the spacing and the cooldown. In-memory only, thread-safe.
+    """
+
+    def __init__(
+        self,
+        min_interval_sec: float,
+        cooldown_base_sec: float,
+        cooldown_max_sec: float,
+        *,
+        clock=time.monotonic,
+        sleep=time.sleep,
+    ) -> None:
+        self.min_interval_sec = min_interval_sec
+        self.cooldown_base_sec = cooldown_base_sec
+        self.cooldown_max_sec = cooldown_max_sec
+        self._clock = clock
+        self._sleep = sleep
+        # _seq_lock serializes request starts and is held while waiting for the spacing;
+        # _state_lock guards the cooldown fields and is never held while sleeping.
+        self._seq_lock = threading.Lock()
+        self._state_lock = threading.Lock()
+        self._last_start: Optional[float] = None
+        self._until = 0.0
+        self._streak = 0
+
+    @property
+    def streak(self) -> int:
+        with self._state_lock:
+            return self._streak
+
+    def wait_turn(self) -> bool:
+        """Block until the next search may start. False means cooling down: send no request."""
+        with self._seq_lock:
+            if self.cooldown_remaining() > 0:
+                return False
+            if self._last_start is not None:
+                wait = self.min_interval_sec - (self._clock() - self._last_start)
+                if wait > 0:
+                    self._sleep(wait)
+            self._last_start = self._clock()
+            return True
+
+    def cooldown_remaining(self) -> float:
+        with self._state_lock:
+            return max(0.0, self._until - self._clock())
+
+    def record(self, status: int) -> None:
+        with self._state_lock:
+            if status == 429:
+                self._streak += 1
+                cooldown = min(self.cooldown_max_sec, self.cooldown_base_sec * (2 ** (self._streak - 1)))
+                self._until = max(self._until, self._clock() + cooldown)
+                _LOG.warning("Steam search: HTTP 429, cooldown %.0fs (streak %d)", cooldown, self._streak)
+            elif status == 200:
+                self._streak = 0
+
+    def status(self) -> dict:
+        """Cooldown state for the UI: {limited: bool, retry_in_sec: int}."""
+        remaining = self.cooldown_remaining()
+        return {"limited": remaining > 0, "retry_in_sec": int(math.ceil(remaining))}
+
+    def reset(self) -> None:
+        with self._seq_lock, self._state_lock:
+            self._last_start = None
+            self._until = 0.0
+            self._streak = 0
+
+
+RATE_LIMITER = SteamRateLimiter(STEAM_SEARCH_MIN_INTERVAL_SEC, STEAM_COOLDOWN_BASE_SEC, STEAM_COOLDOWN_MAX_SEC)
+
+
 def _parse_member_age_years(member_since: Optional[str]) -> Optional[float]:
     if not member_since:
         return None
@@ -152,7 +224,6 @@ def _score_candidate(data: dict, target_nick: str) -> float:
         score += 20.0
     return score
 def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], Optional[str], str]]]:
-    global _LAST_SEARCH_TS
     session_id = "a1b2c3d4e5f6789012345678"
     q = urllib.parse.quote(query)
     url = (
@@ -160,13 +231,8 @@ def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], 
         f"?text={q}&filter=users&sessionid={session_id}&steamid_user=false&page=1"
     )
 
-    with _SEARCH_LOCK:
-        if _steam_cooldown_remaining() > 0:
-            return 429, []  # cooling down after a 429: do not send another request
-        wait = STEAM_SEARCH_MIN_INTERVAL_SEC - (time.time() - _LAST_SEARCH_TS)
-        if wait > 0:
-            time.sleep(wait)
-        _LAST_SEARCH_TS = time.time()
+    if not RATE_LIMITER.wait_turn():
+        return 429, []  # cooling down after a 429: do not send another request
     status, raw = _http_get_status(url, timeout=4.5, cookies=f"sessionid={session_id}")
     _steam_record_search_status(status)
 
@@ -203,22 +269,12 @@ def _search_candidates(query: str) -> tuple[int, list[tuple[str, Optional[str], 
     candidates.sort(key=lambda c: (0 if c[3].lower() == ql else 1, 0 if ql in c[3].lower() else 1))
     return status, candidates[:5]
 def _steam_cooldown_remaining() -> float:
-    with _STEAM_RL_LOCK:
-        return max(0.0, _STEAM_RL_STATE["until"] - time.monotonic())
+    return RATE_LIMITER.cooldown_remaining()
 def _steam_record_search_status(status: int) -> None:
-    with _STEAM_RL_LOCK:
-        if status == 429:
-            streak = _STEAM_RL_STATE["streak"] + 1
-            cooldown = min(STEAM_COOLDOWN_MAX_SEC, STEAM_COOLDOWN_BASE_SEC * (2 ** (int(streak) - 1)))
-            _STEAM_RL_STATE["streak"] = streak
-            _STEAM_RL_STATE["until"] = max(_STEAM_RL_STATE["until"], time.monotonic() + cooldown)
-            _LOG.warning("Steam search: HTTP 429, cooldown %.0fs (streak %d)", cooldown, int(streak))
-        elif status == 200:
-            _STEAM_RL_STATE["streak"] = 0.0
+    RATE_LIMITER.record(status)
 def get_steam_search_status() -> dict:
     """Current Steam search cooldown state for the UI: {limited: bool, retry_in_sec: int}."""
-    remaining = _steam_cooldown_remaining()
-    return {"limited": remaining > 0, "retry_in_sec": int(math.ceil(remaining))}
+    return RATE_LIMITER.status()
 def _fetch_batch_via_web_api(
     candidates: list[tuple[str, Optional[str], Optional[str], str]],
     api_key: str,

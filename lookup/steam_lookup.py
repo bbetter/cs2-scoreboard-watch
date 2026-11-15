@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import math
 import re
-import threading
 import time
 import urllib.error
 import urllib.parse
@@ -29,6 +28,7 @@ import sources.faceit as faceit_source
 import sources.leetify as leetify_source
 import sources.steam_stats as steam_stats_source
 from lookup import steam_search
+from lookup.ttl_memo import TtlMemo
 
 _LOG = logging.getLogger("pton")
 
@@ -51,8 +51,7 @@ def _setup_pton_log() -> None:
 CACHE_TTL_SEC = 86400
 PROFILE_CACHE_FILE = DATA_DIR / "profile_cache.json"
 # Leetify data lives only in memory, keyed by SteamID64, for leetify_cache_ttl_sec (0 = not reused).
-_LEETIFY_LOCK = threading.Lock()
-_LEETIFY_MEM: dict[str, tuple[float, dict]] = {}
+LEETIFY_MEMO = TtlMemo()
 # Steam Community search queue: minimum spacing between search request starts,
 # cooldown after HTTP 429 (doubles per consecutive 429, reset on 200), and a bounded
 # retry of rate-limited lookups inside enrich_players. In-memory only.
@@ -84,20 +83,11 @@ def _leetify_cache_ttl_sec() -> int:
 
 
 def _leetify_mem_get(steamid64: Optional[str], ttl: int) -> Optional[dict]:
-    if not steamid64 or ttl <= 0:
-        return None
-    with _LEETIFY_LOCK:
-        item = _LEETIFY_MEM.get(steamid64)
-    if item and (time.time() - item[0]) < ttl:
-        return dict(item[1])
-    return None
+    return LEETIFY_MEMO.get(steamid64, ttl)
 
 
 def _leetify_mem_put(steamid64: Optional[str], data: Optional[dict], ttl: int) -> None:
-    if not steamid64 or ttl <= 0 or not data:
-        return
-    with _LEETIFY_LOCK:
-        _LEETIFY_MEM[steamid64] = (time.time(), dict(data))
+    LEETIFY_MEMO.put(steamid64, data, ttl)
 
 
 def _leetify_cached_or_fetch(steamid64: Optional[str], ttl: int) -> Optional[dict]:
