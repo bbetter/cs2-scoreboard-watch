@@ -1327,7 +1327,8 @@
         "Aim 96.0 при 120 матчах",
         "Counter-strafing 98% (Leetify, недавні матчі)",
         "Точність у голову 62% (Leetify, недавні матчі)",
-        "Точність спрею 66% (Leetify, недавні матчі)"
+        "Точність спрею 66% (Leetify, недавні матчі)",
+        "Дуже низький CSTracker trust (18)"
       ],
       "heuristic_risk": "high",
       "heuristic_smurf_probability": 15.0,
