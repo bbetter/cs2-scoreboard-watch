@@ -2,6 +2,18 @@ import { renderScan, updateMatchAndHistorySelects } from "/scan-table.js";
 import { els, state } from "/state.js";
 import { setStatus } from "/util.js";
 
+// Fills state.sourceMeta; a network error leaves it empty and labels fall back to source ids.
+export async function fetchSourceMeta() {
+  try {
+    const res = await fetch("/api/sources");
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const entry of data.sources || []) state.sourceMeta.set(entry.id, entry);
+  } catch {
+    // Labels stay as they are: generic sources show their raw id.
+  }
+}
+
 export async function fetchLatest() {
   try {
     const res = await fetch("/api/latest");
@@ -107,7 +119,7 @@ export function connectSSE() {
 export async function retrySource(btn) {
   const { nick, source } = btn.dataset;
   const playerUid = btn.dataset.playerUid;
-  const sourceLabel = source === "leetify" ? "Leetify" : "CSTracker";
+  const sourceLabel = state.sourceMeta.get(source)?.label ?? source;
   btn.disabled = true;
   const prevText = btn.textContent;
   btn.textContent = "Повторюю...";

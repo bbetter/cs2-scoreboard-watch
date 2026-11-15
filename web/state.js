@@ -12,6 +12,8 @@ export const state = {
   onlyHighRisk: false,
   expandedNicks: new Set(),
   playerTabs: new Map(),
+  // Source id -> {id, label, recheckable, in_coverage} from GET /api/sources (empty until loaded).
+  sourceMeta: new Map(),
 };
 
 // Element refs are resolved on first access, so importing this module needs no DOM (tests import it in Node).

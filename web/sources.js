@@ -109,6 +109,11 @@ export function genericSourceEntries(p) {
   return Object.entries(sources).filter(([id, entry]) => !KNOWN_SOURCE_IDS.has(id) && entry && typeof entry === "object");
 }
 
+// Human label from GET /api/sources (state.sourceMeta); the raw id until that metadata is loaded.
+export function sourceLabelOf(id) {
+  return state.sourceMeta.get(id)?.label ?? id;
+}
+
 export function genericTabKey(id) {
   return `src-${String(id).replace(/[^\w-]/g, "_")}`;
 }
@@ -163,7 +168,7 @@ export function sourceChipsFor(p) {
     retry: s.retryable ? s.id : null,
   }));
   const generic = genericSourceEntries(p).map(([id, entry]) => ({
-    label: id,
+    label: sourceLabelOf(id),
     state: STATUS_TO_STATE[entry.status] || "none",
     retry: null,
   }));
@@ -176,7 +181,7 @@ export function sourceTabsFor(p) {
   const builtin = SOURCES.filter((s) => s.tab).map((s) => s.tab);
   const generic = genericSourceEntries(p).map(([id, entry]) => ({
     key: genericTabKey(id),
-    label: id,
+    label: sourceLabelOf(id),
     render: () => genericTabBody(entry),
   }));
   return [...builtin, ...generic];
