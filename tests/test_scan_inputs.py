@@ -41,9 +41,11 @@ class ScanInputsTests(unittest.TestCase):
         self.shots.mkdir()
         self.default_shots.mkdir()
         self.calls: list[tuple[object, bool]] = []
+        self.live_flags: list[bool] = []
 
-        def fake_run_scan(image_path=None, fetch_steam=True):
+        def fake_run_scan(image_path=None, fetch_steam=True, live=True):
             self.calls.append((image_path, fetch_steam))
+            self.live_flags.append(live)
             return {"players": []}
 
         patches = [
@@ -144,6 +146,7 @@ class ScanInputsTests(unittest.TestCase):
         status, _ = self.post_upload(JPEG_BYTES, "image/jpeg")
         self.assertEqual(status, 200)
         self.assertEqual(len(list(self.shots.glob("upload_*.jpg"))), 1)
+        self.assertEqual(self.live_flags[-1:], [False])  # an upload is not a live capture
 
     def test_non_image_upload_is_rejected_and_nothing_is_written(self):
         status, body = self.post_upload(b"hello", "image/png")

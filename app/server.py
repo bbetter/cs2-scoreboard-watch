@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import queue
 import shutil
 import time  # noqa: F401  (tests/test_enrichment_merge.py patches server.time.time; mark_edited lives in app.player_ops)
@@ -13,6 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import storage.identity_log as identity_log
 import storage.player_db as player_db
 from app.console_parser import (
     correct_nick_from_console,
@@ -207,14 +209,14 @@ def _enrich_scan_async(scan_id: str, players: list, started: float) -> None:
     PIPELINE.enrich_scan(scan_id, players, started)
 
 
-def run_scan(image_path: Path | None = None, fetch_steam: bool = True) -> dict:
+def run_scan(image_path: Path | None = None, fetch_steam: bool = True, live: bool = True) -> dict:
     if image_path is None:
         image_path = capture_screenshot()
     else:
         image_path = Path(image_path).resolve()
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
-    return PIPELINE.run_new(image_path, fetch_steam=fetch_steam)
+    return PIPELINE.run_new(image_path, fetch_steam=fetch_steam, live=live)
 
 
 def _send_notification(title: str, msg: str) -> None:
@@ -526,9 +528,29 @@ def _post_recheck(h: CsWatchHandler) -> None:
             _save_history_locked()
             snapshot = dict(scan_rec)
 
+        _record_identity_correction(scan_id, player_copy, updated_player, query)
         h._send_json(snapshot)
     except Exception as exc:
         h._send_json({"error": str(exc)}, status=500)
+
+
+_LOG = logging.getLogger("cs2watch.server")
+
+
+def _record_identity_correction(scan_id: str, before_row: dict, after_row: dict, query: str) -> None:
+    """Keep the labelled pair for evaluating the nick search. Never fails the request that triggered it."""
+    try:
+        entry = identity_log.build_correction(
+            scan_id=scan_id,
+            ocr_nick=str(before_row.get("nick") or ""),
+            before=before_row.get("steam") or {},
+            after=after_row.get("steam") or {},
+            query=query,
+        )
+        if entry is not None:
+            identity_log.record(entry)
+    except Exception:
+        _LOG.exception("could not record an identity correction")
 
 
 @router.route("POST", "/api/feedback")
@@ -676,7 +698,7 @@ def _post_upload(h: CsWatchHandler) -> None:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         out_path = get_screenshot_dir() / f"upload_{ts}{suffix}"
         out_path.write_bytes(raw)
-        result = run_scan(image_path=out_path, fetch_steam=True)
+        result = run_scan(image_path=out_path, fetch_steam=True, live=False)  # an uploaded file is not a live capture
         h._send_json(result)
     except Exception as exc:
         h._send_json({"error": str(exc)}, status=500)
