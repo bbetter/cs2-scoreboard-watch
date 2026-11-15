@@ -334,6 +334,19 @@ def _cs2(c: ScoreContext) -> list:
     return hits
 
 
+@rule("external", "cstracker_trust")
+def _cstracker_trust(c: ScoreContext) -> list:
+    cst = (c.steam.extra_stats or {}).get("cstracker") or {}
+    trust = cst.get("trust")
+    if cst.get("status") != "ok" or isinstance(trust, bool) or not isinstance(trust, (int, float)):
+        return []
+    if trust < T.CST_TRUST_VERY_LOW:
+        return [Hit(T.CST_TRUST_VERY_LOW_POINTS, f"Дуже низький CSTracker trust ({trust:.0f})")]
+    if trust < T.CST_TRUST_LOW:
+        return [Hit(T.CST_TRUST_LOW_POINTS, f"Низький CSTracker trust ({trust:.0f})")]
+    return []
+
+
 # ============================================================ smurf signal rules (used inside the signal branch)
 
 @dataclass

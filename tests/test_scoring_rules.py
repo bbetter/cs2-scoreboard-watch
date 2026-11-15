@@ -461,6 +461,44 @@ class SteamCs2Stats(RuleCase):
         self.assertEqual(self._cs(total_matches_played=T.CS2_VETERAN_MATCHES, kd=T.CS2_VETERAN_MAX_KD + 0.01), [])
 
 
+class CstrackerTrust(RuleCase):
+    COMPONENT, NAME = "external", "cstracker_trust"
+
+    def _trust(self, trust, status="ok"):
+        cst = {"status": status}
+        if trust is not None or status == "ok":
+            cst["trust"] = trust
+        return self.hits(ctx(s=steam(extra_stats={"cstracker": cst})))
+
+    def test_no_cstracker_is_not_applicable(self):
+        self.assertEqual(self.hits(ctx(s=steam(extra_stats={}))), [])
+
+    def test_blocked_status_is_not_applicable(self):
+        self.assertEqual(self._trust(5, status="blocked"), [])
+
+    def test_missing_trust_is_not_applicable(self):
+        self.assertEqual(self._trust(None), [])
+
+    def test_bool_trust_is_not_applicable(self):
+        self.assertEqual(self._trust(True), [])
+        self.assertEqual(self._trust(False), [])
+
+    def test_very_low_boundary(self):
+        self.assertEqual(pairs(self._trust(T.CST_TRUST_VERY_LOW - 1)),
+                         [(T.CST_TRUST_VERY_LOW_POINTS, f"Дуже низький CSTracker trust ({T.CST_TRUST_VERY_LOW - 1:.0f})")])
+        self.assertEqual(pairs(self._trust(T.CST_TRUST_VERY_LOW)),
+                         [(T.CST_TRUST_LOW_POINTS, f"Низький CSTracker trust ({T.CST_TRUST_VERY_LOW:.0f})")])
+
+    def test_low_boundary(self):
+        self.assertEqual(pairs(self._trust(T.CST_TRUST_LOW - 1)),
+                         [(T.CST_TRUST_LOW_POINTS, f"Низький CSTracker trust ({T.CST_TRUST_LOW - 1:.0f})")])
+        self.assertEqual(self._trust(T.CST_TRUST_LOW), [])
+
+    def test_float_trust_is_accepted(self):
+        self.assertEqual(pairs(self._trust(10.4)),
+                         [(T.CST_TRUST_VERY_LOW_POINTS, "Дуже низький CSTracker trust (10)")])
+
+
 # ---------------------------------------------------------------- registry coverage
 
 class RegistryCoverageTests(unittest.TestCase):

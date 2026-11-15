@@ -51,6 +51,8 @@ FACEIT_VETERAN_MATCHES, FACEIT_VETERAN_MAX_KD, FACEIT_VETERAN_MAX_HS, FACEIT_VET
 CS2_KD_EXTREME, CS2_KD_EXTREME_MAX_MATCHES, CS2_KD_EXTREME_POINTS = 2.3, 150, 22.0
 CS2_HS_EXTREME, CS2_HS_EXTREME_POINTS = 72.0, 18.0
 CS2_VETERAN_MATCHES, CS2_VETERAN_MAX_KD, CS2_VETERAN_POINTS = 300, 1.35, -10.0
+CST_TRUST_VERY_LOW, CST_TRUST_VERY_LOW_POINTS = 20, 10.0   # CSTracker trust 0..100; below this value
+CST_TRUST_LOW, CST_TRUST_LOW_POINTS = 35, 5.0           # below this value (and not very low)
 
 # Recent-window aim metrics (Leetify stats / cstracker aim_reactions): (strong, weak) cut-offs and (strong, weak) points.
 AIM_COUNTER_STRAFE_STRONG = 95.0
