@@ -9,6 +9,7 @@ size: M
 golden:
   - tests/golden/scoring_golden.json
   - tests/golden/config_golden.json
+  - tests/golden/ai_compact_golden.json
 files:
   - scoring/thresholds.py
   - scoring/rules.py
@@ -16,6 +17,7 @@ files:
   - tests/test_scoring_rules.py
   - tests/golden/scoring_golden.json
   - tests/golden/config_golden.json
+  - tests/golden/ai_compact_golden.json
 ---
 
 # T33 — Правило для низького CSTracker trust; промпт без неіснуючих полів
@@ -36,6 +38,8 @@ CSTracker віддає `trust` (0–100), але скоринг його не ч
   падає без нього. Golden скорингу — лише через `python tests/test_golden_scoring.py --regen` і з поясненим дифом.
 - `storage/config_schema.DEFAULT_AI_PROMPT` входить у дефолтний конфіг, тому зміна промпта змінює
   `tests/golden/config_golden.json` (regen: `python tests/test_config_parity.py --regen`).
+- Нова причина скорингу потрапляє в `heuristic_reasons` компактного AI-пейлоаду, тому змінюється і
+  `tests/golden/ai_compact_golden.json` (regen: `python tests/test_ai_compact_parity.py --regen`).
 
 ## Що зробити
 
@@ -54,9 +58,10 @@ CSTracker віддає `trust` (0–100), але скоринг його не ч
    очками й текстом.
 4. `DEFAULT_AI_PROMPT`: прибери згадки полів, яких не створює жоден парсер (крок «Контекст»); згадку `ttd`
    переформулюй як «cstracker.matches[].ttd». Решту тексту не змінюй.
-5. Regen обох golden. У PR, розділ «Golden diff»: для кожного змінного фікстура скорингу — trust, було → стало
+5. Regen трьох golden (scoring, config, ai_compact). У PR, розділ «Golden diff»: для кожного змінного фікстура скорингу — trust, було → стало
    (`cheat_probability`, нова причина). Очікується зміна лише для фікстур з `trust < 35`. Для config golden —
-   лише значення `ai_prompt`.
+   лише значення `ai_prompt`. Для ai_compact golden — лише `heuristic_reasons` (і похідні від скорингу
+   поля) тих самих фікстур.
 
 ## Не робити
 
@@ -72,7 +77,8 @@ CSTracker віддає `trust` (0–100), але скоринг його не ч
 
 ```bash
 .venv/bin/python -m unittest tests.test_scoring_rules -v 2>&1 | tail -5
-.venv/bin/python tests/test_golden_scoring.py --regen && .venv/bin/python tests/test_config_parity.py --regen
+.venv/bin/python tests/test_golden_scoring.py --regen && .venv/bin/python tests/test_config_parity.py --regen \
+  && .venv/bin/python tests/test_ai_compact_parity.py --regen
 git diff --stat -- tests/golden/
 .venv/bin/python -m unittest discover -s tests 2>&1 | tail -3
 ```
